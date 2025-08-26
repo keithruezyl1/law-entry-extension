@@ -18,7 +18,7 @@ export function DojIssuanceForm({ control }: DojIssuanceFormProps) {
           name="issuance_no"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Issuance Number</FormLabel>
+              <FormLabel className="text-black">Issuance Number</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -26,7 +26,6 @@ export function DojIssuanceForm({ control }: DojIssuanceFormProps) {
                   className="h-11 px-4 text-base rounded-xl"
                 />
               </FormControl>
-              <FormDescription>e.g., DOJ-2023-001</FormDescription>
               <FormMessage />
             </FormItem>
           )}

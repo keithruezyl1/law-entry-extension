@@ -516,5 +516,16 @@
 	border-top: 1px solid #e5e7eb;
 }
 
+/* Nudge placeholders and typed text slightly to the right */
+.kb-form input {
+	text-indent: 12px;
+}
+
+/* Ensure StringArray inputs have proper text indentation */
+.kb-form input[placeholder*="Enter item"],
+.kb-form input[placeholder*="Enter tag"] {
+	text-indent: 12px;
+}
+
 
 

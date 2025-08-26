@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { getAllTeamMembers } from './data/entryTypes';
 import EntryForm from './components/kb/EntryForm.tsx'; // new TS + RHF + Zod wizard
 import EntryList from './components/EntryList/EntryList';
 import EntryView from './components/EntryView/EntryView';
+import Login from './components/Login/Login';
 import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
 import { parseWorkbook, computeDayIndex, rowsForDay, toISODate } from './lib/plan/planLoader';
@@ -16,15 +17,47 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/*" element={<AppContent />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/law-entry/:step" element={<LawEntryForm />} />
+        <Route path="/entry/:entryId" element={<EntryDetails />} />
+        <Route path="/entry/:entryId/edit" element={<EntryEdit />} />
+        <Route path="*" element={<Login />} />
       </Routes>
     </Router>
   );
 }
 
-function AppContent() {
-  const [currentView, setCurrentView] = useState('list'); // 'list', 'form', 'view'
-  const [selectedEntryId, setSelectedEntryId] = useState(null);
+// Dashboard Component - Main list view
+function Dashboard() {
+  return <AppContent currentView="list" />;
+}
+
+// Law Entry Form Component
+function LawEntryForm() {
+  const { step } = useParams();
+  return <AppContent currentView="form" formStep={parseInt(step) || 1} />;
+}
+
+// Entry Details Component
+function EntryDetails() {
+  const { entryId } = useParams();
+  return <AppContent currentView="view" selectedEntryId={entryId} />;
+}
+
+// Entry Edit Component
+function EntryEdit() {
+  const { entryId } = useParams();
+  return <AppContent currentView="form" isEditing={true} selectedEntryId={entryId} />;
+}
+
+function AppContent({ currentView: initialView = 'list', isEditing = false, formStep = 1, selectedEntryId: initialEntryId = null }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const [currentView, setCurrentView] = useState(initialView);
+  const [selectedEntryId, setSelectedEntryId] = useState(initialEntryId);
   const [editingEntry, setEditingEntry] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
@@ -49,6 +82,9 @@ function AppContent() {
       }
     } catch (_) {}
   }, []);
+
+  // Redirect to login if on root path (this is now handled by the router)
+  // The login component will handle redirecting to dashboard after authentication
   
   const {
     entries,
@@ -68,10 +104,30 @@ function AppContent() {
     checkDailyCompletion
   } = useLocalStorage();
 
+  // Handle initial entry loading for view/edit
+  useEffect(() => {
+    if (initialEntryId && (currentView === 'view' || isEditing)) {
+      const entry = getEntryById(initialEntryId);
+      if (entry) {
+        if (isEditing) {
+          setEditingEntry(entry);
+        }
+        setSelectedEntryId(initialEntryId);
+      } else {
+        // Entry not found, redirect to dashboard
+        navigate('/dashboard');
+      }
+    }
+  }, [initialEntryId, currentView, isEditing, getEntryById, navigate]);
+
   const stats = getStorageStats();
   const teamProgress = getAllTeamProgress();
   const yesterdayProgress = getYesterdayTeamProgress();
   const teamMembers = getAllTeamMembers();
+
+  // Debug: Log entries state
+  console.log('Current entries in App.js:', entries);
+  console.log('Entries length:', entries.length);
 
   // Team member names mapping for P1-P5 format
   const teamMemberNames = {
@@ -155,13 +211,13 @@ function AppContent() {
       }
     } catch (_) {}
     setEditingEntry(null);
-    setCurrentView('form');
+    navigate('/law-entry/1');
   };
 
   const handleResumeYes = () => {
     setEditingEntry(resumeDraft || null);
     setShowResumeModal(false);
-    setCurrentView('form');
+    navigate('/law-entry/1');
   };
 
   const handleResumeNo = () => {
@@ -169,18 +225,15 @@ function AppContent() {
     setResumeDraft(null);
     setShowResumeModal(false);
     setEditingEntry(null);
-    setCurrentView('form');
+    navigate('/law-entry/1');
   };
 
   const handleEditEntry = (entryId) => {
-    const entry = getEntryById(entryId);
-    setEditingEntry(entry);
-    setCurrentView('form');
+    navigate(`/entry/${entryId}/edit`);
   };
 
   const handleViewEntry = (entryId) => {
-    setSelectedEntryId(entryId);
-    setCurrentView('view');
+    navigate(`/entry/${entryId}`);
   };
 
   const handleSaveEntry = (entryData) => {
@@ -202,7 +255,6 @@ function AppContent() {
         alert(`Entry "${entryData.title}" has been successfully saved to localStorage!`);
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
-      setCurrentView('list');
       setEditingEntry(null);
     } catch (err) {
       console.error('Error saving entry:', err);
@@ -215,7 +267,7 @@ function AppContent() {
       try {
         deleteEntry(entryId);
         if (currentView === 'view' && selectedEntryId === entryId) {
-          setCurrentView('list');
+          navigate('/dashboard');
           setSelectedEntryId(null);
         }
       } catch (err) {
@@ -258,15 +310,7 @@ function AppContent() {
   };
 
   const handleGoBack = () => {
-    if (currentView === 'list') {
-      // If already on list view, could go to a previous page or show a menu
-      alert('Go back functionality would be implemented here');
-    } else {
-      // Go back to list view
-      setCurrentView('list');
-      setSelectedEntryId(null);
-      setEditingEntry(null);
-    }
+    navigate('/login');
   };
 
   const handleClearOptionSelect = (option) => {
@@ -363,9 +407,7 @@ function AppContent() {
   };
 
   const handleBackToList = () => {
-    setCurrentView('list');
-    setSelectedEntryId(null);
-    setEditingEntry(null);
+    navigate('/dashboard');
   };
 
   if (loading) {
@@ -385,9 +427,7 @@ function AppContent() {
       <header className="App-header" style={{ 
         background: `linear-gradient(135deg, rgba(255, 140, 66, ${headerOpacity}) 0%, rgba(255, 107, 53, ${headerOpacity}) 100%)`
       }}>
-        <button onClick={handleGoBack} className="go-back-btn">
-          Go Back
-        </button>
+        <div></div> {/* Empty div for flex spacing */}
         <div className="header-content">
           <h1>Civilify Law Entry</h1>
           <div className="header-stats">
@@ -395,7 +435,9 @@ function AppContent() {
             <span>{stats.offlinePackEntries} in offline pack</span>
           </div>
         </div>
-        <div></div> {/* Empty div for flex spacing */}
+        <button onClick={handleGoBack} className="logout-btn">
+          Logout
+        </button>
       </header>
       )}
 
@@ -584,7 +626,6 @@ function AppContent() {
             entry={getEntryById(selectedEntryId)}
             onEdit={() => handleEditEntry(selectedEntryId)}
             onDelete={() => handleDeleteEntry(selectedEntryId)}
-            onBack={handleBackToList}
           />
         )}
       </main>

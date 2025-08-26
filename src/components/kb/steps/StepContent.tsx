@@ -17,6 +17,7 @@ export function StepContent() {
       <div className="space-y-6">
         <div>
           <Label htmlFor="summary">Summary *</Label>
+          <p className="text-xs text-muted-foreground mt-1">Keep it concise and neutral.</p>
           <Textarea
             {...register('summary')}
             placeholder="1–3 sentence neutral synopsis of this legal provision"
@@ -26,13 +27,11 @@ export function StepContent() {
           {errors.summary && (
             <p className="text-sm text-red-600 mt-1">{String(errors.summary.message)}</p>
           )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Keep it concise and neutral. This will be shown to users as a quick overview.
-          </p>
         </div>
 
         <div>
           <Label htmlFor="text">Legal Text *</Label>
+          <p className="text-xs text-muted-foreground mt-1">Substance-only, normalized.</p>
           <Textarea
             {...register('text')}
             placeholder="Clean, normalized legal text (substance-only)"
@@ -42,9 +41,6 @@ export function StepContent() {
           {errors.text && (
             <p className="text-sm text-red-600 mt-1">{String(errors.text.message)}</p>
           )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Include the complete legal text, normalized and cleaned for consistency.
-          </p>
         </div>
 
         <div>

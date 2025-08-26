@@ -18,7 +18,7 @@ export function ExecutiveIssuanceForm({ control }: ExecutiveIssuanceFormProps) {
           name="instrument_no"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Instrument Number</FormLabel>
+              <FormLabel className="text-black">Instrument Number</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -26,7 +26,6 @@ export function ExecutiveIssuanceForm({ control }: ExecutiveIssuanceFormProps) {
                   className="h-11 px-4 text-base rounded-xl"
                 />
               </FormControl>
-              <FormDescription>e.g., EO 2023-001</FormDescription>
               <FormMessage />
             </FormItem>
           )}

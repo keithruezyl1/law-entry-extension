@@ -1,16 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getEntryType } from '../../data/entryTypes';
 import { getJurisdiction } from '../../data/jurisdictions';
 // import { getTagByValue } from '../../data/tags';
 import './EntryView.css';
 
-const EntryView = ({ entry, onEdit, onDelete, onBack }) => {
+const EntryView = ({ entry, onEdit, onDelete }) => {
+  const navigate = useNavigate();
   if (!entry) {
     return (
       <div className="no-entry">
         <h3>Entry not found</h3>
         <p>The requested entry could not be found.</p>
-        <button onClick={onBack} className="btn-primary">
+        <button onClick={() => navigate('/dashboard')} className="btn-primary">
           Back to List
         </button>
       </div>
@@ -31,6 +33,7 @@ const EntryView = ({ entry, onEdit, onDelete, onBack }) => {
   };
 
   const renderArrayField = (fieldName, items, label) => {
+    console.log(`Rendering ${fieldName}:`, items);
     if (!items || items.length === 0) return null;
     
     return (
@@ -131,13 +134,51 @@ const EntryView = ({ entry, onEdit, onDelete, onBack }) => {
   };
 
   const renderTypeSpecificFields = () => {
+    console.log('Entry type:', entry.type);
+    console.log('Entry data:', entry);
+    
     switch (entry.type) {
+      case 'constitution_provision':
+        return (
+          <>
+            {renderArrayField('topics', entry.topics, 'Topics')}
+            {renderArrayField('jurisprudence', entry.jurisprudence, 'Jurisprudence')}
+            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
+          </>
+        );
+
       case 'statute_section':
       case 'city_ordinance_section':
         return (
           <>
             {renderArrayField('elements', entry.elements, 'Elements')}
             {renderArrayField('penalties', entry.penalties, 'Penalties')}
+            {renderArrayField('defenses', entry.defenses, 'Defenses')}
+            {entry.prescriptive_period && (
+              <div className="field-group">
+                <h4>Prescriptive Period</h4>
+                <div className="info-grid">
+                  {entry.prescriptive_period.value && (
+                    <div className="info-item">
+                      <span className="label">Value:</span>
+                      <span className="value">{entry.prescriptive_period.value}</span>
+                    </div>
+                  )}
+                  {entry.prescriptive_period.unit && (
+                    <div className="info-item">
+                      <span className="label">Unit:</span>
+                      <span className="value">{entry.prescriptive_period.unit}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {entry.standard_of_proof && (
+              <div className="field-group">
+                <h4>Standard of Proof</h4>
+                <div className="text-content">{entry.standard_of_proof}</div>
+              </div>
+            )}
             {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
           </>
         );
@@ -157,6 +198,7 @@ const EntryView = ({ entry, onEdit, onDelete, onBack }) => {
             </div>
             {renderArrayField('triggers', entry.triggers, 'Triggers')}
             {renderArrayField('time_limits', entry.time_limits, 'Time Limits')}
+            {renderArrayField('required_forms', entry.required_forms, 'Required Forms')}
           </>
         );
 
@@ -285,20 +327,6 @@ const EntryView = ({ entry, onEdit, onDelete, onBack }) => {
 
   return (
     <div className="entry-view-container">
-      <div className="entry-view-header">
-        <button onClick={onBack} className="btn-secondary">
-          ← Back to List
-        </button>
-        <div className="entry-actions">
-          <button onClick={onEdit} className="btn-primary">
-            Edit Entry
-          </button>
-          <button onClick={onDelete} className="btn-danger">
-            Delete Entry
-          </button>
-        </div>
-      </div>
-
       <div className="entry-view-content">
         <div className="entry-header">
           <div className="entry-title-section">
@@ -310,6 +338,23 @@ const EntryView = ({ entry, onEdit, onDelete, onBack }) => {
                 Included in Offline Pack
               </div>
             )}
+          </div>
+          
+          <div className="entry-actions">
+            <button onClick={onEdit} className="btn-icon" title="Edit">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button onClick={onDelete} className="btn-icon btn-icon-danger" title="Delete">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3,6 5,6 21,6"/>
+                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+              </svg>
+            </button>
           </div>
         </div>
 

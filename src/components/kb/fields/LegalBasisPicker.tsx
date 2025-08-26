@@ -122,19 +122,22 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       type="button"
                       variant="destructive"
                       onClick={() => remove(i)}
-                      className="h-11 w-11 rounded-xl flex items-center justify-center"
+                      className={`h-11 rounded-xl flex items-center justify-center mb-2 ${i === fields.length - 1 ? 'w-11' : 'flex-1'}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} }}
-                      className="h-11 rounded-xl flex-1"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add external citation
-                    </Button>
+                    {/* Show "Add external citation" only if this is the last item */}
+                    {i === fields.length - 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} }}
+                        className="h-11 rounded-xl flex-1 mb-2"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add external citation
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

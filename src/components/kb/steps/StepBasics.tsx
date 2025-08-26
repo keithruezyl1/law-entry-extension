@@ -65,7 +65,7 @@ export function StepBasics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <Label htmlFor="type">Entry Type *</Label>
+            <Label htmlFor="type">Entry Type <span className="text-red-600">*</span></Label>
             <Select
               {...register('type')}
               options={typeOptions}
@@ -77,7 +77,7 @@ export function StepBasics() {
           </div>
 
           <div>
-            <Label htmlFor="title">Title *</Label>
+            <Label htmlFor="title">Title <span className="text-red-600">*</span></Label>
             <Input
               {...register('title')}
               placeholder="Human-readable label for this entry"
@@ -89,7 +89,7 @@ export function StepBasics() {
           </div>
 
           <div>
-            <Label htmlFor="jurisdiction">Jurisdiction *</Label>
+            <Label htmlFor="jurisdiction">Jurisdiction <span className="text-red-600">*</span></Label>
             <Select
               {...register('jurisdiction')}
               options={jurisdictionOptions}
@@ -101,7 +101,7 @@ export function StepBasics() {
           </div>
 
           <div>
-            <Label htmlFor="law_family">Law Family *</Label>
+            <Label htmlFor="law_family">Law Family <span className="text-red-600">*</span></Label>
             <Input
               {...register('law_family')}
               placeholder="e.g., RA 4136, Rules of Court, Cebu Ord. 2606"
@@ -143,7 +143,7 @@ export function StepBasics() {
           </div>
 
           <div>
-            <Label htmlFor="canonical_citation">Canonical Citation *</Label>
+            <Label htmlFor="canonical_citation">Canonical Citation <span className="text-red-600">*</span></Label>
             <Input
               {...register('canonical_citation')}
               placeholder="e.g., RPC Art. 308, ROC Rule 113, Sec. 5"
@@ -155,7 +155,7 @@ export function StepBasics() {
           </div>
 
           <div>
-            <Label htmlFor="status">Status *</Label>
+            <Label htmlFor="status">Status <span className="text-red-600">*</span></Label>
             <Select
               {...register('status')}
               options={statusOptions}

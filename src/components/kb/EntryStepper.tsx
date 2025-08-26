@@ -48,7 +48,7 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
                 <li
                   key={step.id}
                   className={cn(
-                    "flex items-center gap-4 rounded-token px-4 py-3 cursor-pointer transition-all duration-200 ring-0",
+                    "flex items-center gap-4 rounded-token px-4 py-3 my-2 cursor-pointer transition-all duration-200 ring-0",
                     active && "bg-primary/10 outline-none",
                     complete && "opacity-90",
                     !active && !complete && "hover:bg-muted/60"
@@ -83,10 +83,10 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
             })}
           </ul>
           <div className="mt-7 pt-0">
-            <div className="text-sm font-semibold text-foreground mb-3">
+            <div className="text-sm font-semibold text-foreground mt-3 mb-3">
               Step {currentStep} of {steps.length}
             </div>
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden mb-2">
               <div
                 className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${(currentStep / steps.length) * 100}%` }}

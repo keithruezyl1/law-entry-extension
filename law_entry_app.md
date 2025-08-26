@@ -2,7 +2,17 @@
 
 ## Overview
 
-The **Civilify Law Entry App** is a React-based web application designed as an extension for the Civilify admin page. It serves as the primary gateway for adding entries into the Civilify Knowledge Base (KB). The app provides a comprehensive, dynamic form system for creating and managing legal knowledge base entries with support for multiple legal document types.
+The **Civilify Law Entry App** is a React-based web application designed as the primary gateway for adding entries into the Civilify Knowledge Base (KB). It provides a comprehensive, dynamic form system for creating and managing legal knowledge base entries with support for multiple legal document types. The app features a complete authentication flow, routing system, and modern UI design.
+
+## Key Features
+
+- **Authentication System**: Login page with username/password authentication
+- **Routing System**: Clean URL structure with React Router
+- **Multi-Step Form Wizard**: 5-step dynamic form for entry creation
+- **Entry Management**: Create, edit, delete, search, and filter entries
+- **Dashboard**: Team progress tracking and entry overview
+- **Responsive Design**: Mobile-friendly interface
+- **Local Storage**: Data persistence without backend requirements
 
 ## Technology Stack
 
@@ -10,31 +20,47 @@ The **Civilify Law Entry App** is a React-based web application designed as an e
 - **TypeScript 4.9.5** - Type safety
 - **React Hook Form 7.62.0** - Form management
 - **Zod 3.23.8** - Schema validation
+- **React Router 6** - Client-side routing
 - **Tailwind CSS 4.1.12** - Styling
 - **Radix UI** - Accessible components
 - **Lucide React** - Icons
 
 ## Core Features
 
-### 1. Multi-Step Form Wizard (5 Steps)
+### 1. Authentication & Routing
+- **Login System**: Username/password authentication (demo mode)
+- **Route Protection**: All routes redirect to login if not authenticated
+- **Clean URLs**: SEO-friendly routing structure
+- **Navigation**: Consistent navigation between pages
+
+### 2. Multi-Step Form Wizard (5 Steps)
 - **Step 1**: Basic Information (type, title, jurisdiction, etc.)
 - **Step 2**: Sources & Dates (URLs, effective dates)
 - **Step 3**: Content (summary, text, tags)
 - **Step 4**: Type-Specific & Relations (dynamic by type + legal bases/related sections)
 - **Step 5**: Review & Publish
 
-### 2. Dynamic Form System
+### 3. Dynamic Form System
 - **8 GLI+CPA Entry Types** with specific fields and validation
 - **Real-time validation** with immediate feedback
 - **Auto-save functionality** every 10 seconds
 - **Live preview** of entry data
 - **Auto-generation** of entry IDs
+- **Step Navigation**: URL updates with current step
 
-### 3. Entry Management
+### 4. Entry Management
 - Create, edit, delete entries
-- Search and filter functionality
+- Search and filter functionality (including tags)
 - Bulk operations (export, import, clear all)
-- Offline pack management
+- Entry detail view with modal overlay
+- Responsive entry cards with minimalist design
+
+### 5. Dashboard & UI
+- Team progress tracking with daily quotas
+- Modern card-based layout
+- Filter system with collapsible filters
+- Logout functionality
+- Responsive design for all screen sizes
 
 ## Supported Entry Types (GLI+CPA)
 
@@ -67,12 +93,16 @@ npm install
 npm start
 ```
 
+### First Time Setup
+1. Open the app at `http://localhost:3000` - you'll see the login page
+2. Enter any username and password (demo mode)
+3. You'll be redirected to the dashboard at `/dashboard`
+
 ### Import the Plan and Set Day 1
-1. Open the app at `http://localhost:3000`.
-2. In the main page header actions, click **Import Plan**.
-3. Choose `Civilify_KB30_Schedule_CorePH.xlsx`.
-4. A modal appears asking to **Set Day 1** (project start date). Pick the correct date and confirm.
-5. The app stores the parsed plan in `localStorage` under `kb_plan_rows` and your Day 1 in `kbprog:day1`.
+1. In the dashboard header actions, click **Import Plan**.
+2. Choose `Civilify_KB30_Schedule_CorePH.xlsx`.
+3. A modal appears asking to **Set Day 1** (project start date). Pick the correct date and confirm.
+4. The app stores the parsed plan in `localStorage` under `kb_plan_rows` and your Day 1 in `kbprog:day1`.
 
 After this:
 - The Team Progress cards show daily quotas by person (Arda, Delos Cientos, Paden, Sendrijas, Tagarao).
@@ -85,6 +115,34 @@ After this:
 ### Where the Plan Data Is Used
 - Dashboard (P1–P5 cards) shows per-person required counts for the selected day.
 - Progress is tracked in `localStorage` with keys `kbprog:<YYYY-MM-DD>:<P#>:<type>`.
+
+---
+
+## Routing System
+
+The app uses React Router 6 for client-side routing with clean, SEO-friendly URLs.
+
+### Route Structure
+- **`/`** → Login page (default startup)
+- **`/login`** → Login page
+- **`/dashboard`** → Main dashboard with entry list
+- **`/law-entry/:step`** → Law entry form with step number (e.g., `/law-entry/1`, `/law-entry/2`)
+- **`/entry/:entryId`** → View entry details
+- **`/entry/:entryId/edit`** → Edit existing entry
+- **`*`** → Fallback to login page
+
+### Navigation Features
+- **Browser Back/Forward**: Works correctly with step navigation
+- **Direct URL Access**: Users can bookmark and directly access specific pages
+- **Entry Not Found**: Redirects to dashboard if entry doesn't exist
+- **Form State**: Maintains form state during step navigation
+- **Clean URLs**: SEO-friendly and user-friendly URLs
+
+### Authentication Flow
+- **Default Route**: App starts at login page
+- **Authentication**: Accepts any non-empty username/password (demo mode)
+- **Redirect**: After login, redirects to `/dashboard`
+- **Logout**: Logout button navigates back to `/login`
 
 ---
 
@@ -115,11 +173,13 @@ const methods = useForm<Entry>({
 ## Component Structure
 
 ### Main Components
-- **App.js** - Main application container
+- **App.js** - Main application container with routing
+- **Login.js** - Authentication page component
 - **EntryForm.tsx** - Multi-step form wizard
 - **EntryStepper.tsx** - Progress indicator
 - **EntryPreview.tsx** - Live preview component
 - **EntryList.js** - Entry listing and filtering
+- **EntryView.js** - Entry detail view component
 
 ### Type-Specific Components
 - **StatuteSectionForm.tsx** - Statute-specific fields
@@ -133,6 +193,7 @@ const methods = useForm<Entry>({
 - **TagArray** - Dynamic tag input with chips
 - **LegalBasisPicker** - Legal reference management
 - **Modal** - Popup dialogs
+- **Confetti** - Success animation component
 
 ## Data Flow & State Management
 
@@ -227,18 +288,28 @@ export const StatuteSection = BaseEntry.extend({
 - **Hover effects**: Darken background, blur text, show remove button
 
 ### 3. Search & Filtering
-- **Text search**: Title, ID, content
-- **Type filter**: All 11 entry types
+- **Text search**: Title, ID, content, tags
+- **Type filter**: All 8 GLI+CPA entry types
 - **Jurisdiction filter**: PH + custom jurisdictions
 - **Status filter**: Active, Amended, Repealed, Draft, Approved, Published
-- **Team member filter**: P1-P5 team assignments
-- **Offline pack filter**: Included/Not included
+- **Team member filter**: Arda, Delos Cientos, Paden, Sendrijas, Tagarao
+- **Collapsible filters**: Hide/show filter section
+- **Clear filters**: Reset all filters to default
 
 ### 4. Auto-Save & Draft Management
 - **Periodic auto-save**: Every 10 seconds
 - **Manual save**: "Save Draft" button
 - **Draft recovery**: Automatic on form open
 - **Success notification**: Modal popup for 1.5 seconds
+
+### 5. Dashboard & Entry Management
+- **Entry Cards**: Minimalist design with title, type badge, URL, and tags
+- **Entry Type Badges**: Orange rounded badges showing entry type
+- **Tag Display**: Comma-separated tags with "+X more" indicator
+- **Modal Entry View**: Click entry title to view details in overlay
+- **Action Buttons**: Edit and delete icons (no view button needed)
+- **Responsive Layout**: Works on all screen sizes
+- **Logout Button**: Positioned on right side of header
 
 ## Form Validation Rules
 
@@ -275,30 +346,60 @@ export const StatuteSection = BaseEntry.extend({
 
 ## Usage Guide
 
+### Authentication
+1. Open the app at `http://localhost:3000`
+2. Enter any username and password (demo mode)
+3. Click "Sign In" to access the dashboard
+
 ### Creating a New Entry
-1. Click "New Entry" button
-2. Complete 6-step form wizard:
+1. Click "Create New Entry" button
+2. Complete 5-step form wizard:
    - **Step 1**: Basic information (type, title, jurisdiction)
    - **Step 2**: Sources and dates (URLs, effective dates)
    - **Step 3**: Content (summary, text, tags)
    - **Step 4**: Type-specific fields (dynamic based on type)
-   - **Step 5**: Visibility and offline settings
-   - **Step 6**: Review and publish
+   - **Step 5**: Review and publish
 3. Click "Create Entry" to save
 
 ### Managing Entries
-- **View**: Click "View" to see entry details
-- **Edit**: Click "Edit" to modify existing entry
-- **Delete**: Click "Delete" with confirmation
-- **Search**: Use search bar and filters
+- **View**: Click entry title to view details in modal overlay
+- **Edit**: Click edit icon to modify existing entry
+- **Delete**: Click delete icon with confirmation
+- **Search**: Use search bar and filters (including tags)
 - **Export/Import**: Bulk operations for data management
+- **Logout**: Click "Logout" button in header to return to login
 
 ### Advanced Features
 - **Auto-save**: Form saves automatically every 10 seconds
 - **Draft saving**: Manual save with "Save Draft" button
-- **Live preview**: Real-time preview of entry data
+- **Live preview**: Real-time preview of entry data (expanded width)
 - **Dynamic fields**: Type-specific form fields
 - **Validation**: Real-time validation with error messages
+- **Form Layout**: Progress card (33% width) and preview card (67% width)
+- **Step Navigation**: URL updates with current step number
+
+## Recent UI Improvements
+
+### Dashboard Enhancements
+- **Minimalist Entry Cards**: Clean design with essential information only
+- **Entry Type Badges**: Orange rounded badges next to entry titles
+- **Tag Display**: Comma-separated format with "+X more" indicator
+- **Modal Entry View**: Overlay display for entry details
+- **Icon Buttons**: Edit and delete actions using SVG icons
+- **Collapsible Filters**: Hide/show filter section by default
+- **Clear Filters Button**: Red button positioned in filter row
+
+### Form Layout Improvements
+- **Progress Card**: Reduced width (33% of available space)
+- **Preview Card**: Expanded width (67% of available space)
+- **Step Navigation**: URL updates reflect current step
+- **Responsive Design**: Mobile-friendly layout
+
+### Authentication & Navigation
+- **Login Page**: Modern design with orange gradient background
+- **Route Protection**: All routes redirect to login if not authenticated
+- **Logout Button**: Positioned on right side of dashboard header
+- **Clean URLs**: SEO-friendly routing structure
 
 ## Development Setup
 

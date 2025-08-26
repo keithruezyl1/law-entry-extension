@@ -44,7 +44,6 @@ export function AgencyCircularForm({ control }: AgencyCircularFormProps) {
                 className="h-11 pl-6 pr-4 text-base rounded-xl"
               />
             </FormControl>
-            <FormDescription>section number if applicable</FormDescription>
             <FormMessage />
           </FormItem>
         )}

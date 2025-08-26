@@ -1,19 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import { getEntryTypeOptions } from '../../data/entryTypes';
 import { getJurisdictionOptions } from '../../data/jurisdictions';
+import EntryView from '../EntryView/EntryView';
 // import { getAllTags } from '../../data/tags';
 import './EntryList.css';
 
 const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries }) => {
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  console.log('EntryList received entries:', entries);
+  console.log('EntryList entries length:', entries.length);
+  
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [customJurisdiction, setCustomJurisdiction] = useState('');
   const [filters, setFilters] = useState({
     type: 'all',
     jurisdiction: 'all',
     status: 'all',
-    team_member_id: 'all',
-    offline_pack: undefined
+    team_member_id: 'all'
   });
 
   const entryTypeOptions = getEntryTypeOptions();
@@ -21,7 +25,10 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
   // const allTags = getAllTags();
 
   const filteredEntries = useMemo(() => {
-    return searchEntries(searchQuery, filters);
+    const filtered = searchEntries(searchQuery, filters);
+    console.log('Filtered entries:', filtered);
+    console.log('Filtered entries length:', filtered.length);
+    return filtered;
   }, [searchQuery, filters, searchEntries]);
 
   const handleFilterChange = (filterName, value) => {
@@ -42,8 +49,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
       type: 'all',
       jurisdiction: 'all',
       status: 'all',
-      team_member_id: 'all',
-      offline_pack: undefined
+      team_member_id: 'all'
     });
     setSearchQuery('');
     setCustomJurisdiction('');
@@ -61,11 +67,11 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
 
   const getTeamMemberName = (teamMemberId) => {
     const teamMembers = {
-      1: 'P1 - RPC + Cebu Ordinances',
-      2: 'P2 - Rules of Court + DOJ',
-      3: 'P3 - PNP SOPs + Incident Checklists',
-      4: 'P4 - Traffic/LTO lane',
-      5: 'P5 - Rights + Constitution + Policy'
+      1: 'Arda',
+      2: 'Delos Cientos',
+      3: 'Paden',
+      4: 'Sendrijas',
+      5: 'Tagarao'
     };
     return teamMembers[teamMemberId] || `Team Member ${teamMemberId}`;
   };
@@ -77,7 +83,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
         <div className="search-section">
           <input
             type="text"
-            placeholder="Search entries by title, ID, or content..."
+            placeholder="Search entries by title, ID, content, or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
@@ -163,31 +169,19 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
                   onChange={(e) => handleFilterChange('team_member_id', e.target.value)}
                 >
                   <option value="all">All Team Members</option>
-                  <option value="1">P1 - RPC + Cebu Ordinances</option>
-                  <option value="2">P2 - Rules of Court + DOJ</option>
-                  <option value="3">P3 - PNP SOPs + Incident Checklists</option>
-                  <option value="4">P4 - Traffic/LTO lane</option>
-                  <option value="5">P5 - Rights + Constitution + Policy</option>
+                  <option value="1">Arda</option>
+                  <option value="2">Delos Cientos</option>
+                  <option value="3">Paden</option>
+                  <option value="4">Sendrijas</option>
+                  <option value="5">Tagarao</option>
                 </select>
               </div>
 
               <div className="filter-group">
-                <label>Offline Pack</label>
-                <select
-                  value={filters.offline_pack === undefined ? 'all' : filters.offline_pack.toString()}
-                  onChange={(e) => handleFilterChange('offline_pack', e.target.value === 'all' ? undefined : e.target.value === 'true')}
-                >
-                  <option value="all">All Entries</option>
-                  <option value="true">Included in Pack</option>
-                  <option value="false">Not in Pack</option>
-                </select>
+                <button onClick={clearFilters} className="btn-secondary">
+                  Clear Filters
+                </button>
               </div>
-            </div>
-
-            <div className="filter-actions">
-              <button onClick={clearFilters} className="btn-secondary">
-                Clear Filters
-              </button>
             </div>
           </>
         )}
@@ -211,60 +205,71 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
         <div className="entry-list">
           {filteredEntries.map(entry => (
             <div key={entry.id} className="entry-card">
-              <div className="entry-header">
-                <div className="entry-title-section">
-                  <h3 className="entry-title" onClick={() => onViewEntry(entry.id)}>{entry.title}</h3>
-                  <div className="entry-url-line">civilify.local/{getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-')}/{entry.entry_id}</div>
+              <div className="entry-content">
+                <div className="entry-main">
+                  <div className="entry-title-row">
+                    <h3 className="entry-title" onClick={() => setSelectedEntry(entry)}>{entry.title || 'Untitled Entry'}</h3>
+                    <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
+                  </div>
+                  <div className="entry-subtitle-row">
+                    <div className="entry-subtitle">civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}</div>
+                    
+                    {entry.tags && entry.tags.length > 0 && (
+                      <div className="entry-tags-text">
+                        {entry.tags.slice(0, 3).join(', ')}
+                        {entry.tags.length > 3 && ` + ${entry.tags.length - 3} more`}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="entry-badges">
-                  <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
-                  {entry.offline && entry.offline.pack_include && (
-                    <span className="offline-pack-badge">Offline Pack</span>
-                  )}
+                
+                <div className="entry-actions">
+                  <button
+                    onClick={() => onEditEntry(entry.id)}
+                    className="btn-icon"
+                    title="Edit"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onDeleteEntry(entry.id)}
+                    className="btn-icon btn-icon-danger"
+                    title="Delete"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3,6 5,6 21,6"/>
+                      <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                      <line x1="10" y1="11" x2="10" y2="17"/>
+                      <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                  </button>
                 </div>
-              </div>
-
-              <div className="entry-meta">
-                <span><strong>Team:</strong> {getTeamMemberName(entry.team_member_id)}</span>
-                <span><strong>Jurisdiction:</strong> {getJurisdictionLabel(entry.jurisdiction)}</span>
-                <span><strong>Status:</strong> {entry.status}</span>
-                <span><strong>Created:</strong> {new Date(entry.created_at).toLocaleDateString()}</span>
-              </div>
-
-              <div className="entry-snippet">
-                {entry.summary || 'No summary available.'}
-              </div>
-
-              {entry.tags && entry.tags.length > 0 && (
-                <div className="entry-tags">
-                  {entry.tags.map(tag => (
-                    <span key={tag} className="entry-tag">{tag}</span>
-                  ))}
-                </div>
-              )}
-
-              <div className="entry-actions">
-                <button
-                  onClick={() => onViewEntry(entry.id)}
-                  className="btn-secondary"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => onEditEntry(entry.id)}
-                  className="btn-primary"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => onDeleteEntry(entry.id)}
-                  className="btn-danger"
-                >
-                  Delete
-                </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+      
+      {/* Entry Detail View */}
+      {selectedEntry && (
+        <div className="entry-detail-overlay">
+          <EntryView
+            entry={selectedEntry}
+            onEdit={() => onEditEntry(selectedEntry.id)}
+            onDelete={() => {
+              onDeleteEntry(selectedEntry.id);
+              setSelectedEntry(null);
+            }}
+          />
+          <button 
+            onClick={() => setSelectedEntry(null)} 
+            className="back-to-list-btn"
+          >
+            ← Back to List
+          </button>
         </div>
       )}
     </div>

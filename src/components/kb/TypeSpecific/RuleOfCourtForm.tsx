@@ -21,7 +21,7 @@ export function RuleOfCourtForm({ control }: RuleOfCourtFormProps) {
         name="rule_no"
         render={({ field }) => (
           <FormItem className="kb-field-spaced">
-            <FormLabel className="kb-form-label kb-label-spaced-sm">Rule Number</FormLabel>
+            <FormLabel className="kb-form-label kb-label-spaced-sm">Rule Number <span className="text-red-600">*</span></FormLabel>
             <FormControl>
               <Input
                 {...field}
@@ -39,7 +39,7 @@ export function RuleOfCourtForm({ control }: RuleOfCourtFormProps) {
         name="section_no"
         render={({ field }) => (
           <FormItem className="kb-field-spaced">
-            <FormLabel className="kb-form-label kb-label-spaced-sm">Section Number</FormLabel>
+            <FormLabel className="kb-form-label kb-label-spaced-sm">Section Number <span className="text-red-600">*</span></FormLabel>
             <FormControl>
               <Input
                 {...field}

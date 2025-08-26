@@ -38,7 +38,7 @@ export function StringArray({ control, name, label, help, placeholder = "Enter i
             />
             <Button
               type="button"
-              variant="outline"
+              variant="destructive"
               size="icon"
               onClick={() => remove(index)}
               className="shrink-0 h-11 w-11 rounded-xl"

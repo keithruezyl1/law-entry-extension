@@ -183,11 +183,13 @@ export const useLocalStorage = () => {
     if (query && query.trim()) {
       const searchTerm = query.toLowerCase().trim();
       filteredEntries = filteredEntries.filter(entry => 
-        entry.title.toLowerCase().includes(searchTerm) ||
-        entry.entry_id.toLowerCase().includes(searchTerm) ||
-        entry.summary.toLowerCase().includes(searchTerm) ||
-        entry.text_raw.toLowerCase().includes(searchTerm) ||
-        entry.law_family.toLowerCase().includes(searchTerm)
+        (entry.title && entry.title.toLowerCase().includes(searchTerm)) ||
+        (entry.entry_id && entry.entry_id.toLowerCase().includes(searchTerm)) ||
+        (entry.summary && entry.summary.toLowerCase().includes(searchTerm)) ||
+        (entry.text && entry.text.toLowerCase().includes(searchTerm)) ||
+        (entry.text_raw && entry.text_raw.toLowerCase().includes(searchTerm)) ||
+        (entry.law_family && entry.law_family.toLowerCase().includes(searchTerm)) ||
+        (entry.tags && entry.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
       );
     }
 
@@ -208,7 +210,11 @@ export const useLocalStorage = () => {
 
     // Team member filter
     if (filters.team_member_id && filters.team_member_id !== 'all') {
-      filteredEntries = filteredEntries.filter(entry => entry.team_member_id === parseInt(filters.team_member_id));
+      filteredEntries = filteredEntries.filter(entry => {
+        const entryTeamMember = entry.team_member_id;
+        const filterTeamMember = filters.team_member_id;
+        return entryTeamMember == filterTeamMember; // Use == for type coercion
+      });
     }
 
     // Tags filter

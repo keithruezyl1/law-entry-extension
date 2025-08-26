@@ -15,15 +15,27 @@ export default function EntryPreview({ data }: PreviewProps) {
     last_reviewed,
     summary,
     tags = [],
+    jurisdiction,
   } = data || {};
 
+  const hasSummary = Boolean(summary && String(summary).trim().length > 0);
+  const hasTags = Array.isArray(tags) && tags.length > 0;
+
   return (
-    <aside className="space-y-3">
-      <div className="p-4">
-        <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Preview</div>
-        <div className="text-xl font-semibold">{title || 'Untitled entry'}</div>
-        <div>{canonical_citation || '—'}</div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+    <aside className="space-y-4">
+      {/* Header */}
+      <div className="p-4 pb-2">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Preview</div>
+        <div className="text-xl font-semibold leading-tight">{title || 'Untitled entry'}</div>
+        {canonical_citation && (
+          <div className="text-sm text-gray-600 mt-0.5">{canonical_citation}</div>
+        )}
+      </div>
+
+      {/* Details */}
+      <div className="p-4 pt-0">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground mt-2 mb-2">Details</div>
+        <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <div className="text-gray-500">Type</div>
             <div className="font-medium break-words">{type || '—'}</div>
@@ -37,8 +49,8 @@ export default function EntryPreview({ data }: PreviewProps) {
             <div className="font-medium">{effective_date || '—'}</div>
           </div>
           <div>
-            <div className="text-gray-500">Amended</div>
-            <div className="font-medium">{amendment_date || '—'}</div>
+            <div className="text-gray-500">Jurisdiction</div>
+            <div className="font-medium">{jurisdiction || '—'}</div>
           </div>
           <div className="col-span-2">
             <div className="text-gray-500">Last Reviewed</div>
@@ -47,13 +59,18 @@ export default function EntryPreview({ data }: PreviewProps) {
         </div>
       </div>
 
-      <div className="p-4">
-        <div className="text-sm text-gray-700 whitespace-pre-wrap">{summary || 'No summary yet.'}</div>
-      </div>
+      {/* Summary (optional) */}
+      {hasSummary && (
+        <div className="p-4 pt-0">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Summary</div>
+          <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{summary}</div>
+        </div>
+      )}
 
-      {Array.isArray(tags) && tags.length > 0 && (
-        <div className="p-4">
-          <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Tags</div>
+      {/* Tags (optional) */}
+      {hasTags && (
+        <div className="p-4 pt-0">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground mt-2 mb-2">Tags</div>
           <div className="flex gap-2 flex-wrap">
             {tags.map((t: string, i: number) => (
               <span key={i} className="kb-chip">#{t}</span>

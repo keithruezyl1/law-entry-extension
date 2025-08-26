@@ -18,7 +18,7 @@ export function StepSources() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <Label htmlFor="effective_date">Effective Date *</Label>
+            <Label htmlFor="effective_date">Effective Date <span className="text-red-600">*</span></Label>
             <Input
               {...register('effective_date')}
               type="date"
@@ -31,7 +31,7 @@ export function StepSources() {
 
           {status === 'amended' && (
             <div>
-              <Label htmlFor="amendment_date">Amendment Date *</Label>
+              <Label htmlFor="amendment_date">Amendment Date <span className="text-red-600">*</span></Label>
               <Input
                 {...register('amendment_date')}
                 type="date"
@@ -47,7 +47,7 @@ export function StepSources() {
           )}
 
           <div>
-            <Label htmlFor="last_reviewed">Last Reviewed *</Label>
+            <Label htmlFor="last_reviewed">Last Reviewed <span className="text-red-600">*</span></Label>
             <Input
               {...register('last_reviewed')}
               type="date"

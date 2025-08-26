@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { EntrySchema, Entry, TypeEnum, validateBusinessRules } from 'lib/civilify-kb-schemas';
+import { useNavigate, useParams } from 'react-router-dom';
 // Using regular textarea to avoid external dependency
 // import { LegalBasisPicker } from './fields/LegalBasisPicker';
 
@@ -23,6 +24,252 @@ type EntryFormProps = {
   onCancel: () => void;
 };
 
+// Validation error type for required fields
+interface ValidationError {
+  field: string;
+  message: string;
+  step: number;
+  stepName: string;
+}
+
+// Function to validate all required fields and map them to steps
+function validateAllRequiredFields(data: Entry): ValidationError[] {
+  const errors: ValidationError[] = [];
+  
+  // Step 1: Basics
+  const step1Fields = ['title', 'jurisdiction', 'law_family', 'canonical_citation', 'status', 'effective_date'];
+  step1Fields.forEach(field => {
+    if (!data[field as keyof Entry] || (typeof data[field as keyof Entry] === 'string' && (data[field as keyof Entry] as string).trim() === '')) {
+      errors.push({
+        field,
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
+        step: 1,
+        stepName: 'Basics'
+      });
+    }
+  });
+  
+  // Step 2: Sources & Dates
+  const step2Fields = ['source_urls', 'amendment_date'];
+  step2Fields.forEach(field => {
+    if (field === 'source_urls') {
+      if (!data.source_urls || data.source_urls.length === 0) {
+        errors.push({
+          field,
+          message: 'At least one source URL is required',
+          step: 2,
+          stepName: 'Sources & Dates'
+        });
+      }
+    } else if (field === 'amendment_date' && data.status === 'amended') {
+      if (!data.amendment_date) {
+        errors.push({
+          field,
+          message: 'Amendment date is required when status is amended',
+          step: 2,
+          stepName: 'Sources & Dates'
+        });
+      }
+    }
+  });
+  
+  // Step 3: Content
+  const step3Fields = ['summary', 'text'];
+  step3Fields.forEach(field => {
+    if (!data[field as keyof Entry] || (typeof data[field as keyof Entry] === 'string' && (data[field as keyof Entry] as string).trim() === '')) {
+      errors.push({
+        field,
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
+        step: 3,
+        stepName: 'Content'
+      });
+    }
+  });
+  
+  // Step 4: Type-Specific & Relations
+  const step4Fields = ['tags', 'last_reviewed'];
+  step4Fields.forEach(field => {
+    if (field === 'tags') {
+      if (!data.tags || data.tags.length === 0) {
+        errors.push({
+          field,
+          message: 'At least one tag is required',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+    } else if (field === 'last_reviewed') {
+      if (!data.last_reviewed || (typeof data.last_reviewed === 'string' && data.last_reviewed.trim() === '')) {
+        errors.push({
+          field,
+          message: 'Last reviewed date is required',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+    }
+  });
+  
+  // Type-specific required fields validation
+  switch (data.type) {
+    case 'constitution_provision':
+      if (!(data as any).topics || (data as any).topics.length === 0) {
+        errors.push({
+          field: 'topics',
+          message: 'At least one topic is required for constitution provision',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      break;
+    case 'statute_section':
+      // Temporarily disabled for testing
+      // if (!(data as any).elements || (data as any).elements.length === 0) {
+      //   errors.push({
+      //     field: 'elements',
+      //     message: 'At least one element is required for statute section',
+      //     step: 4,
+      //     stepName: 'Type-Specific & Relations'
+      //   });
+      // }
+      // if (!(data as any).penalties || (data as any).penalties.length === 0) {
+      //   errors.push({
+      //     field: 'penalties',
+      //     message: 'At least one penalty is required for statute section',
+      //     step: 4,
+      //     stepName: 'Type-Specific & Relations'
+      //   });
+      // }
+      break;
+    case 'city_ordinance_section':
+      if (!(data as any).elements || (data as any).elements.length === 0) {
+        errors.push({
+          field: 'elements',
+          message: 'At least one element is required for city ordinance section',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).penalties || (data as any).penalties.length === 0) {
+        errors.push({
+          field: 'penalties',
+          message: 'At least one penalty is required for city ordinance section',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      break;
+    case 'rule_of_court':
+      if (!(data as any).rule_no) {
+        errors.push({
+          field: 'rule_no',
+          message: 'Rule number is required for rule of court',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).section_no) {
+        errors.push({
+          field: 'section_no',
+          message: 'Section number is required for rule of court',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).triggers || (data as any).triggers.length === 0) {
+        errors.push({
+          field: 'triggers',
+          message: 'At least one trigger is required for rule of court',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      break;
+    case 'agency_circular':
+      if (!(data as any).circular_no) {
+        errors.push({
+          field: 'circular_no',
+          message: 'Circular number is required for agency circular',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).applicability || (data as any).applicability.length === 0) {
+        errors.push({
+          field: 'applicability',
+          message: 'At least one applicability is required for agency circular',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      break;
+    case 'doj_issuance':
+      if (!(data as any).issuance_no) {
+        errors.push({
+          field: 'issuance_no',
+          message: 'Issuance number is required for DOJ issuance',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).applicability || (data as any).applicability.length === 0) {
+        errors.push({
+          field: 'applicability',
+          message: 'At least one applicability is required for DOJ issuance',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      break;
+    case 'executive_issuance':
+      if (!(data as any).instrument_no) {
+        errors.push({
+          field: 'instrument_no',
+          message: 'Instrument number is required for executive issuance',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).applicability || (data as any).applicability.length === 0) {
+        errors.push({
+          field: 'applicability',
+          message: 'At least one applicability is required for executive issuance',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      break;
+    case 'rights_advisory':
+      if (!(data as any).rights_scope) {
+        errors.push({
+          field: 'rights_scope',
+          message: 'Rights scope is required for rights advisory',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).advice_points || (data as any).advice_points.length === 0) {
+        errors.push({
+          field: 'advice_points',
+          message: 'At least one advice point is required for rights advisory',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      if (!(data as any).legal_bases || (data as any).legal_bases.length === 0) {
+        errors.push({
+          field: 'legal_bases',
+          message: 'At least one legal basis is required for rights advisory',
+          step: 4,
+          stepName: 'Type-Specific & Relations'
+        });
+      }
+      break;
+  }
+  
+  return errors;
+}
+
 // Utilities
 const toTitleCase = (s: string) =>
   s
@@ -39,6 +286,13 @@ const stepListBase: Step[] = [
 ];
 
 export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel }: EntryFormProps) {
+  console.log('EntryForm received entry prop:', entry);
+  console.log('EntryForm is editing:', !!entry);
+  
+  const navigate = useNavigate();
+  const { step } = useParams();
+  const initialStep = parseInt(step || '1');
+  
   const methods = useForm<Entry>({
     resolver: zodResolver(EntrySchema as any),
     defaultValues: {
@@ -58,10 +312,46 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       tags: entry?.tags || [],
       last_reviewed: entry?.last_reviewed || new Date().toISOString().slice(0, 10),
       visibility: entry?.visibility ? { gli: (entry as any).visibility.gli, cpa: (entry as any).visibility.cpa } : { gli: true, cpa: false },
-      // type-specific defaults rely on the schema; we will patch-in as needed per type UI
+      // Type-specific fields initialization
+      elements: (entry as any)?.elements || [],
+      penalties: (entry as any)?.penalties || [],
+      defenses: (entry as any)?.defenses || [],
+      prescriptive_period: (entry as any)?.prescriptive_period || null,
+      standard_of_proof: (entry as any)?.standard_of_proof || '',
+      rule_no: (entry as any)?.rule_no || '',
+      section_no: (entry as any)?.section_no || '',
+      triggers: (entry as any)?.triggers || [],
+      time_limits: (entry as any)?.time_limits || [],
+      required_forms: (entry as any)?.required_forms || [],
+      circular_no: (entry as any)?.circular_no || '',
+      applicability: (entry as any)?.applicability || [],
+      issuance_no: (entry as any)?.issuance_no || '',
+      instrument_no: (entry as any)?.instrument_no || '',
+      supersedes: (entry as any)?.supersedes || [],
+      steps_brief: (entry as any)?.steps_brief || [],
+      forms_required: (entry as any)?.forms_required || [],
+      failure_states: (entry as any)?.failure_states || [],
+      violation_code: (entry as any)?.violation_code || '',
+      violation_name: (entry as any)?.violation_name || '',
+      license_action: (entry as any)?.license_action || '',
+      fine_schedule: (entry as any)?.fine_schedule || [],
+      apprehension_flow: (entry as any)?.apprehension_flow || [],
+      incident: (entry as any)?.incident || '',
+      phases: (entry as any)?.phases || [],
+      forms: (entry as any)?.forms || [],
+      handoff: (entry as any)?.handoff || [],
+      rights_callouts: (entry as any)?.rights_callouts || [],
+      rights_scope: (entry as any)?.rights_scope || '',
+      advice_points: (entry as any)?.advice_points || [],
+      topics: (entry as any)?.topics || [],
+      jurisprudence: (entry as any)?.jurisprudence || [],
+      legal_bases: (entry as any)?.legal_bases || [],
+      related_sections: (entry as any)?.related_sections || [],
     } as any,
     mode: 'onChange',
   });
+
+
 
   const { control, register, handleSubmit, watch, setValue, getValues } = methods;
   const type = watch('type');
@@ -72,7 +362,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Step 4 always has content (dynamic type-specific + relations)
   const hasTypeSpecific = true;
   const steps = useMemo(() => (hasTypeSpecific ? stepListBase : stepListBase.filter((s) => s.id !== 4)), [hasTypeSpecific]);
-  const [currentStep, setCurrentStep] = useState(1 as number);
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const formCardRef = React.useRef<HTMLDivElement | null>(null);
   const [showDraftSaved, setShowDraftSaved] = useState<boolean>(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
@@ -129,6 +419,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
     setCurrentStep((s) => {
       const next = Math.min(steps[steps.length - 1].id, s + 1);
+      // Update URL
+      navigate(`/law-entry/${next}`);
       // Scroll after state updates on next tick
       setTimeout(scrollToCardTop, 0);
       return next;
@@ -138,6 +430,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const goPrev = () =>
     setCurrentStep((s) => {
       const prev = Math.max(1, s - 1);
+      // Update URL
+      navigate(`/law-entry/${prev}`);
       setTimeout(scrollToCardTop, 0);
       return prev;
     });
@@ -159,12 +453,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const confirmCancel = () => {
     try { localStorage.removeItem('kb_entry_draft'); } catch {}
     setShowCancelConfirm(false);
-    onCancel();
+    navigate('/dashboard');
   };
   const abortCancel = () => setShowCancelConfirm(false);
 
-  // Optional: Debounced autosave every 10s while editing
+  // Optional: Debounced autosave every 10s while editing (only for new entries)
   useEffect(() => {
+    if (entry) return; // Don't auto-save when editing existing entries
+    
     const interval = setInterval(() => {
       try {
         const draft = getValues();
@@ -172,9 +468,26 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       } catch {}
     }, 5000);
     return () => clearInterval(interval);
-  }, [getValues]);
+  }, [getValues, entry]);
 
   const onSubmit = (data: Entry) => {
+    console.log('Form data being submitted:', data);
+    console.log('Form data type:', typeof data);
+    console.log('Form data keys:', Object.keys(data));
+    
+    // First, validate all required fields
+    const validationErrors = validateAllRequiredFields(data);
+    
+    if (validationErrors.length > 0) {
+      // Create alert message
+      const errorMessage = validationErrors.map((error: any) => 
+        `${error.field} (Step ${error.step}: ${error.stepName})`
+      ).join('\n');
+      
+      alert(`Missing required fields:\n${errorMessage}`);
+      return;
+    }
+    
     const sanitized: Entry = {
       ...data,
       source_urls: (data as any).source_urls?.filter((u: string) => !!u && u.trim().length > 0) || [],
@@ -207,7 +520,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       alert(errs.join('\n'));
       return;
     }
+    
+    // Clear draft
+    try {
+      localStorage.removeItem('kb_entry_draft');
+    } catch (e) {
+      console.error('Failed to clear draft', e);
+    }
+    
     onSave(sanitized);
+    navigate('/dashboard');
   };
 
   // (Relations helper components were removed; using dedicated picker in Step 4)
@@ -222,23 +544,26 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         <div className="kb-form-container">
           <header className="kb-form-header mb-6">
             <div>
-              <h1 className="kb-form-title">Create Knowledge Base Entry</h1>
-              <p className="kb-form-subtitle">Add a new entry to the legal knowledge base for Villy AI</p>
+              <h1 className="kb-form-title">{entry ? 'Edit Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
+              <p className="kb-form-subtitle">{entry ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
             </div>
           </header>
 
           <div className="kb-form-layout grid grid-cols-12 gap-6 md:gap-8 items-stretch justify-center">
-            {/* Top row: Progress (left) and Preview (right), equal width */}
-            <div className="col-span-12 md:col-span-6">
+            {/* Top row: Progress (left) and Preview (right), reduced progress width */}
+            <div className="col-span-12 md:col-span-4">
               <EntryStepper
                 steps={steps}
                 currentStep={currentStep}
-                onStepClick={setCurrentStep}
+                onStepClick={(step) => {
+                  setCurrentStep(step);
+                  navigate(`/law-entry/${step}`);
+                }}
               />
             </div>
 
-            {/* Preview card beside Progress */}
-            <aside className="col-span-12 md:col-span-6">
+            {/* Preview card beside Progress - expanded */}
+            <aside className="col-span-12 md:col-span-8">
               <div>
                 <div className="ds-card rounded-2xl shadow-sm border p-5 h-full min-h-[360px] w-full">
                   <div className="pr-2">
@@ -250,7 +575,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
             {/* Below: Law input card (form) spanning full width */}
             <section className="kb-form-section col-span-12">
-              <form onSubmit={handleSubmit(onSubmit as any)}>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = getValues();
+                onSubmit(formData);
+              }}>
                 {(() => {
                   if (currentStep === 1) {
                     return (
@@ -386,7 +715,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             Cancel
                           </Button>
                           <div className="flex gap-3">
-                            <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                            {!entry && (
+                              <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                            )}
                             <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
                               Next
                               <ArrowRight className="h-4 w-4" />
@@ -437,7 +768,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                             </div>
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                              {!entry && (
+                                <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                              )}
                               <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
                                 Next
                                 <ArrowRight className="h-4 w-4" />
@@ -483,7 +816,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                             </div>
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                              {!entry && (
+                                <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                              )}
                               <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
                                 Next
                                 <ArrowRight className="h-4 w-4" />
@@ -511,6 +846,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             onPrevious={goPrev}
                             onCancel={onCancel}
                             onSaveDraft={saveDraft}
+                            isEditing={!!entry}
                           />
                         </div>
                       </div>
@@ -540,7 +876,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                             </div>
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                              {!entry && (
+                                <Button type="button" variant="outline" className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                              )}
                               <Button type="submit" className="flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
                                 {entry ? 'Update Entry' : 'Create Entry'}
                               </Button>

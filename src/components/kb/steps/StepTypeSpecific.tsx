@@ -33,9 +33,10 @@ interface StepTypeSpecificProps {
   onPrevious: () => void;
   onCancel: () => void;
   onSaveDraft?: () => void;
+  isEditing?: boolean;
 }
 
-export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: StepTypeSpecificProps) {
+export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, isEditing }: StepTypeSpecificProps) {
   const form = useFormContext<Entry>();
   const { control, register, formState: { errors, isValid }, trigger } = form;
   const type = useWatch({ name: 'type', control });
@@ -136,18 +137,11 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: 
               <div className="flex items-center justify-between">
                 <h3 className="kb-form-section-title kb-title-compact">Relations</h3>
                 {relationsRequired ? (
-                  <span className="text-xs rounded-md px-2 py-1 bg-red-100 text-red-700">Required for Rights Advisory</span>
+                  <span className="text-xs rounded-md px-2 py-1 bg-red-100 text-red-700">Required for Rights Advisory. Add at least one Legal Basis (internal or external).</span>
                 ) : (
                   <span className="text-xs text-muted-foreground">Optional (helps citations & navigation)</span>
                 )}
               </div>
-              {relationsInvalid && (
-                <div className="mt-2 text-sm text-red-600">Add at least one Legal Basis (internal or external) for Rights Advisory entries.</div>
-              )}
-              {!relationsRequired && legalBases.length === 0 && (
-                <div className="mt-2 text-xs text-muted-foreground">Tip: Link a parent statute/ROC/constitutional provision to improve Villy’s citations.</div>
-              )}
-              <p className="kb-form-helper" style={{ marginTop: '6px', marginBottom: '10px' }}>Link this entry to other legal sources and references.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
@@ -184,18 +178,13 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: 
           <Button type="button" variant="outline" onClick={onPrevious} className="h-12 px-10 min-w-[130px]">Previous</Button>
         </div>
         <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={onSaveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
-          {(() => {
-            const canProceedBase = isValid;
-            const canProceedRelations = !relationsRequired || (relationsRequired && legalBases.length >= 1);
-            const canProceed = canProceedBase && canProceedRelations && isStepValid;
-            return (
-              <Button type="button" disabled={!canProceed} onClick={onNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed">
+          {!isEditing && (
+            <Button type="button" variant="outline" onClick={onSaveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+          )}
+          <Button type="button" onClick={onNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
             Next
             <ChevronRight className="h-4 w-4" />
           </Button>
-            );
-          })()}
         </div>
       </div>
     </div>

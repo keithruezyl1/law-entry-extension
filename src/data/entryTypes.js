@@ -122,11 +122,24 @@ export const getEntryType = (type) => {
 };
 
 export const getEntryTypeOptions = () => {
-  return Object.entries(ENTRY_TYPES).map(([value, type]) => ({
-    value,
-    label: type.label,
-    description: type.description
-  }));
+  // Limit to law input entry types used in the forms (GLI+CPA set)
+  const allowed = [
+    'constitution_provision',
+    'statute_section',
+    'city_ordinance_section',
+    'rule_of_court',
+    'agency_circular',
+    'doj_issuance',
+    'executive_issuance',
+    'rights_advisory'
+  ];
+  return Object.entries(ENTRY_TYPES)
+    .filter(([key]) => allowed.includes(key))
+    .map(([value, type]) => ({
+      value,
+      label: type.label,
+      description: type.description
+    }));
 };
 
 // Team member assignments for daily quotas
