@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { getEntryTypeOptions } from '../../data/entryTypes';
 import { getJurisdictionOptions } from '../../data/jurisdictions';
-import { getAllTags } from '../../data/tags';
+// import { getAllTags } from '../../data/tags';
 import './EntryList.css';
 
 const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries }) => {
@@ -18,7 +18,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
 
   const entryTypeOptions = getEntryTypeOptions();
   const jurisdictionOptions = getJurisdictionOptions();
-  const allTags = getAllTags();
+  // const allTags = getAllTags();
 
   const filteredEntries = useMemo(() => {
     return searchEntries(searchQuery, filters);
@@ -213,8 +213,8 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
             <div key={entry.id} className="entry-card">
               <div className="entry-header">
                 <div className="entry-title-section">
-                  <h3 className="entry-title">{entry.title}</h3>
-                  <div className="entry-id">{entry.entry_id}</div>
+                  <h3 className="entry-title" onClick={() => onViewEntry(entry.id)}>{entry.title}</h3>
+                  <div className="entry-url-line">civilify.local/{getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-')}/{entry.entry_id}</div>
                 </div>
                 <div className="entry-badges">
                   <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
@@ -231,11 +231,9 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
                 <span><strong>Created:</strong> {new Date(entry.created_at).toLocaleDateString()}</span>
               </div>
 
-              {entry.summary && (
-                <div className="entry-summary">
-                  {entry.summary}
-                </div>
-              )}
+              <div className="entry-snippet">
+                {entry.summary || 'No summary available.'}
+              </div>
 
               {entry.tags && entry.tags.length > 0 && (
                 <div className="entry-tags">

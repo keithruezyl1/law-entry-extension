@@ -14,12 +14,16 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
       <div className="md:col-span-2">
+        <div className="kb-form-section-title mb-1">Statute Details</div>
+        <p className="kb-form-helper mb-4">Capture the core structure of the section.</p>
+      </div>
+      <div className="md:col-span-2">
         <StringArray
           control={control}
           name="elements"
           label="Elements"
-          help="enumerated elements/requirements"
-          placeholder="Enter element"
+          help="Enumerated elements or requirements"
+          placeholder="e.g., actus_reus, mens_rea"
         />
       </div>
       
@@ -28,8 +32,8 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
           control={control}
           name="penalties"
           label="Penalties"
-          help="human-readable penalties (ranges/qualifiers)"
-          placeholder="Enter penalty"
+          help="Human-readable penalties (ranges/qualifiers)"
+          placeholder="e.g., prision_correccional, fine_10k_50k"
         />
       </div>
       
@@ -38,8 +42,8 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
           control={control}
           name="defenses"
           label="Defenses"
-          help="typical statutory defenses/exceptions"
-          placeholder="Enter defense"
+          help="Typical defenses/exceptions provided by law"
+          placeholder="e.g., self_defense, necessity"
         />
       </div>
       
@@ -53,7 +57,7 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
               <Input
                 {...field}
                 type="number"
-                placeholder="e.g., 10 (Number of time units)"
+                placeholder="e.g., 10 (number of time units)"
                 className="kb-form-input"
                 onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
               />
@@ -95,11 +99,11 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
               <FormControl>
                 <Input
                   {...field}
-                  placeholder="e.g., criminal:beyond_reasonable_doubt"
+                  placeholder="e.g., criminal: BRD | civil: preponderance"
                   className="kb-form-input"
                 />
               </FormControl>
-              <FormDescription className="kb-form-helper kb-helper-spaced">e.g., "criminal: BRD", "civil: preponderance", custom</FormDescription>
+              <FormDescription className="kb-form-helper kb-helper-spaced">Enter short descriptors; use any conventional shorthand.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

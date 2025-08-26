@@ -16,16 +16,15 @@ The **Civilify Law Entry App** is a React-based web application designed as an e
 
 ## Core Features
 
-### 1. Multi-Step Form Wizard (6 Steps)
+### 1. Multi-Step Form Wizard (5 Steps)
 - **Step 1**: Basic Information (type, title, jurisdiction, etc.)
 - **Step 2**: Sources & Dates (URLs, effective dates)
 - **Step 3**: Content (summary, text, tags)
-- **Step 4**: Type-Specific Fields (dynamic based on entry type)
-- **Step 5**: Visibility & Offline Settings
-- **Step 6**: Review & Publish
+- **Step 4**: Type-Specific & Relations (dynamic by type + legal bases/related sections)
+- **Step 5**: Review & Publish
 
 ### 2. Dynamic Form System
-- **11 Entry Types** with specific fields and validation
+- **8 GLI+CPA Entry Types** with specific fields and validation
 - **Real-time validation** with immediate feedback
 - **Auto-save functionality** every 10 seconds
 - **Live preview** of entry data
@@ -37,7 +36,7 @@ The **Civilify Law Entry App** is a React-based web application designed as an e
 - Bulk operations (export, import, clear all)
 - Offline pack management
 
-## Supported Entry Types
+## Supported Entry Types (GLI+CPA)
 
 1. **Constitution Provision** - Constitutional rights and principles
 2. **Statute Section** - Criminal and civil statutes
@@ -46,10 +45,48 @@ The **Civilify Law Entry App** is a React-based web application designed as an e
 5. **Agency Circular** - Government agency circulars
 6. **DOJ Issuance** - Department of Justice issuances
 7. **Executive Issuance** - Executive orders and issuances
-8. **PNP SOP** - Police standard operating procedures
-9. **Traffic Rule** - Traffic violations and procedures
-10. **Incident Checklist** - Incident response procedures
-11. **Rights Advisory** - Legal rights information
+8. **Rights Advisory** - Legal rights information
+
+Police-mode types (e.g., PNP SOP, Traffic Rule, Incident Checklist) were removed in the GLI+CPA version.
+
+---
+
+## Initial Setup & Daily Plan
+
+This app can be used immediately with local storage. For best results, import a Daily Plan so the dashboard shows the required daily work per person.
+
+### Prerequisites
+- Node.js 18+ and npm (or yarn/pnpm)
+- Excel file `Civilify_KB30_Schedule_CorePH.xlsx` containing the "Daily Plan" sheet
+
+### Install & Run (Dev)
+```bash
+git clone <repository-url>
+cd law-entry-app
+npm install
+npm start
+```
+
+### Import the Plan and Set Day 1
+1. Open the app at `http://localhost:3000`.
+2. In the main page header actions, click **Import Plan**.
+3. Choose `Civilify_KB30_Schedule_CorePH.xlsx`.
+4. A modal appears asking to **Set Day 1** (project start date). Pick the correct date and confirm.
+5. The app stores the parsed plan in `localStorage` under `kb_plan_rows` and your Day 1 in `kbprog:day1`.
+
+After this:
+- The Team Progress cards show daily quotas by person (Arda, Delos Cientos, Paden, Sendrijas, Tagarao).
+- The date beside “Today’s Team Progress” displays `Day N, Month D YYYY` based on Day 1.
+
+### Re-import or Remove the Plan
+- Use **Re-import Plan** to load a different Excel file; Day 1 will be requested again.
+- Use **Remove Plan** to clear the plan and Day 1 (cards return to placeholders).
+
+### Where the Plan Data Is Used
+- Dashboard (P1–P5 cards) shows per-person required counts for the selected day.
+- Progress is tracked in `localStorage` with keys `kbprog:<YYYY-MM-DD>:<P#>:<type>`.
+
+---
 
 ## Dynamic Form Architecture
 
@@ -276,6 +313,88 @@ cd law-entry-app
 npm install
 npm start
 ```
+
+---
+
+## Backend Integration Guide
+
+The app ships in a local-storage mode by default. To connect it to a real backend, wire the following integration points.
+
+### Auth & Login
+- Add a login screen (OIDC/JWT or session cookie) and expose the current user via a React context (e.g., `AuthContext`).
+- The wizard Step 1 shows a read‑only “Entering as” field. Bind this to the logged-in user (e.g., Tagarao for P5). Until auth is wired, this shows a placeholder "MEMBER".
+
+Recommended properties for the `AuthContext`:
+```ts
+type AuthUser = {
+  id: string;
+  name: string;   // e.g., "Tagarao"
+  personId?: 'P1'|'P2'|'P3'|'P4'|'P5';
+  roles: string[];
+};
+```
+
+### Entry CRUD API
+Implement these endpoints and swap the local-storage methods in `useLocalStorage` with real HTTP calls. A thin API layer is recommended (e.g., `/src/services/kbApi.ts`).
+
+Expected endpoints (REST):
+- `POST /api/entries` — create
+- `GET /api/entries/:id` — read
+- `PUT /api/entries/:id` — update
+- `DELETE /api/entries/:id` — delete
+- `GET /api/entries/search?q=...&filters=...` — search
+
+Validation should run server-side using the same schema rules (zod or your server’s validator). Return structured errors that can be surfaced inline.
+
+### Plan & Progress API (Optional)
+If you want shared progress across browsers/users:
+- Upload and parse the Excel plan on the server; return normalized JSON.
+- Store/retrieve plan by date via `GET /api/plan?date=YYYY-MM-DD`.
+- Persist counts per day/person/type via `POST /api/progress` and `GET /api/progress?date=...`.
+
+### Environment Configuration
+Use `.env` files to set API roots and feature flags.
+```
+REACT_APP_API_BASE=https://civilify.example.com
+REACT_APP_AUTH_PROVIDER=keycloak
+REACT_APP_FEATURE_DASHBOARD=true
+```
+
+---
+
+## Using the Wizard (Authoring Workflow)
+
+1) Open the app and click **Create New Entry**.
+
+2) Complete Steps 1–5. Notes:
+- Step 1: Type, Title, Jurisdiction. “Entering as” shows the logged-in member when connected to auth.
+- Step 2: Provide at least one Source URL.
+- Step 3: Summary and Legal Text with Tags.
+- Step 4: Type-specific fields + Relations block.
+  - For **Rights Advisory**, at least one Legal Basis is required (internal or external). The Next button stays disabled until provided.
+  - For other types, Relations are optional. A tip hints that linking sources improves citations.
+- Step 5: Review & Publish. Create or update the entry.
+
+3) Drafts & Autosave
+- Drafts save to `localStorage` every 5s. If you return later, the app asks to resume.
+- Cancel shows a confirm dialog and clears the draft.
+
+---
+
+## Troubleshooting & Tips
+
+- “Plan not loaded”: Use Import Plan and pick the Excel file; set Day 1. If you still don’t see quotas, clear site data then re-import.
+- “Next disabled on Step 4”: This happens when Rights Advisory has no legal_bases. Add one Internal/External citation to proceed.
+- “Buttons wrap to two lines”: The primary nav buttons use `white-space: nowrap`. Ensure custom CSS doesn’t override.
+- “Auth context not available”: Render the app within your `AuthProvider` and pass user details; bind Step 1 “Entering as”.
+
+---
+
+## Migration Notes (GLI+CPA)
+- Removed police-specific types and screens; schemas trimmed to eight GLI+CPA types.
+- Wizard reduced to five steps; Relations integrated into Step 4.
+- Dashboard shows GLI+CPA quotas only.
+
 
 ### Available Scripts
 - `npm start` - Start development server

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useFieldArray, UseFieldArrayReturn, UseFormRegister, Control, useWatch } from 'react-hook-form';
+import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
@@ -15,9 +15,12 @@ interface LegalBasisPickerProps {
 }
 
 export function LegalBasisPicker({ name, control, register, existingEntries = [] }: LegalBasisPickerProps) {
+  const form = ({} as any) as { setValue: Function; getValues: Function; trigger: Function };
+  // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
   const [query, setQuery] = useState('');
+  const items = (useWatch({ control, name }) as any[]) || [];
 
   const options = useMemo(() => {
     if (!query) return existingEntries.slice(0, 8);
@@ -27,59 +30,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
   return (
     <div className="space-y-4">
-      {/* Current items (no card borders) */}
-      {fields.length > 0 && (
-        <div className="space-y-4">
-          {fields.map((f, i) => (
-            <div key={f.id} className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Select
-                  className="kb-form-select w-40"
-                  options={[
-                    { value: 'internal', label: 'Internal' },
-                    { value: 'external', label: 'External' }
-                  ]}
-                  {...register(`${name}.${i}.type` as const)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => remove(i)}
-                  className="ml-auto h-11 w-11 rounded-xl"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="grid gap-3">
-                <Input
-                  className="kb-form-input"
-                  placeholder="entry_id (internal) or citation (external)"
-                  {...register(`${name}.${i}.entry_id` as const)}
-                />
-                <Input
-                  className="kb-form-input"
-                  placeholder="url (optional)"
-                  {...register(`${name}.${i}.url` as const)}
-                />
-                <Input
-                  className="kb-form-input"
-                  placeholder="topic (optional)"
-                  {...register(`${name}.${i}.topic` as const)}
-                />
-                <Input
-                  className="kb-form-input"
-                  placeholder="note (optional)"
-                  {...register(`${name}.${i}.note` as const)}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Picker tabs */}
+      {/* Picker tabs on top */}
       <div className="flex gap-3 kb-toggle-row">
         <Button
           type="button"
@@ -99,6 +50,99 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         </Button>
       </div>
 
+      {/* Current items (no card borders) */}
+      {fields.length > 0 && (
+        <div className="space-y-4">
+          {fields.map((f, i) => {
+            const itemType = items?.[i]?.type;
+            const isExternal = itemType === 'external';
+            const idLabel = isExternal ? 'Citation (external)' : 'Entry ID (internal)';
+            const idPlaceholder = isExternal ? 'e.g., People v. Doria, G.R. No. …' : 'e.g., ROC-113-5 or RPC-308';
+            // Hide items that don't match the current tab selection
+            if ((tab === 'internal' && isExternal) || (tab === 'external' && !isExternal)) {
+              return null;
+            }
+            return (
+              <div key={f.id} className="space-y-3">
+                <div className="flex items-center gap-3">
+                  {itemType !== 'external' && (
+                    <Select
+                      className="kb-form-select w-40"
+                      options={[
+                        { value: 'internal', label: 'Internal' },
+                        { value: 'external', label: 'External' }
+                      ]}
+                      {...register(`${name}.${i}.type` as const)}
+                    />
+                  )}
+                  {itemType === 'external' && (
+                    <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
+                  )}
+                </div>
+
+                <div className="grid gap-3">
+                  <div>
+                    <label className="kb-form-label">{idLabel}</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder={idPlaceholder}
+                      {...register(`${name}.${i}.entry_id` as const)}
+                    />
+                  </div>
+                  <div>
+                    <label className="kb-form-label">URL (optional)</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder="https://…"
+                      {...register(`${name}.${i}.url` as const)}
+                    />
+                  </div>
+                  <div>
+                    <label className="kb-form-label">Topic (optional)</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder="e.g., Arrest, Search, Bail"
+                      {...register(`${name}.${i}.topic` as const)}
+                    />
+                  </div>
+                  <div>
+                    <label className="kb-form-label">Note (optional)</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder="short note or descriptor"
+                      {...register(`${name}.${i}.note` as const)}
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom action row: Add + Delete on same line for external items */}
+                {itemType === 'external' && (
+                  <div className="flex items-center gap-3 mt-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => remove(i)}
+                      className="h-11 w-11 rounded-xl flex items-center justify-center"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} }}
+                      className="h-11 rounded-xl flex-1"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add external citation
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {tab === 'internal' ? (
         <div className="space-y-3">
           <div className="relative">
@@ -113,7 +157,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           
           <div className="rounded-xl max-h-48 overflow-auto bg-background">
             {options.length === 0 && (
-              <div className="p-4 text-sm text-muted-foreground text-center">
+              <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
                 No matches found
               </div>
             )}
@@ -135,15 +179,17 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         </div>
       ) : (
         <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => append({ type: 'external', citation: '', url: '' })}
-            className="w-full h-11 px-5 rounded-xl"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add external citation
-          </Button>
+          {fields.length === 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} }}
+              className="w-full h-11 rounded-xl mt-2"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add external citation
+            </Button>
+          )}
         </div>
       )}
     </div>

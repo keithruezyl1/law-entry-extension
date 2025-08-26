@@ -8,9 +8,6 @@ import { RuleOfCourtForm } from './RuleOfCourtForm';
 import { AgencyCircularForm } from './AgencyCircularForm';
 import { DojIssuanceForm } from './DojIssuanceForm';
 import { ExecutiveIssuanceForm } from './ExecutiveIssuanceForm';
-import { PnpSopForm } from './PnpSopForm';
-import { TrafficRuleForm } from './TrafficRuleForm';
-import { IncidentChecklistForm } from './IncidentChecklistForm';
 import { RightsAdvisoryForm } from './RightsAdvisoryForm';
 
 interface TypeSpecificFormProps {
@@ -26,9 +23,6 @@ const COMPONENTS: Record<Entry['type'], React.FC<{control: Control<Entry>}>> = {
   agency_circular: AgencyCircularForm,
   doj_issuance: DojIssuanceForm,
   executive_issuance: ExecutiveIssuanceForm,
-  pnp_sop: PnpSopForm,
-  traffic_rule: TrafficRuleForm,
-  incident_checklist: IncidentChecklistForm,
   rights_advisory: RightsAdvisoryForm,
 };
 

@@ -48,6 +48,20 @@ export function StepBasics() {
         <p className="text-muted-foreground">Start with the fundamental details about this legal entry.</p>
       </div>
 
+      {/* Entering as (read-only) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <Label htmlFor="entered_by">Entering as</Label>
+          <Input
+            id="entered_by"
+            placeholder="MEMBER"
+            className="mt-1 bg-gray-50"
+            readOnly
+          />
+          <p className="text-xs text-muted-foreground mt-1">Auto-filled from login; read-only. For now this shows a placeholder.</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>

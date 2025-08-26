@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { getAllTeamMembers } from './data/entryTypes';
@@ -8,11 +8,16 @@ import EntryList from './components/EntryList/EntryList';
 import EntryView from './components/EntryView/EntryView';
 import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
+import { parseWorkbook, computeDayIndex, rowsForDay, toISODate } from './lib/plan/planLoader';
+import { format } from 'date-fns';
+import { getDay1Date, setDay1Date } from './lib/plan/progressStore';
 
 function App() {
   return (
     <Router>
-      <AppContent />
+      <Routes>
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
     </Router>
   );
 }
@@ -25,9 +30,25 @@ function AppContent() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearModalStep, setClearModalStep] = useState(1);
   const [clearOption, setClearOption] = useState(null);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState(null);
   const [headerOpacity, setHeaderOpacity] = useState(1);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planModalStep, setPlanModalStep] = useState(1);
+  const [selectedDay1Date, setSelectedDay1Date] = useState('');
+  const [planData, setPlanData] = useState(null);
+  const [day1Date, setDay1DateState] = useState(getDay1Date());
   
-  const location = useLocation();
+  // Load persisted plan rows on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('kb_plan_rows');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setPlanData(parsed);
+      }
+    } catch (_) {}
+  }, []);
   
   const {
     entries,
@@ -52,6 +73,15 @@ function AppContent() {
   const yesterdayProgress = getYesterdayTeamProgress();
   const teamMembers = getAllTeamMembers();
 
+  // Team member names mapping for P1-P5 format
+  const teamMemberNames = {
+    'P1': 'Arda',
+    'P2': 'Delos Cientos', 
+    'P3': 'Paden',
+    'P4': 'Sendrijas',
+    'P5': 'Tagarao'
+  };
+
   // Handle scroll for header background opacity
   useEffect(() => {
     const handleScroll = () => {
@@ -64,27 +94,80 @@ function AppContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Check yesterday's completion status
+  // Check yesterday's completion status with carryover logic
   const getYesterdayStatus = () => {
     const incompleteMembers = [];
     let allCompleted = true;
+    let someCompleted = false;
     
     for (let i = 1; i <= 5; i++) {
-      const progress = yesterdayProgress[i]?.total || 0;
-      if (progress < 10) {
+      const yesterdayTotal = yesterdayProgress[i]?.total || 0;
+      const todayTotal = teamProgress[i]?.total || 0;
+      
+      // Calculate total progress including today's carryover
+      const totalProgress = yesterdayTotal + todayTotal;
+      
+      if (totalProgress < 10) {
         allCompleted = false;
-        incompleteMembers.push(`P${i}`);
+        const memberName = teamMembers.find(m => m.id === i)?.name || `P${i}`;
+        incompleteMembers.push(memberName);
+      } else {
+        someCompleted = true;
       }
     }
     
     if (allCompleted) {
-      return { text: "ALL COMPLETED", completed: true };
+      return { 
+        text: "ALL COMPLETED", 
+        completed: true, 
+        status: 'completed' // green
+      };
+    } else if (someCompleted) {
+      return { 
+        text: `INCOMPLETE ENTRIES: ${incompleteMembers.join(', ')}`, 
+        completed: false, 
+        status: 'partial' // orange
+      };
     } else {
-      return { text: `INCOMPLETE ENTRIES: ${incompleteMembers.join(', ')}`, completed: false };
+      return { 
+        text: `INCOMPLETE ENTRIES: ${incompleteMembers.join(', ')}`, 
+        completed: false, 
+        status: 'incomplete' // red
+      };
     }
   };
 
   const handleCreateNew = () => {
+    try {
+      const raw = localStorage.getItem('kb_entry_draft');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+            // Always ask user whether to resume or start new when a draft exists
+            setResumeDraft(parsed);
+            setShowResumeModal(true);
+            return;
+          }
+        } catch (_) {
+          // ignore parse errors and proceed to fresh form
+        }
+      }
+    } catch (_) {}
+    setEditingEntry(null);
+    setCurrentView('form');
+  };
+
+  const handleResumeYes = () => {
+    setEditingEntry(resumeDraft || null);
+    setShowResumeModal(false);
+    setCurrentView('form');
+  };
+
+  const handleResumeNo = () => {
+    try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
+    setResumeDraft(null);
+    setShowResumeModal(false);
     setEditingEntry(null);
     setCurrentView('form');
   };
@@ -118,6 +201,7 @@ function AppContent() {
         console.log('Total entries in localStorage:', entries.length + 1);
         alert(`Entry "${entryData.title}" has been successfully saved to localStorage!`);
       }
+      try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setCurrentView('list');
       setEditingEntry(null);
     } catch (err) {
@@ -219,6 +303,65 @@ function AppContent() {
     setClearOption(null);
   };
 
+  const handleImportPlan = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+      const buf = await file.arrayBuffer();
+      const parsed = parseWorkbook(buf);
+      setPlanData(parsed);
+      setShowPlanModal(true);
+      setPlanModalStep(1);
+    } catch (e) {
+      alert('Failed to parse Excel file. Please check the file format.');
+    }
+  };
+
+  const handleDay1Confirm = () => {
+    if (!selectedDay1Date) {
+      alert('Please select a Day 1 date.');
+      return;
+    }
+    setPlanModalStep(2);
+  };
+
+  const handlePlanFinalConfirm = () => {
+    if (day1Date && !window.confirm('Reimporting a new plan will reset all progress. Are you sure?')) {
+      return;
+    }
+    
+    setDay1Date(selectedDay1Date);
+    setDay1DateState(selectedDay1Date);
+    // Persist plan rows so they survive refreshes
+    try {
+      if (planData) localStorage.setItem('kb_plan_rows', JSON.stringify(planData));
+    } catch (_) {}
+    setShowPlanModal(false);
+    setPlanModalStep(1);
+    setSelectedDay1Date('');
+  };
+
+  const handlePlanCancel = () => {
+    setShowPlanModal(false);
+    setPlanModalStep(1);
+    setSelectedDay1Date('');
+    setPlanData(null);
+  };
+
+  const handleRemovePlan = () => {
+    if (!window.confirm('Remove the imported plan and Day 1 setting? This will not delete your saved entries.')) return;
+    try {
+      localStorage.removeItem('kb_plan_rows');
+    } catch (_) {}
+    try {
+      // also clear saved Day 1
+      localStorage.removeItem('kbprog:day1');
+    } catch (_) {}
+    setPlanData(null);
+    setDay1DateState(null);
+  };
+
   const handleBackToList = () => {
     setCurrentView('list');
     setSelectedEntryId(null);
@@ -275,37 +418,89 @@ function AppContent() {
       {currentView !== 'form' && (
       <div className="team-progress">
         <div className="team-progress-header">
-          <h3>Today's Team Progress</h3>
+          <h3>Today's Team Progress {day1Date && Array.isArray(planData) && planData.length > 0 && (
+            <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>{`Day ${computeDayIndex(new Date(), day1Date)}, ${format(new Date(), 'MMMM d yyyy')}`}</span>
+          )}</h3>
           <div className="yesterday-status">
             <div className="status-indicator">
-              <div className={`status-circle ${getYesterdayStatus().completed ? 'completed' : 'incomplete'}`}></div>
-              <strong>Yesterday:</strong> {getYesterdayStatus().text}
+              <div className={`status-circle ${getYesterdayStatus().status}`}></div>
+              <strong>Yesterday </strong> {getYesterdayStatus().text}
             </div>
           </div>
         </div>
         <div className="team-members-grid">
-          {teamMembers.map(member => (
-            <div key={member.id} className="team-member-card">
-              <h4>{member.name}</h4>
-              <p>{member.description}</p>
-              <div className="member-progress">
-                <span className="progress-count">{teamProgress[member.id]?.total || 0} / 10</span>
-                <div className="member-progress-bar">
-                  <div 
-                    className="member-progress-fill" 
-                    style={{ width: `${Math.min(((teamProgress[member.id]?.total || 0) / 10) * 100, 100)}%` }}
-                  ></div>
+          {teamMembers.map(member => {
+            const personId = member.id;
+            const personName = member.name; // Use actual name from data
+            
+            // Check if plan is imported
+            const hasPlan = !!day1Date && Array.isArray(planData) && planData.length > 0;
+            
+            if (!hasPlan) {
+              // Show empty card when no plan is imported
+              return (
+                <div key={personId} className="team-member-card">
+                  <h4>{personName}</h4>
+                  <div className="member-progress">
+                    <span className="progress-count">0 / 0</span>
+                    <div className="member-progress-bar">
+                      <div className="member-progress-fill" style={{ width: '0%' }}></div>
+                    </div>
+                  </div>
+                  <div className="member-breakdown">
+                    <span className="quota-item" style={{ fontStyle: 'italic', color: '#666' }}>
+                      Import plan to start
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+            
+            // Get current day's requirements if plan is loaded
+            let currentDayReqs = member.dailyQuota;
+            const today = new Date();
+            const dayIndex = computeDayIndex(today, day1Date);
+            const dayRows = rowsForDay(planData, dayIndex);
+            const personRow = dayRows.find((r) => String(r.Person).trim() === `P${personId}`);
+            
+            if (personRow) {
+              currentDayReqs = {
+                statute_section: Number(personRow.statute_section || 0),
+                rule_of_court: Number(personRow.rule_of_court || 0),
+                rights_advisory: Number(personRow.rights_advisory || 0),
+                constitution_provision: Number(personRow.constitution_provision || 0),
+                agency_circular: Number(personRow.agency_circular || 0),
+                doj_issuance: Number(personRow.doj_issuance || 0),
+                executive_issuance: Number(personRow.executive_issuance || 0),
+                city_ordinance_section: Number(personRow.city_ordinance_section || 0)
+              };
+            }
+            
+            const totalReq = Object.values(currentDayReqs).reduce((sum, quota) => sum + quota, 0);
+            const totalDone = teamProgress[personId]?.total || 0;
+            
+            return (
+              <div key={personId} className="team-member-card">
+                <h4>{personName}</h4>
+                <div className="member-progress">
+                  <span className="progress-count">{totalDone} / {totalReq}</span>
+                  <div className="member-progress-bar">
+                    <div 
+                      className="member-progress-fill" 
+                      style={{ width: `${Math.min((totalDone / Math.max(1, totalReq)) * 100, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="member-breakdown">
+                  {Object.entries(currentDayReqs).filter(([, quota]) => quota > 0).map(([type, quota]) => (
+                    <span key={type} className="quota-item">
+                      {type}: {teamProgress[personId]?.[type] || 0}/{quota}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="member-breakdown">
-                {Object.entries(member.dailyQuota).map(([type, quota]) => (
-                  <span key={type} className="quota-item">
-                    {type}: {teamProgress[member.id]?.[type] || 0}/{quota}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       )}
@@ -325,11 +520,11 @@ function AppContent() {
 
         
         <div className="nav-right">
-          <button onClick={handleExport} className="btn-secondary">
-            Export
+          <button onClick={handleExport} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+            Export Entries
           </button>
-          <label className="btn-secondary">
-            Import
+          <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+            Import Entries
             <input 
               type="file" 
               accept=".json" 
@@ -337,7 +532,21 @@ function AppContent() {
               style={{ display: 'none' }}
             />
           </label>
-          <button onClick={handleClearAll} className="btn-danger">
+          <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+            {day1Date && planData ? 'Re-import Plan' : 'Import Plan'}
+            <input 
+              type="file" 
+              accept=".xlsx" 
+              onChange={handleImportPlan} 
+              style={{ display: 'none' }}
+            />
+          </label>
+          {day1Date && planData && (
+            <button onClick={handleRemovePlan} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+              Remove Plan
+            </button>
+          )}
+          <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
             Clear All
           </button>
         </div>
@@ -431,6 +640,65 @@ function AppContent() {
               onClick={handleClearCancel}
             >
               No
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Resume Draft Modal */}
+      <Modal
+        isOpen={showResumeModal}
+        onClose={() => setShowResumeModal(false)}
+        title={"Previous Session Found"}
+        subtitle={"Would you like to continue inputting?"}
+      >
+        <div className="modal-buttons">
+          <button
+            className="modal-button"
+            onClick={handleResumeYes}
+          >
+            Yes
+          </button>
+          <button
+            className="modal-button cancel"
+            onClick={handleResumeNo}
+          >
+            No, create new entry
+          </button>
+        </div>
+      </Modal>
+
+      {/* Plan Import Modal */}
+      <Modal
+        isOpen={showPlanModal}
+        onClose={handlePlanCancel}
+        title={planModalStep === 1 ? "Set Day 1 Date" : "Confirm Plan Import"}
+        subtitle={planModalStep === 1 ? "Select the date when your project starts:" : "Reimporting a new plan will reset all progress. Are you sure?"}
+      >
+        {planModalStep === 1 ? (
+          <div className="modal-content">
+            <input
+              type="date"
+              className="border rounded-lg px-3 py-2 w-full mb-4"
+              value={selectedDay1Date}
+              onChange={(e) => setSelectedDay1Date(e.target.value)}
+            />
+            <div className="modal-buttons">
+              <button className="modal-button" onClick={handleDay1Confirm}>
+                Continue
+              </button>
+              <button className="modal-button cancel" onClick={handlePlanCancel}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="modal-buttons">
+            <button className="modal-button" onClick={handlePlanFinalConfirm}>
+              Yes, Import Plan
+            </button>
+            <button className="modal-button cancel" onClick={handlePlanCancel}>
+              Cancel
             </button>
           </div>
         )}

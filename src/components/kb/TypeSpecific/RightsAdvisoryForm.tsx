@@ -1,7 +1,7 @@
 import React from 'react';
 import { Control } from 'react-hook-form';
 import { Entry } from '../../../lib/civilify-kb-schemas';
-import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '../../ui/Form';
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '../../ui/Form';
 import { Select } from '../../ui/Select';
 import { StringArray } from '../fields/StringArray';
 

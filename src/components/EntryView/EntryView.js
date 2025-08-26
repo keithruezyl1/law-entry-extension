@@ -1,7 +1,7 @@
 import React from 'react';
 import { getEntryType } from '../../data/entryTypes';
 import { getJurisdiction } from '../../data/jurisdictions';
-import { getTagByValue } from '../../data/tags';
+// import { getTagByValue } from '../../data/tags';
 import './EntryView.css';
 
 const EntryView = ({ entry, onEdit, onDelete, onBack }) => {

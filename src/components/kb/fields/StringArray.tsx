@@ -22,19 +22,19 @@ export function StringArray({ control, name, label, help, placeholder = "Enter i
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-sm font-medium">{label}</label>
+        <label className="text-sm font-medium mb-0 block">{label}</label>
         {help && (
-          <p className="text-xs text-muted-foreground mt-1">{help}</p>
+          <p className="text-xs text-muted-foreground mt-1 mb-2">{help}</p>
         )}
       </div>
       
       <div className="space-y-2">
         {fields.map((field, index) => (
-          <div key={field.id} className="flex gap-2">
+          <div key={field.id} className="flex gap-2 mb-2">
             <Input
               {...register(`${name}.${index}` as const)}
               placeholder={placeholder}
-              className="flex-1 h-11 px-4 text-base rounded-xl"
+              className="flex-1 h-11 pl-6 pr-4 text-base rounded-xl"
             />
             <Button
               type="button"

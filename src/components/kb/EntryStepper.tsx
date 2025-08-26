@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, FileText, CalendarDays, BookText, Layers, Eye, FileCheck } from 'lucide-react';
+import { Check, FileText, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export interface Step {
@@ -25,8 +25,6 @@ const getStepIcon = (stepId: number) => {
     case 4:
       return <Layers className="h-4 w-4" />;
     case 5:
-      return <Eye className="h-4 w-4" />;
-    case 6:
       return <FileCheck className="h-4 w-4" />;
     default:
       return <FileText className="h-4 w-4" />;
@@ -35,9 +33,9 @@ const getStepIcon = (stepId: number) => {
 
 export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperProps) {
   return (
-    <aside>
-      <div className="sticky top-6 sticky-shadow-top">
-        <div className="ds-card">
+    <aside className="h-full">
+      <div>
+        <div className="ds-card rounded-2xl shadow-sm border p-5 h-full min-h-[360px] w-full">
           <div className="flex items-center gap-3 mb-4">
             <h3 className="font-semibold text-primary text-lg">Progress</h3>
           </div>

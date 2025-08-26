@@ -1,8 +1,7 @@
 import React from 'react';
 import { Control } from 'react-hook-form';
 import { Entry } from '../../../lib/civilify-kb-schemas';
-import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '../../ui/Form';
-import { Input } from '../../ui/Input';
+//
 import { StringArray } from '../fields/StringArray';
 
 interface ConstitutionProvisionFormProps {

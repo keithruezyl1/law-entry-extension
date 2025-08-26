@@ -18,7 +18,7 @@ export default function EntryPreview({ data }: PreviewProps) {
   } = data || {};
 
   return (
-    <aside className="sticky top-4 space-y-3">
+    <aside className="space-y-3">
       <div className="p-4">
         <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Preview</div>
         <div className="text-xl font-semibold">{title || 'Untitled entry'}</div>

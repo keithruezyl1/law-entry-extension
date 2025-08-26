@@ -132,7 +132,7 @@ export const getEntryTypeOptions = () => {
 // Team member assignments for daily quotas
 export const TEAM_MEMBER_ASSIGNMENTS = {
   1: {
-    name: 'P1',
+    name: 'Arda',
     description: 'RPC + Cebu Ordinances',
     dailyQuota: {
       statute_section: 7,
@@ -141,7 +141,7 @@ export const TEAM_MEMBER_ASSIGNMENTS = {
     fallback: 'executive_issuance'
   },
   2: {
-    name: 'P2',
+    name: 'Delos Cientos',
     description: 'Rules of Court + DOJ (procedure-heavy)',
     dailyQuota: {
       rule_of_court: 7,
@@ -151,7 +151,7 @@ export const TEAM_MEMBER_ASSIGNMENTS = {
     fallback: 'executive_issuance'
   },
   3: {
-    name: 'P3',
+    name: 'Paden',
     description: 'PNP SOPs + Incident Checklists',
     dailyQuota: {
       pnp_sop: 5,
@@ -161,7 +161,7 @@ export const TEAM_MEMBER_ASSIGNMENTS = {
     fallback: null
   },
   4: {
-    name: 'P4',
+    name: 'Sendrijas',
     description: 'Traffic/LTO lane',
     dailyQuota: {
       traffic_rule: 6,
@@ -171,7 +171,7 @@ export const TEAM_MEMBER_ASSIGNMENTS = {
     fallback: null
   },
   5: {
-    name: 'P5',
+    name: 'Tagarao',
     description: 'Rights + Constitution + Policy',
     dailyQuota: {
       rights_advisory: 4,
@@ -193,6 +193,9 @@ export const getAllTeamMembers = () => {
     ...member
   }));
 };
+
+
+
 
 
 

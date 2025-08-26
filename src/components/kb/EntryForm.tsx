@@ -1,15 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
-import {
-  EntrySchema,
-  Entry,
-  TypeEnum,
-  schemasByType,
-  validateBusinessRules,
-} from 'lib/civilify-kb-schemas';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { EntrySchema, Entry, TypeEnum, validateBusinessRules } from 'lib/civilify-kb-schemas';
 // Using regular textarea to avoid external dependency
-import { LegalBasisPicker } from './fields/LegalBasisPicker';
-import { StringArray } from './fields/StringArray';
+// import { LegalBasisPicker } from './fields/LegalBasisPicker';
 
 import EntryPreview from './EntryPreview';
 import { EntryStepper, type Step } from './EntryStepper';
@@ -18,7 +12,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import Modal from '../Modal/Modal';
-import { FileText, Lightbulb, ArrowRight, X, CalendarDays, BookText, Layers, Eye, FileCheck } from 'lucide-react';
+import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
 import { generateEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 
@@ -41,12 +35,12 @@ const stepListBase: Step[] = [
   { id: 2, name: 'Sources & Dates', description: 'Citations and effective dates' },
   { id: 3, name: 'Content', description: 'Summary and legal text' },
   { id: 4, name: 'Type-Specific & Relations', description: 'Fields based on entry type' },
-  { id: 5, name: 'Visibility & Offline', description: 'Control who sees this and offline packs' },
-  { id: 6, name: 'Review & Publish', description: 'Final check before saving' },
+  { id: 5, name: 'Review & Publish', description: 'Final check before saving' },
 ];
 
 export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel }: EntryFormProps) {
   const methods = useForm<Entry>({
+    resolver: zodResolver(EntrySchema as any),
     defaultValues: {
       type: 'statute_section',
       entry_id: entry?.entry_id || '',
@@ -60,20 +54,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       amendment_date: (entry?.amendment_date as any) || null,
       summary: entry?.summary || '',
       text: entry?.text || '',
-      source_urls: entry?.source_urls || [''],
-      tags: entry?.tags || [''],
+      source_urls: entry?.source_urls || [],
+      tags: entry?.tags || [],
       last_reviewed: entry?.last_reviewed || new Date().toISOString().slice(0, 10),
-      visibility: entry?.visibility || { gli: true, police: false, cpa: false },
-      offline: entry?.offline || { pack_include: false },
+      visibility: entry?.visibility ? { gli: (entry as any).visibility.gli, cpa: (entry as any).visibility.cpa } : { gli: true, cpa: false },
       // type-specific defaults rely on the schema; we will patch-in as needed per type UI
     } as any,
     mode: 'onChange',
   });
 
-  const { control, register, handleSubmit, watch, setValue, formState, getValues } = methods;
+  const { control, register, handleSubmit, watch, setValue, getValues } = methods;
   const type = watch('type');
   const status = watch('status');
-  const offlineInclude = watch('offline.pack_include');
   const lawFamily = watch('law_family');
   const sectionId = watch('section_id');
 
@@ -81,17 +73,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const hasTypeSpecific = true;
   const steps = useMemo(() => (hasTypeSpecific ? stepListBase : stepListBase.filter((s) => s.id !== 4)), [hasTypeSpecific]);
   const [currentStep, setCurrentStep] = useState(1 as number);
-  const [lastSavedAt, setLastSavedAt] = useState<Date>(new Date());
+  const formCardRef = React.useRef<HTMLDivElement | null>(null);
   const [showDraftSaved, setShowDraftSaved] = useState<boolean>(false);
-  const [timeSinceSave, setTimeSinceSave] = useState<number>(0);
+  const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
 
-  // Ticking autosave timer
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeSinceSave(Math.floor((Date.now() - lastSavedAt.getTime()) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [lastSavedAt]);
+  //
 
   useEffect(() => {
     // Keep for future: auto-skip only if a type truly has zero fields
@@ -114,28 +100,53 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const isOtherJurisdiction = jurisdiction !== 'PH';
 
   // Step validators on next
+  const scrollToCardTop = () => {
+    try {
+      const el = formCardRef.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+    } catch {}
+  };
+
   const goNext = async () => {
     const stepToValidate = currentStep;
-    // Submit-specific validations
+    // Jurisdiction validation when Other is chosen
+    if (stepToValidate === 1) {
+      const j = watch('jurisdiction') as unknown as string;
+      const isOther = j !== 'PH';
+      if (isOther) {
+        const pattern = /^[A-Za-zÀ-ÿ]+(?:[-' ]+[A-Za-zÀ-ÿ]+)*(?: City| Province)?$/;
+        const trimmed = (j || '').trim();
+        if (trimmed.length < 3 || trimmed.length > 40 || !pattern.test(trimmed)) {
+          alert('Enter a valid jurisdiction in Title Case (e.g., Cavite, Quezon City, Baguio).');
+          return;
+        }
+      }
+    }
     if (stepToValidate === 2 && status === 'amended' && !watch('amendment_date')) {
       alert("Amendment date is required when status is 'amended'.");
       return;
     }
-    if (stepToValidate === 5 && offlineInclude && !watch('offline.pack_category')) {
-      alert('Please choose an Offline Pack category.');
-      return;
-    }
-    setCurrentStep((s) => Math.min(steps[steps.length - 1].id, s + 1));
+    setCurrentStep((s) => {
+      const next = Math.min(steps[steps.length - 1].id, s + 1);
+      // Scroll after state updates on next tick
+      setTimeout(scrollToCardTop, 0);
+      return next;
+    });
   };
 
-  const goPrev = () => setCurrentStep((s) => Math.max(1, hasTypeSpecific ? s - 1 : s - (s - 3 === 1 ? 2 : 1)));
+  const goPrev = () =>
+    setCurrentStep((s) => {
+      const prev = Math.max(1, s - 1);
+      setTimeout(scrollToCardTop, 0);
+      return prev;
+    });
 
   // Save draft: persist current form values to localStorage
   const saveDraft = () => {
     try {
       const draft = getValues();
       localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-      setLastSavedAt(new Date());
       setShowDraftSaved(true);
       // Auto-hide after short delay
       setTimeout(() => setShowDraftSaved(false), 1500);
@@ -144,6 +155,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       setShowDraftSaved(true);
     }
   };
+  const requestCancel = () => setShowCancelConfirm(true);
+  const confirmCancel = () => {
+    try { localStorage.removeItem('kb_entry_draft'); } catch {}
+    setShowCancelConfirm(false);
+    onCancel();
+  };
+  const abortCancel = () => setShowCancelConfirm(false);
 
   // Optional: Debounced autosave every 10s while editing
   useEffect(() => {
@@ -151,9 +169,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       try {
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        setLastSavedAt(new Date());
       } catch {}
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [getValues]);
 
@@ -164,6 +181,27 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       tags: (data as any).tags?.filter((t: string) => !!t && t.trim().length > 0) || [],
     } as any;
 
+    // Remove deprecated keys
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((sanitized as any).offline) delete (sanitized as any).offline;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((sanitized as any).visibility && 'police' in (sanitized as any).visibility) delete (sanitized as any).visibility.police;
+
+    // Publish gating
+    if (!sanitized.source_urls || sanitized.source_urls.length < 1) {
+      alert('Please add at least one Source URL before publishing.');
+      return;
+    }
+
+    // Rights advisory requires at least one legal basis
+    if ((sanitized as any).type === 'rights_advisory') {
+      const lbs = (sanitized as any).legal_bases || [];
+      if (!Array.isArray(lbs) || lbs.length < 1) {
+        alert('Rights Advisory entries require at least one legal basis.');
+        return;
+      }
+    }
+
     const errs = validateBusinessRules(sanitized);
     if (errs.length) {
       alert(errs.join('\n'));
@@ -172,83 +210,52 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     onSave(sanitized);
   };
 
-  // Relations helpers
-  function LegalBasisArray() {
-    // Delegate to LegalBasisPicker
-    return <LegalBasisPicker name={'legal_bases'} control={control} register={register} existingEntries={existingEntries as any} />;
-  }
-
-  function RelatedSectionsArray() {
-    const { fields, append, remove } = useFieldArray({ name: 'related_sections' as any, control });
-    return (
-      <div className="space-y-3">
-        {fields.map((f, i) => (
-          <div key={f.id} className="border rounded-md p-3">
-            <div className="flex gap-2 mb-2">
-              <label className="text-sm font-medium">Type</label>
-              <select {...register(`related_sections.${i}.type` as const)} className="border rounded px-2 py-1">
-                <option value="internal">Internal</option>
-                <option value="external">External</option>
-              </select>
-              <button type="button" onClick={() => remove(i)} className="ml-auto text-red-600">Remove</button>
-            </div>
-            {watch(`related_sections.${i}.type` as const) === 'internal' ? (
-              <input className="border rounded px-3 py-2" placeholder="entry_id" {...register(`related_sections.${i}.entry_id` as const)} />
-            ) : (
-              <div className="grid gap-2">
-                <input className="border rounded px-3 py-2" placeholder="citation" {...register(`related_sections.${i}.citation` as const)} />
-                <input className="border rounded px-3 py-2" placeholder="url (optional)" {...register(`related_sections.${i}.url` as const)} />
-              </div>
-            )}
-          </div>
-        ))}
-        <button type="button" className="kb-btn-outline" onClick={() => append({ type: 'internal', entry_id: '' } as any)}>Add related section</button>
-      </div>
-    );
-  }
+  // (Relations helper components were removed; using dedicated picker in Step 4)
 
 
 
-  const formatTimeSinceSave = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  //
 
   return (
     <FormProvider {...methods}>
-      <div className="kb-form">
+      <div className="kb-form mx-auto max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="kb-form-container">
-          <header className="kb-form-header">
+          <header className="kb-form-header mb-6">
             <div>
               <h1 className="kb-form-title">Create Knowledge Base Entry</h1>
               <p className="kb-form-subtitle">Add a new entry to the legal knowledge base for Villy AI</p>
             </div>
-            <div className="kb-form-autosave">
-              <span className="kb-form-autosave-dot"></span>
-              Autosaved {formatTimeSinceSave(timeSinceSave)} ago
-            </div>
           </header>
 
-          <div className="kb-form-layout">
-            {/* Left: Step rail */}
-            <EntryStepper
-              steps={steps}
-              currentStep={currentStep}
-              onStepClick={setCurrentStep}
-            />
+          <div className="kb-form-layout grid grid-cols-12 gap-6 md:gap-8 items-stretch justify-center">
+            {/* Top row: Progress (left) and Preview (right), equal width */}
+            <div className="col-span-12 md:col-span-6">
+              <EntryStepper
+                steps={steps}
+                currentStep={currentStep}
+                onStepClick={setCurrentStep}
+              />
+            </div>
 
-            {/* Content: Form + Preview */}
-            <div className="kb-form-content">
-            {/* Center: Form */}
-            <section className="kb-form-section">
+            {/* Preview card beside Progress */}
+            <aside className="col-span-12 md:col-span-6">
+              <div>
+                <div className="ds-card rounded-2xl shadow-sm border p-5 h-full min-h-[360px] w-full">
+                  <div className="pr-2">
+                    <EntryPreview data={methods.watch()} />
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* Below: Law input card (form) spanning full width */}
+            <section className="kb-form-section col-span-12">
               <form onSubmit={handleSubmit(onSubmit as any)}>
                 {(() => {
                   if (currentStep === 1) {
                     return (
                       <>
-                        <div className="kb-step-card">
+                        <div ref={formCardRef} className="kb-step-card">
                           <div className="kb-step-header">
                             <div className="kb-step-header-content">
                               <div className="kb-step-icon">
@@ -264,6 +271,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 <div className="kb-form-section-group">
                                   <h3 className="kb-form-section-title">Entry Details</h3>
                                   <div className="kb-form-field-group">
+                                    <div className="kb-form-field">
+                                      <label className="kb-form-label">Entering as</label>
+                                      <Input className="kb-form-input bg-gray-50" placeholder="MEMBER" readOnly />
+                                    </div>
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">
                                         Entry Type <span className="kb-required">*</span>
@@ -309,6 +320,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                       <p id="jurisdiction-help" className="kb-form-helper">Use title case; letters/spaces only</p>
                                     </div>
                                     <div className="kb-form-field">
+                                      <label className="kb-form-label">Visibility</label>
+                                      <div className="flex items-center gap-6 py-2">
+                                        <label className="flex items-center gap-2">
+                                          <input type="checkbox" className="w-4 h-4" {...register('visibility.gli' as const)} />
+                                          <span className="font-medium">GLI</span>
+                                        </label>
+                                        <label className="flex items-center gap-2">
+                                          <input type="checkbox" className="w-4 h-4" {...register('visibility.cpa' as const)} />
+                                          <span className="font-medium">CPA</span>
+                                        </label>
+                                      </div>
+                                    </div>
+                                    <div className="kb-form-field">
                                       <label className="kb-form-label">
                                         Law Family <span className="kb-required">*</span>
                                       </label>
@@ -344,7 +368,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                       </select>
                                     </div>
                                     <div className="kb-form-field">
-                                      <label className="kb-form-label">Suggested Entry ID</label>
+                                      <label className="kb-form-label">Auto-generated Entry ID</label>
                                       <Input className="kb-form-input" placeholder="Auto-generated" {...register('entry_id')} />
                                     </div>
                                   </div>
@@ -357,7 +381,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                         {/* Pro Tip removed as requested */}
 
                         <div className="kb-action-bar">
-                          <Button type="button" variant="outline" onClick={onCancel} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12">
+                          <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12">
                             <X className="h-4 w-4" />
                             Cancel
                           </Button>
@@ -373,7 +397,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                     );
                   } else if (currentStep === 2) {
                     return (
-                      <div className="kb-step-card">
+                      <div ref={formCardRef} className="kb-step-card">
                         <div className="kb-step-header">
                           <div className="kb-step-header-content">
                             <div className="kb-step-icon">
@@ -409,7 +433,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
                           <div className="kb-action-bar">
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={onCancel} className="h-12 px-10 min-w-[130px]">Cancel</Button>
+                              <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                             </div>
                             <div className="flex gap-3">
@@ -425,7 +449,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                     );
                   } else if (currentStep === 3) {
                     return (
-                      <div className="kb-step-card">
+                      <div ref={formCardRef} className="kb-step-card">
                         <div className="kb-step-header">
                           <div className="kb-step-header-content">
                             <div className="kb-step-icon">
@@ -455,7 +479,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
                           <div className="kb-action-bar">
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={onCancel} className="h-12 px-10 min-w-[130px]">Cancel</Button>
+                              <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                             </div>
                             <div className="flex gap-3">
@@ -471,7 +495,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                     );
                   } else if (currentStep === 4 && hasTypeSpecific) {
                     return (
-                      <div className="kb-step-card">
+                      <div ref={formCardRef} className="kb-step-card">
                         <div className="kb-step-header">
                           <div className="kb-step-header-content">
                             <div className="kb-step-icon">
@@ -497,88 +521,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                         <div className="kb-step-header">
                           <div className="kb-step-header-content">
                             <div className="kb-step-icon">
-                              <Eye className="kb-step-icon-svg" />
-                            </div>
-                            <h2 className="kb-step-title">Visibility & Offline</h2>
-                            <p className="kb-step-description">Control who sees this and offline packs</p>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="grid gap-6 sm:grid-cols-2">
-                            <div className="space-y-6">
-                              <h3 className="kb-form-section-title">Visibility Settings</h3>
-                              <div className="space-y-4">
-                                <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer">
-                                  <input type="checkbox" className="w-4 h-4" {...register('visibility.gli' as const)} />
-                                  <span className="font-medium">GLI</span>
-                                </label>
-                                <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer">
-                                  <input type="checkbox" className="w-4 h-4" {...register('visibility.police' as const)} />
-                                  <span className="font-medium">Police</span>
-                                </label>
-                                <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer">
-                                  <input type="checkbox" className="w-4 h-4" {...register('visibility.cpa' as const)} />
-                                  <span className="font-medium">CPA</span>
-                                </label>
-                              </div>
-                            </div>
-                            <div className="space-y-6">
-                              <h3 className="kb-form-section-title">Offline Pack Settings</h3>
-                              <div className="space-y-4">
-                                <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer">
-                                  <input type="checkbox" className="w-4 h-4" {...register('offline.pack_include' as const)} />
-                                  <span className="font-medium">Include in Offline Pack</span>
-                                </label>
-                                {offlineInclude && (
-                                  <>
-                                    <div>
-                                      <label className="kb-form-label">Pack Category</label>
-                                      <select className="kb-form-select" {...register('offline.pack_category' as const)}>
-                                        <option value="">Select…</option>
-                                        <option value="sop">sop</option>
-                                        <option value="checklist">checklist</option>
-                                        <option value="traffic">traffic</option>
-                                        <option value="rights">rights</option>
-                                        <option value="roc">roc</option>
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <label className="kb-form-label">Pack Priority</label>
-                                      <select className="kb-form-select" {...register('offline.pack_priority' as const)}>
-                                        <option value="">Default (2)</option>
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                      </select>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="kb-action-bar">
-                            <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={onCancel} className="h-12 px-10 min-w-[130px]">Cancel</Button>
-                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
-                            </div>
-                            <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
-                              <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
-                                Next
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  } else if (currentStep === 6) {
-                    return (
-                      <div className="kb-step-card">
-                        <div className="kb-step-header">
-                          <div className="kb-step-header-content">
-                            <div className="kb-step-icon">
                               <FileCheck className="kb-step-icon-svg" />
                             </div>
                             <h2 className="kb-step-title">Review & Publish</h2>
@@ -594,7 +536,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
                           <div className="kb-action-bar">
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={onCancel} className="h-12 px-10 min-w-[130px]">Cancel</Button>
+                              <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                             </div>
                             <div className="flex gap-3">
@@ -612,24 +554,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 })()}
               </form>
             </section>
-
-            {/* Right: Preview */}
-            <aside>
-              <div className="sticky top-6 sticky-shadow-top">
-                <div className="ds-card p-5">
-                  <div className="max-h-[70vh] pr-2 overflow-y-auto">
-                    <EntryPreview data={methods.watch()} />
-                  </div>
-                </div>
-              </div>
-            </aside>
-            </div>
           </div>
         </div>
         {/* Draft Saved Modal */}
         <Modal isOpen={showDraftSaved} onClose={() => setShowDraftSaved(false)} title="Draft saved" subtitle={null}>
           <div className="text-center p-4">
             <p className="text-sm text-gray-600">Your draft has been saved locally.</p>
+          </div>
+        </Modal>
+        <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Are you sure you want to cancel?" subtitle="This will delete all your current inputs in the forms.">
+          <div className="modal-buttons">
+            <button className="modal-button danger" onClick={() => { try { localStorage.removeItem('kb_entry_draft'); } catch {}; setShowCancelConfirm(false); onCancel(); }}>Yes, go to home</button>
+            <button className="modal-button cancel" onClick={() => setShowCancelConfirm(false)}>No, stay here</button>
           </div>
         </Modal>
       </div>
@@ -639,8 +575,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 // ——— Reusable tiny field helpers ———
 function UrlArray({ control, register, watch, setValue }: any) {
-  const { fields, append, remove } = useFieldArray({ name: 'source_urls', control });
-  const urls: string[] = watch('source_urls') || [];
+  const { append, remove } = useFieldArray({ name: 'source_urls', control });
+  const urls: string[] = (watch('source_urls') || []).filter((u: string) => u && u.trim().length > 0);
   const [draft, setDraft] = React.useState('');
 
   const addFromDraft = () => {
@@ -669,7 +605,7 @@ function UrlArray({ control, register, watch, setValue }: any) {
         onKeyDown={handleKeyDown}
       />
 
-      {urls.length > 0 && (
+      {Array.isArray(urls) && urls.filter((u) => u && u.trim().length > 0).length > 0 && (
         <div className="flex flex-wrap gap-2 kb-chip-list">
           {urls.map((u, i) => (
             <div key={`${u}-${i}`} className="relative group">
@@ -691,8 +627,8 @@ function UrlArray({ control, register, watch, setValue }: any) {
 }
 
 function TagArray({ control, register, watch }: any) {
-  const { fields, append, remove } = useFieldArray({ name: 'tags', control });
-  const tags: string[] = watch('tags') || [];
+  const { append, remove } = useFieldArray({ name: 'tags', control });
+  const tags: string[] = (watch('tags') || []).filter((t: string) => t && t.trim().length > 0);
   const [draft, setDraft] = React.useState('');
 
   const addFromDraft = () => {
@@ -718,7 +654,7 @@ function TagArray({ control, register, watch }: any) {
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
       />
-      {tags.length > 0 && (
+      {Array.isArray(tags) && tags.filter((t) => t && t.trim().length > 0).length > 0 && (
         <div className="flex flex-wrap gap-2 kb-chip-list">
           {tags.map((t, i) => (
             <div key={`${t}-${i}`} className="relative group">

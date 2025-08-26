@@ -101,6 +101,10 @@ body {
   background: #28a745;
 }
 
+.status-circle.partial {
+  background: #ff8c42;
+}
+
 .status-circle.incomplete {
   background: #dc3545;
 }

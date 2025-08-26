@@ -168,12 +168,12 @@
 }
 
 .entry-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: all 0.2s ease;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .entry-card:hover {
@@ -192,6 +192,24 @@
   margin: 0 0 0.5rem 0;
   color: #333;
   font-size: 1.2rem;
+}
+
+/* Google-like snippet styling */
+.entry-title {
+  color: #1a0dab;
+  font-weight: 600;
+}
+.entry-title:hover { text-decoration: underline; cursor: pointer; }
+
+.entry-url-line {
+  font-size: 0.85rem;
+  color: #006621;
+}
+
+.entry-snippet {
+  font-size: 0.95rem;
+  color: #4a4a4a;
+  line-height: 1.6;
 }
 
 .entry-id {

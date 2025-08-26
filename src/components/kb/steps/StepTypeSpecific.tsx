@@ -1,11 +1,32 @@
 import React from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
-import { Alert, AlertDescription } from '../../ui/Alert';
-import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { TypeSpecificForm } from '../TypeSpecific/TypeSpecificForm';
 import { LegalBasisPicker } from '../fields/LegalBasisPicker';
 import { Entry } from '../../../lib/civilify-kb-schemas';
+
+// Static map to avoid changing useMemo deps on each render
+const FIELDS_BY_TYPE_STATIC: Record<NonNullable<Entry['type']>, string[]> = {
+  constitution_provision: ['topics', 'related_sections', 'jurisprudence'],
+  statute_section: [
+    'elements',
+    'penalties',
+    'defenses',
+    'prescriptive_period',
+    'prescriptive_period.value',
+    'prescriptive_period.unit',
+    'standard_of_proof',
+    'related_sections',
+    'legal_bases',
+  ],
+  city_ordinance_section: ['elements', 'penalties', 'defenses', 'related_sections', 'legal_bases'],
+  rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'related_sections'],
+  agency_circular: ['circular_no', 'section_no', 'applicability', 'legal_bases', 'supersedes'],
+  doj_issuance: ['issuance_no', 'applicability', 'legal_bases', 'supersedes'],
+  executive_issuance: ['instrument_no', 'applicability', 'legal_bases', 'supersedes'],
+  rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
+};
 
 interface StepTypeSpecificProps {
   onNext: () => void;
@@ -15,46 +36,20 @@ interface StepTypeSpecificProps {
 }
 
 export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: StepTypeSpecificProps) {
-  const { control, register, formState: { errors }, trigger } = useFormContext<Entry>();
+  const form = useFormContext<Entry>();
+  const { control, register, formState: { errors, isValid }, trigger } = form;
   const type = useWatch({ name: 'type', control });
+  const legalBases = (useWatch({ name: 'legal_bases', control }) as any[]) || [];
+
+  const isRelationsRequired = (entryType: string | undefined) => entryType === 'rights_advisory';
+  const relationsRequired = isRelationsRequired(type as any);
+  const relationsInvalid = relationsRequired && legalBases.length < 1;
 
   // Fields we consider part of Step 4 per type (type-specific + relations)
-  const FIELDS_BY_TYPE: Record<NonNullable<Entry['type']>, string[]> = {
-    constitution_provision: ['topics', 'related_sections', 'jurisprudence'],
-    statute_section: [
-      'elements',
-      'penalties',
-      'defenses',
-      'prescriptive_period',
-      'prescriptive_period.value',
-      'prescriptive_period.unit',
-      'standard_of_proof',
-      'related_sections',
-      'legal_bases',
-    ],
-    city_ordinance_section: ['elements', 'penalties', 'defenses', 'related_sections', 'legal_bases'],
-    rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'related_sections'],
-    agency_circular: ['circular_no', 'section_no', 'applicability', 'legal_bases', 'supersedes'],
-    doj_issuance: ['issuance_no', 'applicability', 'legal_bases', 'supersedes'],
-    executive_issuance: ['instrument_no', 'applicability', 'legal_bases', 'supersedes'],
-    pnp_sop: ['steps_brief', 'forms_required', 'failure_states', 'legal_bases'],
-    traffic_rule: [
-      'violation_code',
-      'violation_name',
-      'fine_schedule',
-      'license_action',
-      'apprehension_flow',
-      'lead_agency',
-      'police_role',
-      'legal_bases',
-    ],
-    incident_checklist: ['incident', 'phases', 'forms', 'handoff', 'rights_callouts'],
-    rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
-  };
 
   const fieldsForStep = React.useMemo(() => {
     if (!type) return [] as string[];
-    const base = FIELDS_BY_TYPE[type as keyof typeof FIELDS_BY_TYPE] || [];
+    const base = FIELDS_BY_TYPE_STATIC[type as keyof typeof FIELDS_BY_TYPE_STATIC] || [];
     // Always include relations (allows adding more later)
     const withRelations = new Set([...base, 'legal_bases', 'related_sections']);
     return Array.from(withRelations);
@@ -92,7 +87,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: 
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, JSON.stringify(errors), fieldsForStep.join('|'), trigger]);
+  }, [type, errors, fieldsForStep.join('|'), trigger]);
 
   const errorItems = React.useMemo(() => {
     return fieldsForStep
@@ -138,8 +133,21 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: 
           {/* Relations Block */}
           <div className="space-y-4">
             <div>
-              <h3 className="kb-form-section-title kb-title-compact">Relations</h3>
-              <p className="kb-form-helper" style={{ marginTop: '2px', marginBottom: '10px' }}>Link this entry to other legal sources and references.</p>
+              <div className="flex items-center justify-between">
+                <h3 className="kb-form-section-title kb-title-compact">Relations</h3>
+                {relationsRequired ? (
+                  <span className="text-xs rounded-md px-2 py-1 bg-red-100 text-red-700">Required for Rights Advisory</span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Optional (helps citations & navigation)</span>
+                )}
+              </div>
+              {relationsInvalid && (
+                <div className="mt-2 text-sm text-red-600">Add at least one Legal Basis (internal or external) for Rights Advisory entries.</div>
+              )}
+              {!relationsRequired && legalBases.length === 0 && (
+                <div className="mt-2 text-xs text-muted-foreground">Tip: Link a parent statute/ROC/constitutional provision to improve Villy’s citations.</div>
+              )}
+              <p className="kb-form-helper" style={{ marginTop: '6px', marginBottom: '10px' }}>Link this entry to other legal sources and references.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
@@ -167,8 +175,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: 
         </div>
       )}
 
-      {/* Validation Alert */}
-      {/* Suppress noisy error list; rely on field-level messages */}
+      {/* Validation summary removed per request; rely on field-level errors and disabled Next */}
 
       {/* Action Bar - copy of Step 3 styles */}
       <div className="kb-action-bar">
@@ -178,10 +185,17 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft }: 
         </div>
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={onSaveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
-          <Button type="button" onClick={onNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
+          {(() => {
+            const canProceedBase = isValid;
+            const canProceedRelations = !relationsRequired || (relationsRequired && legalBases.length >= 1);
+            const canProceed = canProceedBase && canProceedRelations && isStepValid;
+            return (
+              <Button type="button" disabled={!canProceed} onClick={onNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed">
             Next
             <ChevronRight className="h-4 w-4" />
           </Button>
+            );
+          })()}
         </div>
       </div>
     </div>

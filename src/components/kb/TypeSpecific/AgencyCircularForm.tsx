@@ -17,15 +17,15 @@ export function AgencyCircularForm({ control }: AgencyCircularFormProps) {
         name="circular_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Circular Number</FormLabel>
+            <FormLabel className="kb-form-label">Circular Number <span className="text-red-600">*</span></FormLabel>
             <FormControl>
               <Input
                 {...field}
                 placeholder="e.g., MC 2023-001"
-                className="h-11 px-4 text-base rounded-xl"
+                className="h-11 pl-6 pr-4 text-base rounded-xl"
               />
             </FormControl>
-            <FormDescription>e.g., MC 2023-001</FormDescription>
+            {/* Required helper removed per spec */}
             <FormMessage />
           </FormItem>
         )}
@@ -36,12 +36,12 @@ export function AgencyCircularForm({ control }: AgencyCircularFormProps) {
         name="section_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Section Number</FormLabel>
+            <FormLabel className="kb-form-label">Section Number</FormLabel>
             <FormControl>
               <Input
                 {...field}
                 placeholder="section number if applicable"
-                className="h-11 px-4 text-base rounded-xl"
+                className="h-11 pl-6 pr-4 text-base rounded-xl"
               />
             </FormControl>
             <FormDescription>section number if applicable</FormDescription>
