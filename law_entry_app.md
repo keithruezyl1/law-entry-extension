@@ -24,6 +24,7 @@ The **Civilify Law Entry App** is a React-based web application designed as the 
 - **Tailwind CSS 4.1.12** - Styling
 - **Radix UI** - Accessible components
 - **Lucide React** - Icons
+- **Docker** - Containerization for PostgreSQL with pgvector
 
 ## Core Features
 
@@ -92,6 +93,47 @@ cd law-entry-app
 npm install
 npm start
 ```
+
+### Docker Setup (Optional - for Database Integration)
+
+The app includes Docker configuration for PostgreSQL with pgvector extension, which can be used for backend integration.
+
+#### Prerequisites for Docker
+- Docker and Docker Compose installed on your system
+
+#### Quick Start with Docker
+```bash
+# Start PostgreSQL with pgvector
+docker-compose up -d
+
+# The database will be available at:
+# Host: localhost
+# Port: 5432
+# Database: law_entry_db
+# Username: postgres
+# Password: postgres
+```
+
+#### Docker Commands
+```bash
+# Start the database
+docker-compose up -d
+
+# Stop the database
+docker-compose down
+
+# View logs
+docker-compose logs postgres
+
+# Connect to database
+docker exec -it law_entry_postgres psql -U postgres -d law_entry_db
+
+# Remove everything (including data)
+docker-compose down -v
+```
+
+#### pgvector Extension
+The PostgreSQL database includes the pgvector extension for vector operations, which is useful for semantic search capabilities in the law entry application.
 
 ### First Time Setup
 1. Open the app at `http://localhost:3000` - you'll see the login page
@@ -545,10 +587,40 @@ const validateEntry = async (entryData) => {
 - Set correct visibility settings for team access
 - Include in offline packs for field use
 
+## Docker Configuration
+
+The app includes Docker configuration for easy database setup and deployment.
+
+### Docker Files
+- **`Dockerfile`** - Defines the PostgreSQL with pgvector image
+- **`docker-compose.yml`** - Orchestrates the database service
+- **`.dockerignore`** - Excludes unnecessary files from build context
+- **`README.md`** - Docker-specific documentation and commands
+
+### Database Configuration
+- **Base Image**: `ankane/pgvector:latest`
+- **Database**: `law_entry_db`
+- **Username**: `postgres`
+- **Password**: `postgres`
+- **Port**: `5432`
+- **Extensions**: pgvector (for vector operations)
+
+### Data Persistence
+- Database data is stored in a Docker volume named `postgres_data`
+- Data persists between container restarts
+- Volume can be backed up or migrated as needed
+
+### Security Considerations
+- Default credentials are for development use only
+- Change passwords for production environments
+- Consider additional security measures for production deployment
+
 ## Conclusion
 
 The Civilify Law Entry App provides a comprehensive, user-friendly interface for managing legal knowledge base entries. Its dynamic form system adapts to different legal document types, while robust validation and auto-save features ensure data quality and user experience.
 
 The app is designed to scale from local storage to full API integration, making it suitable for both development and production environments. The modular component architecture makes it easy to maintain and extend.
+
+The included Docker configuration provides an easy way to set up a PostgreSQL database with pgvector extension for backend integration, enabling semantic search capabilities and scalable data storage.
 
 For questions or support, please refer to the development team or consult the inline code documentation.
