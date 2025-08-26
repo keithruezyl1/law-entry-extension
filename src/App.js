@@ -438,13 +438,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       <header className="App-header" style={{ 
         background: `linear-gradient(135deg, rgba(255, 140, 66, ${headerOpacity}) 0%, rgba(255, 107, 53, ${headerOpacity}) 100%)`
       }}>
-        <div></div> {/* Empty div for flex spacing */}
-        <div className="header-content">
+        <div className="header-left">
           <h1>Civilify Law Entry</h1>
-          <div className="header-stats">
-            <span>{stats.totalEntries} entries</span>
-            <span>{stats.offlinePackEntries} in offline pack</span>
-          </div>
+          <span className="header-entries-count">{stats.totalEntries} entries</span>
         </div>
         <button onClick={handleGoBack} className="logout-btn">
           Logout

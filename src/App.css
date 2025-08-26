@@ -216,6 +216,27 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-left h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 300;
+}
+
+.header-entries-count {
+  background: rgba(255,255,255,0.1);
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
 .header-content {
   flex: 1;
   text-align: center;
