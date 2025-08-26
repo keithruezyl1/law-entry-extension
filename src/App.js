@@ -8,6 +8,7 @@ import EntryList from './components/EntryList/EntryList';
 import EntryView from './components/EntryView/EntryView';
 import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
+import { upsertEntry } from './services/vectorApi';
 
 function App() {
   return (
@@ -100,7 +101,7 @@ function AppContent() {
     setCurrentView('view');
   };
 
-  const handleSaveEntry = (entryData) => {
+  const handleSaveEntry = async (entryData) => {
     try {
       if (editingEntry) {
         updateEntry(editingEntry.id, entryData);
@@ -116,6 +117,30 @@ function AppContent() {
         const newEntry = addEntry(entryData);
         console.log('New entry created and saved to localStorage:', newEntry);
         console.log('Total entries in localStorage:', entries.length + 1);
+        // Fire-and-forget vector upsert (no hard failure for UX)
+        try {
+          if (!entryData.entry_id) {
+            console.warn('Skipping vector upsert: missing entry_id. Ensure Law Family/Section are set to generate ID.');
+          } else {
+            const payload = {
+              entry_id: entryData.entry_id,
+              type: entryData.type,
+              title: entryData.title,
+              canonical_citation: entryData.canonical_citation,
+              summary: entryData.summary,
+              text: entryData.text,
+              tags: entryData.tags,
+              jurisdiction: entryData.jurisdiction,
+              law_family: entryData.law_family,
+            };
+            const resp = await upsertEntry(payload);
+            if (!resp.success) {
+              console.warn('Vector upsert failed:', resp.error);
+            }
+          }
+        } catch (e) {
+          console.warn('Vector upsert error:', e);
+        }
         alert(`Entry "${entryData.title}" has been successfully saved to localStorage!`);
       }
       setCurrentView('list');

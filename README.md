@@ -2,6 +2,36 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## KB Vector Server + Firebase Integration (New)
+
+This app now supports saving entries to a vector index backed by PostgreSQL (pgvector) and exposing the data via Firebase Data Connect for use in your chatbot with Firebase Genkit + GPT‑4o.
+
+### Quick Start
+
+1) Backend
+
+- cd `server` and run `npm i`
+- Create `.env` from `env.example`
+- Create a Postgres database and install `pgvector`
+- Run SQL in `server/sql/001_init.sql` and `server/sql/002_match_fn.sql`
+- Start: `npm run dev` (defaults to port 4000)
+
+2) Frontend
+
+- Set `REACT_APP_VECTOR_API_URL` if your backend is not on `http://localhost:4000`
+- On entry save, the app will `POST /api/kb/entries` to upsert an embedding
+
+3) Firebase Data Connect (FDC)
+
+- Expose the `kb_entries` table and `match_kb_entries` function in your FDC GraphQL schema
+- Use FDC from your chatbot to fetch semantically‑matched entries
+
+4) Firebase Genkit + GPT‑4o (Chatbot)
+
+- Use Genkit with the OpenAI provider (model `gpt-4o`) to generate answers
+- Generate embeddings for user queries with the same model used to index entries
+- Retrieve top matches from FDC and ground your Genkit prompt with those snippets
+
 ## Available Scripts
 
 In the project directory, you can run:
