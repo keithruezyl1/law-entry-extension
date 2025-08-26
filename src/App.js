@@ -106,19 +106,28 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   // Handle initial entry loading for view/edit
   useEffect(() => {
-    if (initialEntryId && (currentView === 'view' || isEditing)) {
+    if (initialEntryId && (currentView === 'view' || isEditing) && !loading) {
+      console.log('Looking for entry with ID:', initialEntryId);
+      console.log('Current entries:', entries);
+      console.log('Entries length:', entries.length);
+      console.log('Loading state:', loading);
+      
       const entry = getEntryById(initialEntryId);
+      console.log('Found entry:', entry);
+      
       if (entry) {
         if (isEditing) {
+          console.log('Setting editing entry:', entry);
           setEditingEntry(entry);
         }
         setSelectedEntryId(initialEntryId);
       } else {
         // Entry not found, redirect to dashboard
+        console.log('Entry not found, redirecting to dashboard');
         navigate('/dashboard');
       }
     }
-  }, [initialEntryId, currentView, isEditing, getEntryById, navigate]);
+  }, [initialEntryId, currentView, isEditing, getEntryById, navigate, entries, loading]);
 
   const stats = getStorageStats();
   const teamProgress = getAllTeamProgress();
@@ -229,6 +238,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleEditEntry = (entryId) => {
+    console.log('handleEditEntry called with entryId:', entryId);
+    console.log('Entry type:', typeof entryId);
     navigate(`/entry/${entryId}/edit`);
   };
 
@@ -613,12 +624,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         )}
 
         {currentView === 'form' && (
-          <EntryForm
-            entry={editingEntry}
-            existingEntries={entries}
-            onSave={handleSaveEntry}
-            onCancel={handleBackToList}
-          />
+          <>
+            {console.log('Rendering EntryForm with editingEntry:', editingEntry)}
+            <EntryForm
+              entry={editingEntry}
+              existingEntries={entries}
+              onSave={handleSaveEntry}
+              onCancel={handleBackToList}
+            />
+          </>
         )}
 
         {currentView === 'view' && selectedEntryId && (

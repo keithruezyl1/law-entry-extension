@@ -288,6 +288,11 @@ const stepListBase: Step[] = [
 export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel }: EntryFormProps) {
   console.log('EntryForm received entry prop:', entry);
   console.log('EntryForm is editing:', !!entry);
+  console.log('EntryForm entry prop:', entry);
+  console.log('EntryForm entry visibility:', entry?.visibility);
+  console.log('EntryForm entry source_urls:', entry?.source_urls);
+  console.log('EntryForm entry tags:', entry?.tags);
+  console.log('EntryForm entry summary:', entry?.summary);
   
   const navigate = useNavigate();
   const { step } = useParams();
@@ -297,56 +302,56 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     resolver: zodResolver(EntrySchema as any),
     defaultValues: {
       type: 'statute_section',
-      entry_id: entry?.entry_id || '',
-      title: entry?.title || '',
-      jurisdiction: (entry?.jurisdiction as any) || 'PH',
-      law_family: entry?.law_family || '',
-      section_id: entry?.section_id || '',
-      canonical_citation: entry?.canonical_citation || '',
-      status: (entry?.status as any) || 'active',
-      effective_date: entry?.effective_date || new Date().toISOString().slice(0, 10),
-      amendment_date: (entry?.amendment_date as any) || null,
-      summary: entry?.summary || '',
-      text: entry?.text || '',
-      source_urls: entry?.source_urls || [],
-      tags: entry?.tags || [],
-      last_reviewed: entry?.last_reviewed || new Date().toISOString().slice(0, 10),
-      visibility: entry?.visibility ? { gli: (entry as any).visibility.gli, cpa: (entry as any).visibility.cpa } : { gli: true, cpa: false },
+      entry_id: '',
+      title: '',
+      jurisdiction: 'PH',
+      law_family: '',
+      section_id: '',
+      canonical_citation: '',
+      status: 'active',
+      effective_date: new Date().toISOString().slice(0, 10),
+      amendment_date: null,
+      summary: '',
+      text: '',
+      source_urls: [],
+      tags: [],
+      last_reviewed: new Date().toISOString().slice(0, 10),
+      visibility: { gli: true, cpa: false },
       // Type-specific fields initialization
-      elements: (entry as any)?.elements || [],
-      penalties: (entry as any)?.penalties || [],
-      defenses: (entry as any)?.defenses || [],
-      prescriptive_period: (entry as any)?.prescriptive_period || null,
-      standard_of_proof: (entry as any)?.standard_of_proof || '',
-      rule_no: (entry as any)?.rule_no || '',
-      section_no: (entry as any)?.section_no || '',
-      triggers: (entry as any)?.triggers || [],
-      time_limits: (entry as any)?.time_limits || [],
-      required_forms: (entry as any)?.required_forms || [],
-      circular_no: (entry as any)?.circular_no || '',
-      applicability: (entry as any)?.applicability || [],
-      issuance_no: (entry as any)?.issuance_no || '',
-      instrument_no: (entry as any)?.instrument_no || '',
-      supersedes: (entry as any)?.supersedes || [],
-      steps_brief: (entry as any)?.steps_brief || [],
-      forms_required: (entry as any)?.forms_required || [],
-      failure_states: (entry as any)?.failure_states || [],
-      violation_code: (entry as any)?.violation_code || '',
-      violation_name: (entry as any)?.violation_name || '',
-      license_action: (entry as any)?.license_action || '',
-      fine_schedule: (entry as any)?.fine_schedule || [],
-      apprehension_flow: (entry as any)?.apprehension_flow || [],
-      incident: (entry as any)?.incident || '',
-      phases: (entry as any)?.phases || [],
-      forms: (entry as any)?.forms || [],
-      handoff: (entry as any)?.handoff || [],
-      rights_callouts: (entry as any)?.rights_callouts || [],
-      rights_scope: (entry as any)?.rights_scope || '',
-      advice_points: (entry as any)?.advice_points || [],
-      topics: (entry as any)?.topics || [],
-      jurisprudence: (entry as any)?.jurisprudence || [],
-      legal_bases: (entry as any)?.legal_bases || [],
-      related_sections: (entry as any)?.related_sections || [],
+      elements: [],
+      penalties: [],
+      defenses: [],
+      prescriptive_period: null,
+      standard_of_proof: '',
+      rule_no: '',
+      section_no: '',
+      triggers: [],
+      time_limits: [],
+      required_forms: [],
+      circular_no: '',
+      applicability: [],
+      issuance_no: '',
+      instrument_no: '',
+      supersedes: [],
+      steps_brief: [],
+      forms_required: [],
+      failure_states: [],
+      violation_code: '',
+      violation_name: '',
+      license_action: '',
+      fine_schedule: [],
+      apprehension_flow: [],
+      incident: '',
+      phases: [],
+      forms: [],
+      handoff: [],
+      rights_callouts: [],
+      rights_scope: '',
+      advice_points: [],
+      topics: [],
+      jurisprudence: [],
+      legal_bases: [],
+      related_sections: [],
     } as any,
     mode: 'onChange',
   });
@@ -369,9 +374,70 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
   //
 
+  // Reset form when entry prop changes (for editing mode)
   useEffect(() => {
-    // Keep for future: auto-skip only if a type truly has zero fields
-  }, []);
+    if (entry) {
+      console.log('Resetting form with entry data:', entry);
+      
+      // Create a comprehensive reset object with all fields
+      const resetData = {
+        type: entry.type || 'statute_section',
+        entry_id: entry.entry_id || '',
+        title: entry.title || '',
+        jurisdiction: entry.jurisdiction || 'PH',
+        law_family: entry.law_family || '',
+        section_id: entry.section_id || '',
+        canonical_citation: entry.canonical_citation || '',
+        status: entry.status || 'active',
+        effective_date: entry.effective_date || new Date().toISOString().slice(0, 10),
+        amendment_date: entry.amendment_date || null,
+        summary: entry.summary || '',
+        text: entry.text || '',
+        source_urls: entry.source_urls || [],
+        tags: entry.tags || [],
+        last_reviewed: entry.last_reviewed || new Date().toISOString().slice(0, 10),
+        visibility: entry.visibility || { gli: true, cpa: false },
+        // Type-specific fields
+        elements: (entry as any)?.elements || [],
+        penalties: (entry as any)?.penalties || [],
+        defenses: (entry as any)?.defenses || [],
+        prescriptive_period: (entry as any)?.prescriptive_period || null,
+        standard_of_proof: (entry as any)?.standard_of_proof || '',
+        rule_no: (entry as any)?.rule_no || '',
+        section_no: (entry as any)?.section_no || '',
+        triggers: (entry as any)?.triggers || [],
+        time_limits: (entry as any)?.time_limits || [],
+        required_forms: (entry as any)?.required_forms || [],
+        circular_no: (entry as any)?.circular_no || '',
+        applicability: (entry as any)?.applicability || [],
+        issuance_no: (entry as any)?.issuance_no || '',
+        instrument_no: (entry as any)?.instrument_no || '',
+        supersedes: (entry as any)?.supersedes || [],
+        steps_brief: (entry as any)?.steps_brief || [],
+        forms_required: (entry as any)?.forms_required || [],
+        failure_states: (entry as any)?.failure_states || [],
+        violation_code: (entry as any)?.violation_code || '',
+        violation_name: (entry as any)?.violation_name || '',
+        license_action: (entry as any)?.license_action || '',
+        fine_schedule: (entry as any)?.fine_schedule || [],
+        apprehension_flow: (entry as any)?.apprehension_flow || [],
+        incident: (entry as any)?.incident || '',
+        phases: (entry as any)?.phases || [],
+        forms: (entry as any)?.forms || [],
+        handoff: (entry as any)?.handoff || [],
+        rights_callouts: (entry as any)?.rights_callouts || [],
+        rights_scope: (entry as any)?.rights_scope || '',
+        advice_points: (entry as any)?.advice_points || [],
+        topics: (entry as any)?.topics || [],
+        jurisprudence: (entry as any)?.jurisprudence || [],
+        legal_bases: (entry as any)?.legal_bases || [],
+        related_sections: (entry as any)?.related_sections || [],
+      };
+      
+      console.log('Comprehensive reset data:', resetData);
+      methods.reset(resetData as any);
+    }
+  }, [entry, methods]);
 
   // Auto-generate entry_id based on type, law family, and section id
   useEffect(() => {
@@ -419,8 +485,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
     setCurrentStep((s) => {
       const next = Math.min(steps[steps.length - 1].id, s + 1);
-      // Update URL
-      navigate(`/law-entry/${next}`);
+      // Update URL - check if we're in edit mode
+      if (entry) {
+        // We're editing an existing entry, maintain edit URL structure
+        // Use entry_id instead of id to avoid TypeScript issues
+        const entryId = (entry as any).id || entry.entry_id;
+        navigate(`/entry/${entryId}/edit?step=${next}`);
+      } else {
+        // We're creating a new entry, use regular form URL
+        navigate(`/law-entry/${next}`);
+      }
       // Scroll after state updates on next tick
       setTimeout(scrollToCardTop, 0);
       return next;
@@ -430,8 +504,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const goPrev = () =>
     setCurrentStep((s) => {
       const prev = Math.max(1, s - 1);
-      // Update URL
-      navigate(`/law-entry/${prev}`);
+      // Update URL - check if we're in edit mode
+      if (entry) {
+        // We're editing an existing entry, maintain edit URL structure
+        // Use entry_id instead of id to avoid TypeScript issues
+        const entryId = (entry as any).id || entry.entry_id;
+        navigate(`/entry/${entryId}/edit?step=${prev}`);
+      } else {
+        // We're creating a new entry, use regular form URL
+        navigate(`/law-entry/${prev}`);
+      }
       setTimeout(scrollToCardTop, 0);
       return prev;
     });
