@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { upsertEntry, deleteEntryVector } from '../services/vectorApi';
+import { fetchAllEntriesFromDb } from '../services/kbApi';
 
 const STORAGE_KEY = 'law_entries';
 const TEAM_PROGRESS_KEY = 'team_progress';
@@ -12,7 +14,7 @@ export const useLocalStorage = () => {
   const [teamProgress, setTeamProgress] = useState({});
   const [dailyQuotas, setDailyQuotas] = useState({});
 
-  // Load entries from localStorage on mount
+  // Load entries from localStorage on mount, then refresh from DB (DB-first)
   useEffect(() => {
     try {
       const storedEntries = localStorage.getItem(STORAGE_KEY);
@@ -39,6 +41,25 @@ export const useLocalStorage = () => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Hydrate from DB after initial mount
+  useEffect(() => {
+    const refresh = async () => {
+      try {
+        const dbEntries = await fetchAllEntriesFromDb();
+        if (Array.isArray(dbEntries)) {
+          const mapped = dbEntries.map((e) => ({
+            ...e,
+            id: e.entry_id,
+          }));
+          setEntries(mapped);
+        }
+      } catch (err) {
+        console.warn('DB fetch failed; showing local entries', err);
+      }
+    };
+    refresh();
   }, []);
 
   // Save entries to localStorage whenever entries change
@@ -103,23 +124,35 @@ export const useLocalStorage = () => {
   }, [loading, dailyQuotas.lastReset]);
 
   // Add a new entry
-  const addEntry = (entry) => {
+  const addEntry = async (entry) => {
     try {
-      const newEntry = {
-        ...entry,
-        id: Date.now().toString(), // Simple ID generation
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      // Upsert to DB (embedding server)
+      if (!entry.entry_id) throw new Error('entry_id is required');
+      const payload = {
+        entry_id: entry.entry_id,
+        type: entry.type,
+        title: entry.title,
+        canonical_citation: entry.canonical_citation,
+        summary: entry.summary,
+        text: entry.text,
+        tags: entry.tags,
+        jurisdiction: entry.jurisdiction,
+        law_family: entry.law_family,
       };
-      
-      setEntries(prevEntries => [...prevEntries, newEntry]);
-      
-      // Update team progress
+      const resp = await upsertEntry(payload);
+      if (!resp?.success) throw new Error(resp?.error || 'Upsert failed');
+
+      // Refresh from DB
+      const dbEntries = await fetchAllEntriesFromDb();
+      if (Array.isArray(dbEntries)) {
+        const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
+        setEntries(mapped);
+      }
+
       if (entry.team_member_id) {
         updateTeamProgress(entry.team_member_id, entry.type);
       }
-      
-      return newEntry;
+      return payload;
     } catch (err) {
       console.error('Error adding entry:', err);
       setError('Failed to add entry');
@@ -128,19 +161,30 @@ export const useLocalStorage = () => {
   };
 
   // Update an existing entry
-  const updateEntry = (id, updates) => {
+  const updateEntry = async (id, updates) => {
     try {
-      setEntries(prevEntries => 
-        prevEntries.map(entry => 
-          entry.id === id 
-            ? { 
-                ...entry, 
-                ...updates, 
-                updated_at: new Date().toISOString() 
-              }
-            : entry
-        )
-      );
+      const existing = entries.find((e) => e.id === id);
+      if (!existing) throw new Error('Entry not found');
+      const merged = { ...existing, ...updates };
+      if (!merged.entry_id) throw new Error('entry_id is required');
+      const payload = {
+        entry_id: merged.entry_id,
+        type: merged.type,
+        title: merged.title,
+        canonical_citation: merged.canonical_citation,
+        summary: merged.summary,
+        text: merged.text,
+        tags: merged.tags,
+        jurisdiction: merged.jurisdiction,
+        law_family: merged.law_family,
+      };
+      const resp = await upsertEntry(payload);
+      if (!resp?.success) throw new Error(resp?.error || 'Upsert failed');
+      const dbEntries = await fetchAllEntriesFromDb();
+      if (Array.isArray(dbEntries)) {
+        const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
+        setEntries(mapped);
+      }
     } catch (err) {
       console.error('Error updating entry:', err);
       setError('Failed to update entry');
@@ -149,12 +193,16 @@ export const useLocalStorage = () => {
   };
 
   // Delete an entry
-  const deleteEntry = (id) => {
+  const deleteEntry = async (id) => {
     try {
       const entryToDelete = entries.find(entry => entry.id === id);
-      setEntries(prevEntries => prevEntries.filter(entry => entry.id !== id));
-      
-      // Update team progress (decrement)
+      if (!entryToDelete || !entryToDelete.entry_id) throw new Error('Entry not found');
+      await deleteEntryVector(entryToDelete.entry_id);
+      const dbEntries = await fetchAllEntriesFromDb();
+      if (Array.isArray(dbEntries)) {
+        const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
+        setEntries(mapped);
+      }
       if (entryToDelete && entryToDelete.team_member_id) {
         decrementTeamProgress(entryToDelete.team_member_id, entryToDelete.type);
       }
@@ -257,17 +305,56 @@ export const useLocalStorage = () => {
   };
 
   // Import entries
-  const importEntries = (jsonData) => {
+  const importEntries = async (jsonData) => {
     try {
-      const importedEntries = JSON.parse(jsonData);
-      if (Array.isArray(importedEntries)) {
-        setEntries(prevEntries => [...prevEntries, ...importedEntries]);
-        return importedEntries.length;
+      const parsed = JSON.parse(jsonData);
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+      if (!list || list.length === 0) return 0;
+      // Fetch existing entry_ids to avoid overwriting
+      const existing = await fetchAllEntriesFromDb();
+      const existingIds = new Set((existing || []).map((e) => e.entry_id));
+      // Only add entries that do not yet exist in DB
+      const toAdd = list.filter((e) => e && e.entry_id && !existingIds.has(e.entry_id));
+      if (toAdd.length === 0) {
+        // Nothing to add; refresh UI and exit
+        const dbEntries = await fetchAllEntriesFromDb();
+        if (Array.isArray(dbEntries)) {
+          const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
+          setEntries(mapped);
+        }
+        return 0;
       }
-      throw new Error('Invalid data format');
+      const upserts = toAdd.map((entry) => {
+        try {
+          if (!entry || !entry.entry_id) return Promise.resolve({ success: false, error: 'missing entry_id' });
+          const payload = {
+            entry_id: entry.entry_id,
+            type: entry.type,
+            title: entry.title,
+            canonical_citation: entry.canonical_citation,
+            summary: entry.summary,
+            text: entry.text,
+            tags: entry.tags,
+            jurisdiction: entry.jurisdiction,
+            law_family: entry.law_family,
+          };
+          return upsertEntry(payload);
+        } catch (e) {
+          return Promise.resolve({ success: false, error: String(e?.message || e) });
+        }
+      });
+      const results = await Promise.allSettled(upserts);
+      const successCount = results.reduce((n, r) => n + ((r.status === 'fulfilled' && r.value?.success) ? 1 : 0), 0);
+      // Refresh from DB after import
+      const dbEntries = await fetchAllEntriesFromDb();
+      if (Array.isArray(dbEntries)) {
+        const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
+        setEntries(mapped);
+      }
+      return successCount;
     } catch (err) {
       console.error('Error importing entries:', err);
-      throw new Error('Failed to parse imported data');
+      throw new Error('Failed to import entries');
     }
   };
 

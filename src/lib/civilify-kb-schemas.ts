@@ -52,19 +52,19 @@ export const IncidentPhase = z.object({ name: z.string().min(1), steps: z.array(
 export const BaseEntry = z.object({
   type: TypeEnum,
   entry_id: z.string().min(1),
-  title: z.string().min(3),
-  jurisdiction: Jurisdiction,
-  law_family: z.string().min(1),
+  title: z.string().min(1),
+  jurisdiction: Jurisdiction.optional(),
+  law_family: z.string().optional(),
   section_id: z.string().optional(),
-  canonical_citation: z.string().min(1),
-  status: StatusEnum,
-  effective_date: IsoDate,
+  canonical_citation: z.string().optional(),
+  status: StatusEnum.optional(),
+  effective_date: IsoDate.optional(),
   amendment_date: IsoDate.nullable().optional(),
-  summary: z.string().min(1),
-  text: z.string().min(1, "Paste the normalized legal text"),
-  source_urls: z.array(Url).min(1, "Provide at least one official/public source"),
+  summary: z.string().optional(),
+  text: z.string().optional(),
+  source_urls: z.array(Url).default([]),
   tags: z.array(z.string()).default([]),
-  last_reviewed: IsoDate,
+  last_reviewed: IsoDate.optional(),
   visibility: z.object({ gli: z.boolean().default(true), cpa: z.boolean().default(false) }),
 });
 
@@ -81,10 +81,10 @@ export const StatuteSection = BaseEntry.extend({
 });
 export const CityOrdinanceSection = BaseEntry.extend({ type: z.literal("city_ordinance_section"), elements: z.array(z.string()).default([]), penalties: z.array(z.string()).default([]), defenses: z.array(z.string()).default([]).optional(), related_sections: z.array(EntryRef).default([]), legal_bases: z.array(LegalBasis).default([]) });
 export const RuleOfCourt = BaseEntry.extend({ type: z.literal("rule_of_court"), rule_no: z.string().min(1), section_no: z.string().min(1), triggers: z.array(z.string()).default([]), time_limits: z.array(z.string()).default([]), required_forms: z.array(z.string()).default([]).optional(), related_sections: z.array(EntryRef).default([]) });
-export const AgencyCircular = BaseEntry.extend({ type: z.literal("agency_circular"), circular_no: z.string().min(1), section_no: z.string().optional(), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
-export const DojIssuance = BaseEntry.extend({ type: z.literal("doj_issuance"), issuance_no: z.string().min(1), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
-export const ExecutiveIssuance = BaseEntry.extend({ type: z.literal("executive_issuance"), instrument_no: z.string().min(1), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
-export const RightsAdvisory = BaseEntry.extend({ type: z.literal("rights_advisory"), rights_scope: z.enum(["arrest", "search", "detention", "minors", "GBV", "counsel", "privacy"]), advice_points: z.array(z.string()).min(1, "Add at least one advice point"), legal_bases: z.array(LegalBasis).min(1, "Add at least one legal basis"), related_sections: z.array(EntryRef).default([]) });
+export const AgencyCircular = BaseEntry.extend({ type: z.literal("agency_circular"), circular_no: z.string().optional(), section_no: z.string().optional(), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
+export const DojIssuance = BaseEntry.extend({ type: z.literal("doj_issuance"), issuance_no: z.string().optional(), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
+export const ExecutiveIssuance = BaseEntry.extend({ type: z.literal("executive_issuance"), instrument_no: z.string().optional(), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
+export const RightsAdvisory = BaseEntry.extend({ type: z.literal("rights_advisory"), rights_scope: z.enum(["arrest", "search", "detention", "minors", "GBV", "counsel", "privacy"]).optional(), advice_points: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), related_sections: z.array(EntryRef).default([]) });
 
 export const EntrySchema = z.discriminatedUnion("type", [ConstitutionProvision, StatuteSection, CityOrdinanceSection, RuleOfCourt, AgencyCircular, DojIssuance, ExecutiveIssuance, RightsAdvisory]);
 export type Entry = z.infer<typeof EntrySchema>;
