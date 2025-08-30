@@ -16,7 +16,8 @@ import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
 import { generateEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
-import { semanticSearch } from '../../services/vectorApi';
+import { semanticSearch, checkDuplicates } from '../../services/vectorApi';
+import { DuplicateModal } from './DuplicateModal';
 
 type EntryFormProps = {
   entry?: Partial<Entry> | null;
@@ -264,6 +265,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
   const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState<boolean>(false);
+  const [duplicateEntries, setDuplicateEntries] = useState<any[]>([]);
+  const [duplicateModalTitle, setDuplicateModalTitle] = useState<string>('Duplicates Found');
+  const [duplicateModalSubtitle, setDuplicateModalSubtitle] = useState<string>('');
+  const [duplicateModalButtonText, setDuplicateModalButtonText] = useState<string>('I understand');
 
   //
 
@@ -445,7 +451,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     return () => clearInterval(interval);
   }, [getValues, entry]);
 
-  const onSubmit = (data: Entry) => {
+  const onSubmit = async (data: Entry) => {
     console.log('Form data being submitted:', data);
     console.log('Form data type:', typeof data);
     console.log('Form data keys:', Object.keys(data));
@@ -495,6 +501,29 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       alert(errs.join('\n'));
       return;
     }
+
+    // Check for duplicates before saving
+    try {
+      const duplicateResult = await checkDuplicates({
+        title: sanitized.title,
+        canonical_citation: sanitized.canonical_citation,
+        entry_id: sanitized.entry_id,
+        similarity_threshold: 0.8
+      });
+
+      if (duplicateResult.success && duplicateResult.duplicates && duplicateResult.duplicates.length > 0) {
+        // Show duplicate modal
+        setDuplicateEntries(duplicateResult.duplicates);
+        setDuplicateModalTitle('Duplicates Found');
+        setDuplicateModalSubtitle('These entries already exist:');
+        setDuplicateModalButtonText('Okay');
+        setDuplicateModalOpen(true);
+        return; // Don't save if duplicates found
+      }
+    } catch (error) {
+      console.error('Error checking duplicates:', error);
+      // Continue with save even if duplicate check fails
+    }
     
     // Clear draft
     try {
@@ -529,6 +558,36 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
+  }, [title, citation]);
+
+  // Check for duplicates when title or citation changes
+  useEffect(() => {
+    const checkForDuplicates = async () => {
+      if (!title && !citation) return;
+      
+      try {
+        const result = await checkDuplicates({
+          title: title || undefined,
+          canonical_citation: citation || undefined,
+          similarity_threshold: 0.8
+        });
+        
+        if (result.success && result.duplicates && result.duplicates.length > 0) {
+          // Show notification for duplicates found during typing
+          setDuplicateEntries(result.duplicates);
+          setDuplicateModalTitle('Similar Entries Found');
+          setDuplicateModalSubtitle('These entries are similar to what you\'re typing:');
+          setDuplicateModalButtonText('I understand');
+          setDuplicateModalOpen(true);
+        }
+      } catch (error) {
+        console.error('Error checking duplicates:', error);
+      }
+    };
+
+    // Debounce duplicate checking
+    const timeoutId = setTimeout(checkForDuplicates, 1000);
+    return () => clearTimeout(timeoutId);
   }, [title, citation]);
 
   // (Relations helper components were removed; using dedicated picker in Step 4)
@@ -918,6 +977,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <button className="modal-button cancel" onClick={() => setShowCancelConfirm(false)}>No, stay here</button>
           </div>
         </Modal>
+        
+        {/* Duplicate Modal */}
+        <DuplicateModal
+          isOpen={duplicateModalOpen}
+          onClose={() => setDuplicateModalOpen(false)}
+          duplicates={duplicateEntries}
+          title={duplicateModalTitle}
+          subtitle={duplicateModalSubtitle}
+          buttonText={duplicateModalButtonText}
+          showSimilarity={true}
+        />
       </div>
     </FormProvider>
   );

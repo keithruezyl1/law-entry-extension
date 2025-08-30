@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node src/index.js"
+    "dev": "node src/index.js",
+    "build": "echo 'No build step required'",
+    "postinstall": "node src/setup-db.js"
   },
   "dependencies": {
     "body-parser": "^1.20.2",
@@ -15,6 +17,9 @@
     "openai": "^4.58.1",
     "pg": "^8.11.3",
     "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
 

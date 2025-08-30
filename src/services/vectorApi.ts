@@ -64,5 +64,45 @@ export async function clearEntriesVector(dateISO?: string): Promise<{ success: b
   }
 }
 
+export async function checkDuplicates(payload: {
+  title?: string;
+  canonical_citation?: string;
+  entry_id?: string;
+  similarity_threshold?: number;
+}): Promise<{ success: boolean; duplicates?: any[]; count?: number; error?: string }> {
+  try {
+    const resp = await fetch(`${BASE_URL}/check-duplicates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json();
+    return json;
+  } catch (e: any) {
+    return { success: false, error: String(e?.message || e) };
+  }
+}
+
+export async function checkBulkDuplicates(payload: {
+  entries: Array<{
+    title?: string;
+    canonical_citation?: string;
+    entry_id?: string;
+  }>;
+  similarity_threshold?: number;
+}): Promise<{ success: boolean; duplicates?: any[]; duplicateMap?: any; count?: number; error?: string }> {
+  try {
+    const resp = await fetch(`${BASE_URL}/check-bulk-duplicates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json();
+    return json;
+  } catch (e: any) {
+    return { success: false, error: String(e?.message || e) };
+  }
+}
+
 
 

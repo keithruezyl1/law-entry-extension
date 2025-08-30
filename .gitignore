@@ -17,6 +17,11 @@
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+
+# deployment
+.vercel
+render.yaml
 
 npm-debug.log*
 yarn-debug.log*
