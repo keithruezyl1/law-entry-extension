@@ -104,3 +104,4 @@ The duplicate detection uses:
 - **Similarity threshold**: Default 0.8 (80% similarity)
 - **Debounce timing**: 1 second for real-time detection
 - **Search limits**: 10 results for individual checks, 5 for bulk checks
+

@@ -7,7 +7,7 @@
     "start": "node src/index.js",
     "dev": "node src/index.js",
     "build": "echo 'No build step required'",
-    "postinstall": "node src/setup-db.js"
+    "setup-db": "node src/setup-db.js"
   },
   "dependencies": {
     "body-parser": "^1.20.2",

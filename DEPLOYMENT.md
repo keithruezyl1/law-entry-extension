@@ -174,3 +174,4 @@ After both deployments are complete:
 2. **CORS**: Restrict to specific domains in production
 3. **Database**: Use strong passwords and SSL connections
 4. **API Keys**: Rotate OpenAI API keys regularly
+

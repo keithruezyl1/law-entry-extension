@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { upsertEntry, deleteEntryVector, checkBulkDuplicates } from '../services/vectorApi';
+import { upsertEntry, deleteEntryVector } from '../services/vectorApi';
 import { fetchAllEntriesFromDb } from '../services/kbApi';
 
 const STORAGE_KEY = 'law_entries';
@@ -310,31 +310,11 @@ export const useLocalStorage = () => {
       const parsed = JSON.parse(jsonData);
       const list = Array.isArray(parsed) ? parsed : [parsed];
       if (!list || list.length === 0) return 0;
-      
-      // Check for duplicates before importing
-      const duplicateCheckPayload = {
-        entries: list.map(entry => ({
-          title: entry.title,
-          canonical_citation: entry.canonical_citation,
-          entry_id: entry.entry_id
-        })),
-        similarity_threshold: 0.8
-      };
-      
-      const duplicateResult = await checkBulkDuplicates(duplicateCheckPayload);
-      let duplicates = [];
-      let duplicateMap = {};
-      
-      if (duplicateResult.success && duplicateResult.duplicates) {
-        duplicates = duplicateResult.duplicates;
-        duplicateMap = duplicateResult.duplicateMap || {};
-      }
-      
-      // Filter out entries that have exact ID matches (these won't be imported anyway)
+      // Fetch existing entry_ids to avoid overwriting
       const existing = await fetchAllEntriesFromDb();
       const existingIds = new Set((existing || []).map((e) => e.entry_id));
+      // Only add entries that do not yet exist in DB
       const toAdd = list.filter((e) => e && e.entry_id && !existingIds.has(e.entry_id));
-      
       if (toAdd.length === 0) {
         // Nothing to add; refresh UI and exit
         const dbEntries = await fetchAllEntriesFromDb();
@@ -344,7 +324,6 @@ export const useLocalStorage = () => {
         }
         return 0;
       }
-      
       const upserts = toAdd.map((entry) => {
         try {
           if (!entry || !entry.entry_id) return Promise.resolve({ success: false, error: 'missing entry_id' });
@@ -366,16 +345,13 @@ export const useLocalStorage = () => {
       });
       const results = await Promise.allSettled(upserts);
       const successCount = results.reduce((n, r) => n + ((r.status === 'fulfilled' && r.value?.success) ? 1 : 0), 0);
-      
       // Refresh from DB after import
       const dbEntries = await fetchAllEntriesFromDb();
       if (Array.isArray(dbEntries)) {
         const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
         setEntries(mapped);
       }
-      
-      // Return success count and duplicates for the caller to handle
-      return { successCount, duplicates, duplicateMap };
+      return successCount;
     } catch (err) {
       console.error('Error importing entries:', err);
       throw new Error('Failed to import entries');

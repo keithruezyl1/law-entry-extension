@@ -15,7 +15,6 @@ import { getDay1Date, setDay1Date } from './lib/plan/progressStore';
 import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
 import { fetchAllEntriesFromDb } from './services/kbApi';
 import ChatModal from './components/kb/ChatModal';
-import { DuplicateModal } from './components/kb/DuplicateModal';
 
 function App() {
   return (
@@ -85,11 +84,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   });
   const [day1Date, setDay1DateState] = useState(getDay1Date());
   const [showChat, setShowChat] = useState(false);
-  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
-  const [duplicateEntries, setDuplicateEntries] = useState([]);
-  const [duplicateModalTitle, setDuplicateModalTitle] = useState('Duplicates Found');
-  const [duplicateModalSubtitle, setDuplicateModalSubtitle] = useState('');
-  const [duplicateModalButtonText, setDuplicateModalButtonText] = useState('I understand');
 
   const hasPlan = (() => {
     const d1 = day1Date || getDay1Date();
@@ -428,25 +422,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     }
   };
 
-  const handleImport = async (event) => {
+  const handleImport = (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = async (e) => {
+      reader.onload = (e) => {
         try {
-          const result = await importEntries(e.target.result);
-          const { successCount, duplicates } = result;
-          
-          if (duplicates && duplicates.length > 0) {
-            // Show duplicate modal
-            setDuplicateEntries(duplicates);
-            setDuplicateModalTitle('Duplicates Found');
-            setDuplicateModalSubtitle('These entries already exist:');
-            setDuplicateModalButtonText('I understand');
-            setDuplicateModalOpen(true);
-          }
-          
-          alert(`Successfully imported ${successCount} entries.`);
+          const importedCount = importEntries(e.target.result);
+          alert(`Successfully imported ${importedCount} entries.`);
         } catch (err) {
           console.error('Error importing entries:', err);
           alert('Failed to import entries. Please check the file format.');
@@ -911,17 +894,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
       {/* Chat Modal (RAG) */}
       <ChatModal isOpen={showChat} onClose={() => setShowChat(false)} />
-      
-      {/* Duplicate Modal */}
-      <DuplicateModal
-        isOpen={duplicateModalOpen}
-        onClose={() => setDuplicateModalOpen(false)}
-        duplicates={duplicateEntries}
-        title={duplicateModalTitle}
-        subtitle={duplicateModalSubtitle}
-        buttonText={duplicateModalButtonText}
-        showSimilarity={true}
-      />
     </div>
   );
 }
