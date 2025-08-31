@@ -1,13 +1,16 @@
 import React from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
+import { useAuth } from '../../../contexts/AuthContext';
 import { Input } from '../../ui/Input';
 import { Label } from '../../ui/Label';
 import { Select } from '../../ui/Select';
 import { generateEntryId } from '../../../lib/kb/entryId';
 import { getKbConfig } from '../../../lib/kb/parseKbRules';
+import { EntryTypeValidator } from '../EntryTypeValidator';
 
 export function StepBasics() {
   const { register, setValue, formState: { errors } } = useFormContext();
+  const { user } = useAuth();
   const kbConfig = getKbConfig();
   
   // Watch for changes to generate entry_id
@@ -54,27 +57,32 @@ export function StepBasics() {
           <Label htmlFor="entered_by">Entering as</Label>
           <Input
             id="entered_by"
-            placeholder="MEMBER"
+            value={user?.name || 'MEMBER'}
             className="mt-1 bg-gray-50"
             readOnly
           />
-          <p className="text-xs text-muted-foreground mt-1">Auto-filled from login; read-only. For now this shows a placeholder.</p>
+          <p className="text-xs text-muted-foreground mt-1">Auto-filled from login; read-only.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="type">Entry Type <span className="text-red-600">*</span></Label>
-            <Select
-              {...register('type')}
-              options={typeOptions}
-              className="mt-1"
-            />
-            {errors.type && (
-              <p className="text-sm text-red-600 mt-1">{String(errors.type.message)}</p>
-            )}
-          </div>
+          <EntryTypeValidator
+            selectedType={type}
+            onTypeChange={(newType) => setValue('type', newType)}
+          >
+            <div>
+              <Label htmlFor="type">Entry Type <span className="text-red-600">*</span></Label>
+              <Select
+                {...register('type')}
+                options={typeOptions}
+                className="mt-1"
+              />
+              {errors.type && (
+                <p className="text-sm text-red-600 mt-1">{String(errors.type.message)}</p>
+              )}
+            </div>
+          </EntryTypeValidator>
 
           <div>
             <Label htmlFor="title">Title <span className="text-red-600">*</span></Label>

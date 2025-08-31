@@ -1,29 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { login } from '../../services/authApi';
+import { useAuth } from '../../contexts/AuthContext';
 import './Login.css';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate authentication delay
-    setTimeout(() => {
-      // For now, accept any non-empty username/password
-      if (username.trim() && password.trim()) {
-        // In a real app, you would validate credentials here
-        // For now, just redirect to dashboard
+    try {
+      if (!username.trim() || !password.trim()) {
+        setError('Please enter both username and password');
+        return;
+      }
+
+      const response = await login(username, password);
+      
+      if (response.success) {
+        // Store token and user info using auth context
+        authLogin(response.token, response.user);
         navigate('/dashboard');
       } else {
-        alert('Please enter both username and password');
+        setError('Login failed. Please check your credentials.');
       }
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -70,8 +83,14 @@ const Login = () => {
           </button>
         </form>
         
+        {error && (
+          <div className="login-error">
+            <p>{error}</p>
+          </div>
+        )}
         <div className="login-footer">
-          <p>Demo: Enter any username and password to continue</p>
+          <p>Available users: arda, deloscientos, paden, sendrijas, tagarao</p>
+          <p>Demo: Any password will work</p>
         </div>
       </div>
     </div>

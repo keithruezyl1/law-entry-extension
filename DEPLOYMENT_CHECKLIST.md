@@ -1,98 +1,110 @@
-# Deployment Checklist
+# Deployment Checklist - Render Backend
 
-## Pre-Deployment
+## Pre-Deployment Checklist ✅
 
-- [ ] Code is pushed to GitHub repository
-- [ ] All tests pass locally
-- [ ] Environment variables are documented
-- [ ] Database schema is ready
-- [ ] OpenAI API key is obtained
+- [ ] **GitHub Repository**: Code is pushed to GitHub
+- [ ] **Render Account**: Created account at render.com
+- [ ] **OpenAI API Key**: Have your API key ready
+- [ ] **Vercel Frontend**: Frontend is already deployed
+- [ ] **Vercel URL**: Know your frontend URL (e.g., https://law-entry-app.vercel.app)
 
-## Backend Deployment (Render)
+## Render Backend Deployment Steps
 
-### Database Setup
-- [ ] Create Render account
-- [ ] Create PostgreSQL database
-- [ ] Copy database connection string
-- [ ] Verify pgvector extension is available
+### 1. Create Web Service
+- [ ] Go to https://dashboard.render.com
+- [ ] Click "New" → "Web Service"
+- [ ] Connect GitHub repository
+- [ ] Select `law-entry-app` repository
 
-### API Service Setup
-- [ ] Create Web Service in Render
-- [ ] Set root directory to `law-entry-app/server`
-- [ ] Configure build command: `npm install`
-- [ ] Configure start command: `npm start`
-- [ ] Set environment variables:
-  - [ ] `NODE_ENV=production`
-  - [ ] `PORT=10000`
-  - [ ] `CORS_ORIGIN=https://your-frontend-domain.vercel.app`
-  - [ ] `DATABASE_URL=<your-postgres-url>`
-  - [ ] `PGSSL=true`
-  - [ ] `OPENAI_API_KEY=<your-key>`
-  - [ ] `OPENAI_EMBEDDING_MODEL=text-embedding-3-large`
-- [ ] Deploy service
-- [ ] Test health endpoint: `https://your-api.onrender.com/health`
-- [ ] Copy API URL for frontend configuration
+### 2. Configure Service
+- [ ] **Name**: `law-entry-api`
+- [ ] **Root Directory**: `server`
+- [ ] **Environment**: `Node`
+- [ ] **Build Command**: `npm install`
+- [ ] **Start Command**: `npm start`
+- [ ] **Plan**: Free (or Starter)
 
-## Frontend Deployment (Vercel)
+### 3. Environment Variables
+- [ ] `NODE_ENV=production`
+- [ ] `PORT=10000`
+- [ ] `CORS_ORIGIN=https://your-vercel-domain.vercel.app`
+- [ ] `PGSSL=true`
+- [ ] `OPENAI_API_KEY=your_openai_api_key`
+- [ ] `OPENAI_EMBEDDING_MODEL=text-embedding-3-large`
+- [ ] `API_KEY=your_secure_api_key` (optional)
 
-### Project Setup
-- [ ] Create Vercel account
-- [ ] Import GitHub repository
-- [ ] Set root directory to `law-entry-app`
-- [ ] Configure framework preset: Create React App
-- [ ] Set build command: `npm run build`
-- [ ] Set output directory: `build`
+### 4. Create Database
+- [ ] Go to "Databases" in Render
+- [ ] Create new PostgreSQL database
+- [ ] **Name**: `law-entry-db`
+- [ ] **Plan**: Free (or Starter)
+- [ ] Copy connection string
+- [ ] Add `DATABASE_URL` environment variable
 
-### Environment Variables
-- [ ] Add `REACT_APP_VECTOR_API_URL=https://your-backend-url.onrender.com`
-- [ ] Deploy frontend
-- [ ] Copy frontend URL
+### 5. Deploy
+- [ ] Click "Create Web Service"
+- [ ] Wait for deployment to complete
+- [ ] Copy the service URL (e.g., `https://law-entry-api.onrender.com`)
+
+## Frontend Configuration
+
+### 6. Update Vercel
+- [ ] Go to Vercel dashboard
+- [ ] Navigate to project settings
+- [ ] Add environment variable: `REACT_APP_VECTOR_API_URL=https://your-render-service.onrender.com`
+- [ ] Redeploy frontend
+
+## Testing
+
+### 7. Test Backend
+- [ ] Visit: `https://your-service.onrender.com/health`
+- [ ] Should return: `{"ok": true}`
+
+### 8. Test Frontend
+- [ ] Visit your Vercel frontend
+- [ ] Try creating a new entry
+- [ ] Check browser console for errors
+
+### 9. Database Setup
+- [ ] In Render dashboard, open web service shell
+- [ ] Run: `npm run setup-db`
+
+## Troubleshooting
+
+### Common Issues
+- [ ] **CORS Errors**: Check `CORS_ORIGIN` matches exact Vercel URL
+- [ ] **Database Connection**: Verify `DATABASE_URL` and `PGSSL=true`
+- [ ] **API Key Issues**: Check `OPENAI_API_KEY` is set correctly
+- [ ] **Build Failures**: Check Render logs for npm install errors
 
 ## Post-Deployment
 
-### Configuration Updates
-- [ ] Update backend CORS_ORIGIN with actual frontend URL
-- [ ] Redeploy backend service
-- [ ] Test frontend-backend communication
+### 10. Monitoring
+- [ ] Set up health checks
+- [ ] Monitor logs in Render dashboard
+- [ ] Test all features work correctly
 
-### Testing
-- [ ] Test login functionality
-- [ ] Test entry creation
-- [ ] Test duplicate detection features
-- [ ] Test import/export functionality
-- [ ] Test search functionality
-- [ ] Verify database connections
-
-### Monitoring
-- [ ] Check Render service logs
-- [ ] Check Vercel deployment logs
-- [ ] Monitor database connections
-- [ ] Test API endpoints
+### 11. Security
+- [ ] Verify API keys are not exposed
+- [ ] Check CORS is properly configured
+- [ ] Test authentication if implemented
 
 ## URLs to Save
 
-- **Frontend**: `https://your-app.vercel.app`
-- **Backend**: `https://your-api.onrender.com`
-- **Database**: Internal URL from Render dashboard
+- **Backend URL**: `https://your-service.onrender.com`
+- **Frontend URL**: `https://your-vercel-domain.vercel.app`
+- **Render Dashboard**: https://dashboard.render.com
+- **Vercel Dashboard**: https://vercel.com/dashboard
 
-## Troubleshooting Commands
+## Cost Tracking
 
-```bash
-# Check backend health
-curl https://your-api.onrender.com/health
+- **Free Tier**: 750 hours/month
+- **Starter Plan**: $7/month (unlimited)
+- **Database**: Free tier available
 
-# Test database connection (from backend logs)
-# Look for "Connected to database" and "Database setup completed"
+---
 
-# Check frontend build
-# Look for successful build in Vercel logs
-```
-
-## Security Checklist
-
-- [ ] Environment variables are not in Git
-- [ ] CORS is properly configured
-- [ ] Database uses SSL
-- [ ] API keys are secure
-- [ ] No sensitive data in logs
+**Status**: ⏳ Ready to deploy
+**Last Updated**: [Date]
+**Notes**: [Any issues or notes]
 

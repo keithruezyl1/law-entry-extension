@@ -1,177 +1,169 @@
-# Deployment Guide
+# Deployment Guide - Render Backend
 
-This guide covers deploying the Law Entry App to Vercel (frontend) and Render (backend).
-
-## Architecture
-
-- **Frontend**: React app deployed on Vercel
-- **Backend**: Node.js API deployed on Render
-- **Database**: PostgreSQL with pgvector extension on Render
+## Overview
+This guide will help you deploy the law-entry-app backend to Render and connect it to your Vercel frontend.
 
 ## Prerequisites
-
-1. **Vercel Account**: Sign up at [vercel.com](https://vercel.com)
-2. **Render Account**: Sign up at [render.com](https://render.com)
-3. **OpenAI API Key**: Get from [platform.openai.com](https://platform.openai.com)
-4. **GitHub Repository**: Push your code to GitHub
+- Render account (free tier available)
+- OpenAI API key
+- Your frontend already deployed on Vercel
 
 ## Step 1: Deploy Backend to Render
 
-### 1.1 Create Render Account and Connect GitHub
+### Option A: Using Render Dashboard (Recommended)
 
-1. Go to [render.com](https://render.com) and sign up
-2. Connect your GitHub account
-3. Import your repository
+1. **Go to Render Dashboard**
+   - Visit https://dashboard.render.com
+   - Sign in to your account
 
-### 1.2 Create PostgreSQL Database
+2. **Create New Web Service**
+   - Click "New" → "Web Service"
+   - Connect your GitHub repository
+   - Select the `law-entry-app` repository
 
-1. In Render dashboard, click "New +" → "PostgreSQL"
-2. Configure:
-   - **Name**: `law-entry-db`
-   - **Database**: `law_entry_db`
-   - **User**: `law_entry_user`
-   - **Plan**: Starter (Free)
-3. Click "Create Database"
-4. Copy the **Internal Database URL** (you'll need this later)
-
-### 1.3 Deploy Web Service
-
-1. In Render dashboard, click "New +" → "Web Service"
-2. Connect your GitHub repository
-3. Configure the service:
+3. **Configure the Service**
    - **Name**: `law-entry-api`
-   - **Root Directory**: `law-entry-app/server`
+   - **Root Directory**: `server`
    - **Environment**: `Node`
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
-   - **Plan**: Starter (Free)
+   - **Plan**: Free (or Starter for production)
 
-### 1.4 Configure Environment Variables
+4. **Set Environment Variables**
+   Add these environment variables in Render:
+   ```
+   NODE_ENV=production
+   PORT=10000
+   CORS_ORIGIN=https://law-entry-app.vercel.app
+   PGSSL=true
+   OPENAI_API_KEY=your_openai_api_key_here
+   OPENAI_EMBEDDING_MODEL=text-embedding-3-large
+   API_KEY=your_secure_api_key_here
+   ```
 
-In the Render service dashboard, go to "Environment" tab and add:
+5. **Create Database**
+   - Go to "Databases" in Render
+   - Create a new PostgreSQL database
+   - Name: `law-entry-db`
+   - Plan: Free (or Starter for production)
+   - Copy the connection string
 
-```
-NODE_ENV=production
-PORT=10000
-CORS_ORIGIN=https://your-frontend-domain.vercel.app
-DATABASE_URL=<your-postgres-internal-url>
-PGSSL=true
-OPENAI_API_KEY=<your-openai-api-key>
-OPENAI_EMBEDDING_MODEL=text-embedding-3-large
-```
+6. **Update Database URL**
+   - In your web service environment variables
+   - Set `DATABASE_URL` to the PostgreSQL connection string from step 5
 
-**Important**: Replace `your-frontend-domain.vercel.app` with your actual Vercel domain after deploying the frontend.
+### Option B: Using render.yaml (Advanced)
 
-### 1.5 Deploy
+1. **Push to GitHub**
+   - Ensure your `render.yaml` is in the repository
+   - Push to GitHub
 
-1. Click "Create Web Service"
-2. Wait for deployment to complete
-3. Copy the service URL (e.g., `https://law-entry-api.onrender.com`)
+2. **Deploy via Blueprint**
+   - In Render dashboard, click "New" → "Blueprint"
+   - Connect your repository
+   - Render will automatically create services based on `render.yaml`
 
-## Step 2: Deploy Frontend to Vercel
+## Step 2: Update Frontend Configuration
 
-### 2.1 Create Vercel Account and Connect GitHub
+1. **Get your Render backend URL**
+   - After deployment, your backend will be available at: `https://law-entry-api.onrender.com`
 
-1. Go to [vercel.com](https://vercel.com) and sign up
-2. Connect your GitHub account
-3. Import your repository
+2. **Update Vercel Environment Variables**
+   - Go to your Vercel dashboard
+   - Navigate to your project settings
+   - Add environment variable:
+     ```
+     REACT_APP_VECTOR_API_URL=https://law-entry-api.onrender.com
+     ```
 
-### 2.2 Configure Project
+3. **Redeploy Frontend**
+   - Trigger a new deployment in Vercel
+   - Or push a new commit to trigger automatic deployment
 
-1. Set the **Root Directory** to `law-entry-app`
-2. Framework Preset: `Create React App`
-3. Build Command: `npm run build`
-4. Output Directory: `build`
+## Step 3: Test the Deployment
 
-### 2.3 Configure Environment Variables
+1. **Test Backend Health**
+   - Visit: `https://law-entry-api.onrender.com/health`
+   - Should return: `{"ok": true}`
 
-In the Vercel project settings, add:
+2. **Test Frontend Connection**
+   - Visit your Vercel frontend
+   - Try creating a new entry
+   - Check browser console for any API errors
 
-```
-REACT_APP_VECTOR_API_URL=https://your-backend-url.onrender.com
-```
+## Step 4: Database Setup
 
-Replace `your-backend-url.onrender.com` with your actual Render service URL.
-
-### 2.4 Deploy
-
-1. Click "Deploy"
-2. Wait for deployment to complete
-3. Copy your Vercel domain (e.g., `https://law-entry-app.vercel.app`)
-
-## Step 3: Update CORS Configuration
-
-After both deployments are complete:
-
-1. Go back to your Render service
-2. Update the `CORS_ORIGIN` environment variable with your actual Vercel domain
-3. Redeploy the service
-
-## Step 4: Test the Application
-
-1. Visit your Vercel frontend URL
-2. Test the login (any username/password works in demo mode)
-3. Test creating entries
-4. Test the duplicate detection features
-
-## Environment Variables Reference
-
-### Backend (Render)
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment | `production` |
-| `PORT` | Server port | `10000` |
-| `CORS_ORIGIN` | Allowed frontend domain | `https://law-entry-app.vercel.app` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@host:port/db` |
-| `PGSSL` | Enable SSL for database | `true` |
-| `OPENAI_API_KEY` | OpenAI API key | `sk-...` |
-| `OPENAI_EMBEDDING_MODEL` | Embedding model | `text-embedding-3-large` |
-
-### Frontend (Vercel)
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `REACT_APP_VECTOR_API_URL` | Backend API URL | `https://law-entry-api.onrender.com` |
+1. **Run Database Setup**
+   - In Render dashboard, go to your web service
+   - Open the shell/console
+   - Run: `npm run setup-db`
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **CORS Errors**: Make sure `CORS_ORIGIN` matches your exact Vercel domain
-2. **Database Connection**: Verify `DATABASE_URL` and `PGSSL` settings
-3. **pgvector Extension**: Render PostgreSQL supports pgvector by default
-4. **Build Failures**: Check that all dependencies are in `package.json`
+1. **CORS Errors**
+   - Ensure `CORS_ORIGIN` matches your exact Vercel URL
+   - Check for trailing slashes
 
-### Logs
+2. **Database Connection Issues**
+   - Verify `DATABASE_URL` is correct
+   - Ensure `PGSSL=true` is set
 
-- **Render**: View logs in the service dashboard
-- **Vercel**: View logs in the deployment dashboard
+3. **API Key Issues**
+   - Verify `OPENAI_API_KEY` is set correctly
+   - Check `API_KEY` if using authentication
 
-### Support
+4. **Build Failures**
+   - Check Render logs for npm install errors
+   - Verify Node.js version compatibility
 
-- **Render**: [docs.render.com](https://docs.render.com)
-- **Vercel**: [vercel.com/docs](https://vercel.com/docs)
-- **pgvector**: [github.com/pgvector/pgvector](https://github.com/pgvector/pgvector)
+### Useful Commands
 
-## Cost Estimation
+```bash
+# Check backend logs in Render
+# Go to your web service → Logs
 
-### Free Tier (Recommended for testing)
+# Test database connection
+npm run setup-db
 
-- **Vercel**: Free (Hobby plan)
-- **Render**: Free (Web service + PostgreSQL)
-- **OpenAI**: Pay per use (~$0.0001 per 1K tokens)
+# Check environment variables
+echo $DATABASE_URL
+echo $OPENAI_API_KEY
+```
 
-### Production Scaling
+## Environment Variables Reference
 
-- **Vercel**: Pro plan ($20/month)
-- **Render**: Paid plans for better performance
-- **Database**: Consider managed PostgreSQL services for production
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NODE_ENV` | Environment mode | Yes |
+| `PORT` | Server port | Yes |
+| `CORS_ORIGIN` | Frontend URL for CORS | Yes |
+| `DATABASE_URL` | PostgreSQL connection string | Yes |
+| `PGSSL` | Enable SSL for database | Yes |
+| `OPENAI_API_KEY` | OpenAI API key | Yes |
+| `OPENAI_EMBEDDING_MODEL` | Embedding model name | Yes |
+| `API_KEY` | Backend authentication key | Optional |
+
+## Cost Considerations
+
+- **Free Tier**: Limited to 750 hours/month
+- **Starter Plan**: $7/month for unlimited usage
+- **Database**: Free tier available, $7/month for starter
 
 ## Security Notes
 
-1. **Environment Variables**: Never commit API keys to Git
-2. **CORS**: Restrict to specific domains in production
-3. **Database**: Use strong passwords and SSL connections
-4. **API Keys**: Rotate OpenAI API keys regularly
+1. **API Keys**: Never commit API keys to Git
+2. **CORS**: Restrict CORS to your specific domain
+3. **Database**: Use SSL connections
+4. **Authentication**: Consider implementing API key authentication
+
+## Next Steps
+
+After successful deployment:
+1. Set up monitoring and logging
+2. Configure custom domain (optional)
+3. Set up automatic backups for database
+4. Implement rate limiting
+5. Add health checks and monitoring
 

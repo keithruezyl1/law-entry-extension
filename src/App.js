@@ -15,21 +15,49 @@ import { getDay1Date, setDay1Date } from './lib/plan/progressStore';
 import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
 import { fetchAllEntriesFromDb } from './services/kbApi';
 import ChatModal from './components/kb/ChatModal';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/law-entry/:step" element={<LawEntryForm />} />
-        <Route path="/entry/:entryId" element={<EntryDetails />} />
-        <Route path="/entry/:entryId/edit" element={<EntryEdit />} />
-        <Route path="*" element={<Login />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/law-entry/:step" element={<ProtectedRoute><LawEntryForm /></ProtectedRoute>} />
+          <Route path="/entry/:entryId" element={<ProtectedRoute><EntryDetails /></ProtectedRoute>} />
+          <Route path="/entry/:entryId/edit" element={<ProtectedRoute><EntryEdit /></ProtectedRoute>} />
+          <Route path="*" element={<Login />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
+}
+
+// Protected route component
+function ProtectedRoute({ children }) {
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/login');
+    }
+  }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="App">
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return user ? children : null;
 }
 
 // Dashboard Component - Main list view
@@ -58,6 +86,7 @@ function EntryEdit() {
 function AppContent({ currentView: initialView = 'list', isEditing = false, formStep = 1, selectedEntryId: initialEntryId = null }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   
   const [currentView, setCurrentView] = useState(initialView);
   const [selectedEntryId, setSelectedEntryId] = useState(initialEntryId);
@@ -445,7 +474,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setClearOption(null);
   };
 
-  const handleGoBack = () => {
+  const handleLogout = () => {
+    logout();
     navigate('/login');
   };
 
@@ -576,8 +606,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <h1>Civilify Law Entry</h1>
           <span className="header-entries-count">{stats.totalEntries} entries</span>
         </div>
-        <button onClick={handleGoBack} className="logout-btn">
-          Logout
+        <button onClick={handleLogout} className="logout-btn">
+          Logout ({user?.name})
         </button>
       </header>
       )}

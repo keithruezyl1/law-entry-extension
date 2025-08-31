@@ -7,13 +7,16 @@
     "start": "node src/index.js",
     "dev": "node src/index.js",
     "build": "echo 'No build step required'",
-    "setup-db": "node src/setup-db.js"
+    "setup-db": "node src/setup-db.js",
+    "migrate": "node src/migrate-db.js"
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
     "openai": "^4.58.1",
     "pg": "^8.11.3",
     "zod": "^3.23.8"
