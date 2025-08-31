@@ -89,8 +89,6 @@ const Login = () => {
           </div>
         )}
         <div className="login-footer">
-          <p>Available users: arda, deloscientos, paden, sendrijas, tagarao</p>
-          <p>Demo: Any password will work</p>
         </div>
       </div>
     </div>

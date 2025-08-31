@@ -152,4 +152,22 @@ router.get('/team-progress', async (req, res) => {
   }
 });
 
+// Get all team members
+router.get('/team-members', async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT id, username, name, person_id, role FROM users ORDER BY person_id',
+      []
+    );
+    
+    res.json({
+      success: true,
+      team_members: result.rows
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ success: false, error: String(e.message || e) });
+  }
+});
+
 export default router;

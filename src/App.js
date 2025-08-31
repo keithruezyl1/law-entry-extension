@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -232,20 +232,55 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const stats = getStorageStats();
   const teamProgress = getAllTeamProgress();
   const yesterdayProgress = getYesterdayTeamProgress();
-  const teamMembers = getAllTeamMembers();
+  
+  // Use database team members instead of hardcoded data
+  const [dbTeamMembers, setDbTeamMembers] = useState([]);
+  
+  // Fetch team members from database
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        
+        const response = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:4000/api'}/auth/team-members`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setDbTeamMembers(data.team_members);
+        }
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        // Fallback to hardcoded data if API fails
+        setDbTeamMembers([
+          { id: 1, name: 'Arda', person_id: 'P1' },
+          { id: 2, name: 'Delos Cientos', person_id: 'P2' },
+          { id: 3, name: 'Paden', person_id: 'P3' },
+          { id: 4, name: 'Sendrijas', person_id: 'P4' },
+          { id: 5, name: 'Tagarao', person_id: 'P5' }
+        ]);
+      }
+    };
+    
+    fetchTeamMembers();
+  }, []);
 
   // Debug: Log entries state
   console.log('Current entries in App.js:', entries);
   console.log('Entries length:', entries.length);
 
-  // Team member names mapping for P1-P5 format
-  const teamMemberNames = {
-    'P1': 'Arda',
-    'P2': 'Delos Cientos', 
-    'P3': 'Paden',
-    'P4': 'Sendrijas',
-    'P5': 'Tagarao'
-  };
+  // Team member names from database - use the same data as dbTeamMembers
+  const teamMemberNames = useMemo(() => {
+    const namesMap = {};
+    dbTeamMembers.forEach(member => {
+      namesMap[member.person_id] = member.name;
+    });
+    return namesMap;
+  }, [dbTeamMembers]);
 
   // Handle scroll for header background opacity
   useEffect(() => {
@@ -642,9 +677,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           </div>
         </div>
         <div className="team-members-grid">
-          {teamMembers.map(member => {
+          {dbTeamMembers.map(member => {
             const personId = member.id;
-            const personName = member.name; // Use actual name from data
+            const personName = member.name; // Use actual name from database
             
             // Check if plan is imported
             const _hasPlan = !!day1Date && Array.isArray(planData) && planData.length > 0;
