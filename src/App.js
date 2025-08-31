@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { getAllTeamMembers } from './data/entryTypes';
 import EntryForm from './components/kb/EntryForm.tsx'; // new TS + RHF + Zod wizard
 import EntryList from './components/EntryList/EntryList';
 import EntryView from './components/EntryView/EntryView';
 import Login from './components/Login/Login';
 import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
-import { parseWorkbook, computeDayIndex, rowsForDay, toISODate } from './lib/plan/planLoader';
+import { parseWorkbook, computeDayIndex, rowsForDay } from './lib/plan/planLoader';
 import { format } from 'date-fns';
 import { getDay1Date, setDay1Date } from './lib/plan/progressStore';
 import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
@@ -85,10 +84,9 @@ function EntryEdit() {
 
 function AppContent({ currentView: initialView = 'list', isEditing = false, formStep = 1, selectedEntryId: initialEntryId = null }) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, logout } = useAuth();
   
-  const [currentView, setCurrentView] = useState(initialView);
+  const [currentView] = useState(initialView);
   const [selectedEntryId, setSelectedEntryId] = useState(initialEntryId);
   const [editingEntry, setEditingEntry] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -274,13 +272,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   console.log('Entries length:', entries.length);
 
   // Team member names from database - use the same data as dbTeamMembers
-  const teamMemberNames = useMemo(() => {
-    const namesMap = {};
-    dbTeamMembers.forEach(member => {
-      namesMap[member.person_id] = member.name;
-    });
-    return namesMap;
-  }, [dbTeamMembers]);
+  // Note: teamMemberNames is computed but not currently used in this component
 
   // Handle scroll for header background opacity
   useEffect(() => {
@@ -309,7 +301,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       
       if (totalProgress < 10) {
         allCompleted = false;
-        const memberName = teamMembers.find(m => m.id === i)?.name || `P${i}`;
+        const memberName = dbTeamMembers.find(m => m.id === i)?.name || `P${i}`;
         incompleteMembers.push(memberName);
       } else {
         someCompleted = true;
