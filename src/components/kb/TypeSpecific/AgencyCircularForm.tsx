@@ -1,7 +1,7 @@
 import React from 'react';
 import { Control } from 'react-hook-form';
 import { Entry } from '../../../lib/civilify-kb-schemas';
-import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '../../ui/Form';
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '../../ui/Form';
 import { Input } from '../../ui/Input';
 import { StringArray } from '../fields/StringArray';
 
@@ -17,15 +17,15 @@ export function AgencyCircularForm({ control }: AgencyCircularFormProps) {
         name="circular_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="kb-form-label">Circular Number <span className="text-red-600">*</span></FormLabel>
+            <FormLabel>Circular Number</FormLabel>
             <FormControl>
               <Input
                 {...field}
                 placeholder="e.g., MC 2023-001"
-                className="h-11 pl-6 pr-4 text-base rounded-xl"
+                className="h-11 px-4 text-base rounded-xl"
               />
             </FormControl>
-            {/* Required helper removed per spec */}
+
             <FormMessage />
           </FormItem>
         )}
@@ -36,14 +36,15 @@ export function AgencyCircularForm({ control }: AgencyCircularFormProps) {
         name="section_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="kb-form-label">Section Number</FormLabel>
+            <FormLabel>Section Number</FormLabel>
             <FormControl>
               <Input
                 {...field}
                 placeholder="section number if applicable"
-                className="h-11 pl-6 pr-4 text-base rounded-xl"
+                className="h-11 px-4 text-base rounded-xl"
               />
             </FormControl>
+
             <FormMessage />
           </FormItem>
         )}

@@ -261,7 +261,7 @@ export const useLocalStorage = () => {
       filteredEntries = filteredEntries.filter(entry => {
         const entryTeamMember = entry.team_member_id;
         const filterTeamMember = filters.team_member_id;
-        return entryTeamMember == filterTeamMember; // Use == for type coercion
+        return entryTeamMember === filterTeamMember; // Use === for strict equality
       });
     }
 
