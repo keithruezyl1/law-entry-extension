@@ -20,7 +20,10 @@ async function setupDatabase() {
     // Read and execute SQL files
     const sqlFiles = [
       join(__dirname, '../sql/001_init.sql'),
-      join(__dirname, '../sql/002_match_fn.sql')
+      join(__dirname, '../sql/002_match_fn.sql'),
+      join(__dirname, '../sql/003_migrate_add_created_by.sql'),
+      join(__dirname, '../sql/004_shared_plans.sql'),
+      join(__dirname, '../sql/005_simple_passwords.sql')
     ];
 
     for (const sqlFile of sqlFiles) {
@@ -34,16 +37,22 @@ async function setupDatabase() {
           console.log(`Skipped ${sqlFile} - objects already exist`);
         } else {
           console.error(`Error executing ${sqlFile}:`, error.message);
+          // Don't throw error, just log it and continue
         }
       }
     }
 
     console.log('Database setup completed');
   } catch (error) {
-    console.error('Database setup failed:', error);
-    process.exit(1);
+    console.error('Database setup failed:', error.message);
+    // Don't exit process, just log the error
+    console.log('Continuing with server startup...');
   } finally {
-    await client.end();
+    try {
+      await client.end();
+    } catch (e) {
+      // Ignore connection close errors
+    }
   }
 }
 
@@ -51,4 +60,6 @@ async function setupDatabase() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   setupDatabase();
 }
+
+export default setupDatabase;
 

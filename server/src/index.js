@@ -7,6 +7,7 @@ import kbRouter from './routes/kb.js';
 import chatRouter from './routes/chat.js';
 import authRouter from './routes/auth.js';
 import plansRouter from './routes/plans.js';
+import setupDatabase from './setup-db.js';
 
 const app = express();
 
@@ -41,9 +42,24 @@ app.use('/api/chat', authenticateToken, chatRouter);
 app.use('/api/plans', authenticateToken, plansRouter);
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => {
-  console.log(`KB Vector Server listening on http://localhost:${port}`);
-});
+
+// Start server with database setup
+async function startServer() {
+  try {
+    // Run database setup first
+    await setupDatabase();
+    
+    // Then start the server
+    app.listen(port, () => {
+      console.log(`KB Vector Server listening on http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 
 
