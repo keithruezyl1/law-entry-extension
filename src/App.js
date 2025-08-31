@@ -12,6 +12,9 @@ import Modal from './components/Modal/Modal';
 import { parseWorkbook, computeDayIndex, rowsForDay, toISODate } from './lib/plan/planLoader';
 import { format } from 'date-fns';
 import { getDay1Date, setDay1Date } from './lib/plan/progressStore';
+import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
+import { fetchAllEntriesFromDb } from './services/kbApi';
+import ChatModal from './components/kb/ChatModal';
 
 function App() {
   return (
@@ -69,19 +72,87 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalStep, setPlanModalStep] = useState(1);
   const [selectedDay1Date, setSelectedDay1Date] = useState('');
-  const [planData, setPlanData] = useState(null);
-  const [day1Date, setDay1DateState] = useState(getDay1Date());
-  
-  // Load persisted plan rows on mount
-  useEffect(() => {
+  const [planData, setPlanData] = useState(() => {
     try {
       const raw = localStorage.getItem('kb_plan_rows');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setPlanData(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (_) {}
-  }, []);
+    return null;
+  });
+  const [day1Date, setDay1DateState] = useState(getDay1Date());
+  const [showChat, setShowChat] = useState(false);
+
+  const hasPlan = (() => {
+    const d1 = day1Date || getDay1Date();
+    let rows = planData;
+    if (!rows) {
+      try {
+        const raw = localStorage.getItem('kb_plan_rows');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) rows = parsed;
+        }
+      } catch (_) {}
+    }
+    return !!d1 && Array.isArray(rows) && rows.length > 0;
+  })();
+
+  // Guard: prevent opening the form route when no plan is imported
+  useEffect(() => {
+    if (currentView === 'form' && !hasPlan) {
+      alert('Please import a plan first before creating entries.');
+      navigate('/dashboard');
+    }
+  }, [currentView, hasPlan, navigate]);
+  
+  // Load persisted plan rows on mount (in case state initializer missed it)
+  useEffect(() => {
+    try {
+      if (!planData) {
+        const raw = localStorage.getItem('kb_plan_rows');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) setPlanData(parsed);
+        }
+      }
+    } catch (_) {}
+  }, [planData]);
+
+  // Optional: On dashboard load, hydrate local entries from DB (one-way sync-in)
+  useEffect(() => {
+    const loadFromDb = async () => {
+      if (currentView !== 'list') return;
+      try {
+        const dbEntries = await fetchAllEntriesFromDb();
+        if (Array.isArray(dbEntries) && dbEntries.length > 0) {
+          // Map DB shape to app shape (add synthetic id if missing)
+          const mapped = dbEntries.map((e) => ({
+            ...e,
+            id: e.entry_id,
+            created_at: e.created_at || new Date().toISOString(),
+            updated_at: e.updated_at || new Date().toISOString(),
+          }));
+          // Merge: prefer local entries with same entry_id
+          const existingByEntryId = new Map(entries.map((x) => [x.entry_id, x]));
+          const merged = mapped.reduce((acc, m) => {
+            if (!existingByEntryId.has(m.entry_id)) acc.push(m);
+            return acc;
+          }, [...entries]);
+          if (merged.length !== entries.length) {
+            // naive set via importEntries pathway
+            try {
+              localStorage.setItem('law_entries', JSON.stringify(merged));
+            } catch {}
+          }
+        }
+      } catch {}
+    };
+    loadFromDb();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView]);
 
   // Redirect to login if on root path (this is now handled by the router)
   // The login component will handle redirecting to dashboard after authentication
@@ -203,6 +274,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleCreateNew = () => {
+    if (!hasPlan) {
+      alert('Please import a plan first before creating entries. Use "Import Plan".');
+      return;
+    }
     try {
       const raw = localStorage.getItem('kb_entry_draft');
       if (raw) {
@@ -252,6 +327,29 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       if (editingEntry) {
         updateEntry(editingEntry.id, entryData);
         console.log('Entry updated:', entryData);
+        // Fire-and-forget vector upsert to keep RAG index in sync
+        try {
+          if (!entryData.entry_id) {
+            console.warn('Skipping vector upsert: missing entry_id. Ensure Law Family/Section are set to generate ID.');
+          } else {
+            const payload = {
+              entry_id: entryData.entry_id,
+              type: entryData.type,
+              title: entryData.title,
+              canonical_citation: entryData.canonical_citation,
+              summary: entryData.summary,
+              text: entryData.text,
+              tags: entryData.tags,
+              jurisdiction: entryData.jurisdiction,
+              law_family: entryData.law_family,
+            };
+            upsertEntry(payload).then((resp) => {
+              if (!resp?.success) console.warn('Vector upsert failed:', resp?.error);
+            }).catch((e) => console.warn('Vector upsert error:', e));
+          }
+        } catch (e) {
+          console.warn('Vector upsert error:', e);
+        }
       } else {
         // Check if this entry will complete a daily quota
         if (entryData.team_member_id && entryData.type) {
@@ -263,6 +361,29 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         const newEntry = addEntry(entryData);
         console.log('New entry created and saved to localStorage:', newEntry);
         console.log('Total entries in localStorage:', entries.length + 1);
+        // Fire-and-forget vector upsert (does not block UX)
+        try {
+          if (!entryData.entry_id) {
+            console.warn('Skipping vector upsert: missing entry_id. Ensure Law Family/Section are set to generate ID.');
+          } else {
+            const payload = {
+              entry_id: entryData.entry_id,
+              type: entryData.type,
+              title: entryData.title,
+              canonical_citation: entryData.canonical_citation,
+              summary: entryData.summary,
+              text: entryData.text,
+              tags: entryData.tags,
+              jurisdiction: entryData.jurisdiction,
+              law_family: entryData.law_family,
+            };
+            upsertEntry(payload).then((resp) => {
+              if (!resp?.success) console.warn('Vector upsert failed:', resp?.error);
+            }).catch((e) => console.warn('Vector upsert error:', e));
+          }
+        } catch (e) {
+          console.warn('Vector upsert error:', e);
+        }
         alert(`Entry "${entryData.title}" has been successfully saved to localStorage!`);
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
@@ -280,6 +401,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         if (currentView === 'view' && selectedEntryId === entryId) {
           navigate('/dashboard');
           setSelectedEntryId(null);
+        }
+        // Fire-and-forget vector delete
+        if (entryId) {
+          deleteEntryVector(entryId).catch((e) => console.warn('Vector delete error:', e));
         }
       } catch (err) {
         console.error('Error deleting entry:', err);
@@ -332,16 +457,25 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const handleClearConfirm = () => {
     try {
       if (clearOption === 'all') {
-        clearAllEntries();
-        alert('All entries have been cleared from the database.');
+        clearEntriesVector().then(async (resp) => {
+          if (!resp?.success) console.warn('Vector clear all failed:', resp?.error);
+          clearAllEntries();
+          // Refresh from DB
+          try { localStorage.setItem('law_entries', JSON.stringify([])); } catch {}
+          alert('All entries have been cleared from the database.');
+        });
       } else {
         const today = new Date().toISOString().split('T')[0];
-        const todayEntries = entries.filter(entry => {
-          const entryDate = new Date(entry.created_at).toISOString().split('T')[0];
-          return entryDate === today;
+        clearEntriesVector(today).then(async (resp) => {
+          if (!resp?.success) console.warn('Vector clear today failed:', resp?.error);
+          // Update UI list to remove todays
+          const remaining = entries.filter(entry => {
+            const entryDate = new Date(entry.created_at).toISOString().split('T')[0];
+            return entryDate !== today;
+          });
+          try { localStorage.setItem('law_entries', JSON.stringify(remaining)); } catch {}
+          alert('Today\'s entries have been cleared from the database.');
         });
-        todayEntries.forEach(entry => { deleteEntry(entry.id); });
-        alert(`${todayEntries.length} entries from today have been cleared.`);
       }
       setShowClearModal(false);
       setClearModalStep(1);
@@ -483,9 +617,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const personName = member.name; // Use actual name from data
             
             // Check if plan is imported
-            const hasPlan = !!day1Date && Array.isArray(planData) && planData.length > 0;
+            const _hasPlan = !!day1Date && Array.isArray(planData) && planData.length > 0;
             
-            if (!hasPlan) {
+            if (!_hasPlan) {
               // Show empty card when no plan is imported
               return (
                 <div key={personId} className="team-member-card">
@@ -560,7 +694,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <button 
             onClick={handleCreateNew} 
             className="btn-primary"
-            disabled={currentView === 'form'}
+            disabled={currentView === 'form' || !hasPlan}
           >
             Create New Entry
           </button>
@@ -569,6 +703,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
         
         <div className="nav-right">
+          <button onClick={() => setShowChat(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+            Ask Villy (RAG)
+          </button>
           <button onClick={handleExport} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
             Export Entries
           </button>
@@ -754,6 +891,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           </div>
         )}
       </Modal>
+
+      {/* Chat Modal (RAG) */}
+      <ChatModal isOpen={showChat} onClose={() => setShowChat(false)} />
     </div>
   );
 }

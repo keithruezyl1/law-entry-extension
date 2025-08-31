@@ -33,7 +33,7 @@ const commonFields = {
 // Type-specific field schemas
 const typeSpecificSchemas = {
   constitution_provision: z.object({
-    topics: z.array(z.string()).min(1, "At least one topic is required"),
+    topics: z.array(z.string()).optional(),
     related_sections: z.array(z.string()).optional(),
     jurisprudence: z.array(z.string()).optional()
   }),

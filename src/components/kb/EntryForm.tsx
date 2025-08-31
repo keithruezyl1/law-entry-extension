@@ -16,6 +16,7 @@ import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
 import { generateEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
+import { semanticSearch } from '../../services/vectorApi';
 
 type EntryFormProps = {
   entry?: Partial<Entry> | null;
@@ -37,7 +38,7 @@ function validateAllRequiredFields(data: Entry): ValidationError[] {
   const errors: ValidationError[] = [];
   
   // Step 1: Basics
-  const step1Fields = ['title', 'jurisdiction', 'law_family', 'canonical_citation', 'status', 'effective_date'];
+  const step1Fields: (keyof Entry)[] = ['title'];
   step1Fields.forEach(field => {
     if (!data[field as keyof Entry] || (typeof data[field as keyof Entry] === 'string' && (data[field as keyof Entry] as string).trim() === '')) {
       errors.push({
@@ -50,7 +51,7 @@ function validateAllRequiredFields(data: Entry): ValidationError[] {
   });
   
   // Step 2: Sources & Dates
-  const step2Fields = ['source_urls', 'amendment_date'];
+  const step2Fields: (keyof Entry | 'amendment_date')[] = ['amendment_date'];
   step2Fields.forEach(field => {
     if (field === 'source_urls') {
       if (!data.source_urls || data.source_urls.length === 0) {
@@ -74,7 +75,7 @@ function validateAllRequiredFields(data: Entry): ValidationError[] {
   });
   
   // Step 3: Content
-  const step3Fields = ['summary', 'text'];
+  const step3Fields: (keyof Entry)[] = [];
   step3Fields.forEach(field => {
     if (!data[field as keyof Entry] || (typeof data[field as keyof Entry] === 'string' && (data[field as keyof Entry] as string).trim() === '')) {
       errors.push({
@@ -87,7 +88,7 @@ function validateAllRequiredFields(data: Entry): ValidationError[] {
   });
   
   // Step 4: Type-Specific & Relations
-  const step4Fields = ['tags', 'last_reviewed'];
+  const step4Fields: (keyof Entry)[] = [];
   step4Fields.forEach(field => {
     if (field === 'tags') {
       if (!data.tags || data.tags.length === 0) {
@@ -142,128 +143,16 @@ function validateAllRequiredFields(data: Entry): ValidationError[] {
       // }
       break;
     case 'city_ordinance_section':
-      if (!(data as any).elements || (data as any).elements.length === 0) {
-        errors.push({
-          field: 'elements',
-          message: 'At least one element is required for city ordinance section',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).penalties || (data as any).penalties.length === 0) {
-        errors.push({
-          field: 'penalties',
-          message: 'At least one penalty is required for city ordinance section',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
       break;
     case 'rule_of_court':
-      if (!(data as any).rule_no) {
-        errors.push({
-          field: 'rule_no',
-          message: 'Rule number is required for rule of court',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).section_no) {
-        errors.push({
-          field: 'section_no',
-          message: 'Section number is required for rule of court',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).triggers || (data as any).triggers.length === 0) {
-        errors.push({
-          field: 'triggers',
-          message: 'At least one trigger is required for rule of court',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
       break;
     case 'agency_circular':
-      if (!(data as any).circular_no) {
-        errors.push({
-          field: 'circular_no',
-          message: 'Circular number is required for agency circular',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).applicability || (data as any).applicability.length === 0) {
-        errors.push({
-          field: 'applicability',
-          message: 'At least one applicability is required for agency circular',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
       break;
     case 'doj_issuance':
-      if (!(data as any).issuance_no) {
-        errors.push({
-          field: 'issuance_no',
-          message: 'Issuance number is required for DOJ issuance',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).applicability || (data as any).applicability.length === 0) {
-        errors.push({
-          field: 'applicability',
-          message: 'At least one applicability is required for DOJ issuance',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
       break;
     case 'executive_issuance':
-      if (!(data as any).instrument_no) {
-        errors.push({
-          field: 'instrument_no',
-          message: 'Instrument number is required for executive issuance',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).applicability || (data as any).applicability.length === 0) {
-        errors.push({
-          field: 'applicability',
-          message: 'At least one applicability is required for executive issuance',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
       break;
     case 'rights_advisory':
-      if (!(data as any).rights_scope) {
-        errors.push({
-          field: 'rights_scope',
-          message: 'Rights scope is required for rights advisory',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).advice_points || (data as any).advice_points.length === 0) {
-        errors.push({
-          field: 'advice_points',
-          message: 'At least one advice point is required for rights advisory',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
-      if (!(data as any).legal_bases || (data as any).legal_bases.length === 0) {
-        errors.push({
-          field: 'legal_bases',
-          message: 'At least one legal basis is required for rights advisory',
-          step: 4,
-          stepName: 'Type-Specific & Relations'
-        });
-      }
       break;
   }
   
@@ -363,6 +252,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const status = watch('status');
   const lawFamily = watch('law_family');
   const sectionId = watch('section_id');
+  const title = watch('title');
+  const citation = watch('canonical_citation');
 
   // Step 4 always has content (dynamic type-specific + relations)
   const hasTypeSpecific = true;
@@ -371,6 +262,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const formCardRef = React.useRef<HTMLDivElement | null>(null);
   const [showDraftSaved, setShowDraftSaved] = useState<boolean>(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+  const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
+  const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
 
   //
 
@@ -614,6 +507,30 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     navigate('/dashboard');
   };
 
+  // Debounced semantic suggestions for potential near-duplicates
+  useEffect(() => {
+    const q = `${title || ''} ${citation || ''}`.trim();
+    if (!q) {
+      setNearDuplicates([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setSearchingDupes(true);
+        const resp = await semanticSearch(q, 5);
+        if (!cancelled) {
+          setNearDuplicates(resp.success ? (resp.results || []) : []);
+        }
+      } catch (_) {
+        if (!cancelled) setNearDuplicates([]);
+      } finally {
+        if (!cancelled) setSearchingDupes(false);
+      }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [title, citation]);
+
   // (Relations helper components were removed; using dedicated picker in Step 4)
 
 
@@ -702,6 +619,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                       </label>
                                       <Input className="kb-form-input" placeholder="Human-readable label" {...register('title')} />
                                     </div>
+                                    {nearDuplicates && nearDuplicates.length > 0 && (
+                                      <div className="kb-form-field">
+                                        <label className="kb-form-label">Possible matches</label>
+                                        <div className="space-y-2">
+                                          {nearDuplicates.slice(0, 3).map((m: any, i: number) => (
+                                            <div key={i} className="text-sm p-2 rounded border bg-white">
+                                              <div className="font-medium">{m.title} ({m.type})</div>
+                                              {m.canonical_citation && <div className="text-gray-600">{m.canonical_citation}</div>}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">
                                         Jurisdiction <span className="kb-required">*</span>

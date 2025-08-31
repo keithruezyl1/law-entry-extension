@@ -172,3 +172,18 @@ export class KbApiService {
 
 export const kbApi = KbApiService.getInstance();
 
+// Live API helpers (optional – to dynamically reflect DB state)
+const KB_BASE_URL = (process.env.REACT_APP_VECTOR_API_URL || 'http://localhost:4000') + '/api/kb';
+
+export async function fetchAllEntriesFromDb(): Promise<any[]> {
+  try {
+    const resp = await fetch(`${KB_BASE_URL}/entries`);
+    const json = await resp.json();
+    if (!json?.success) return [];
+    return json.entries || [];
+  } catch {
+    return [];
+  }
+}
+
+
