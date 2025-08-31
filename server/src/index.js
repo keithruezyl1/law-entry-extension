@@ -46,8 +46,14 @@ const port = process.env.PORT || 4000;
 // Start server with database setup
 async function startServer() {
   try {
+    console.log('Starting server setup...');
+    console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    console.log('PGSSL:', process.env.PGSSL);
+    
     // Run database setup first
+    console.log('Running database setup...');
     await setupDatabase();
+    console.log('Database setup completed successfully');
     
     // Then start the server
     app.listen(port, () => {

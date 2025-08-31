@@ -8,12 +8,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function setupDatabase() {
+  console.log('setupDatabase function called');
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+  console.log('PGSSL:', process.env.PGSSL);
+  
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
   });
 
   try {
+    console.log('Attempting to connect to database...');
     await client.connect();
     console.log('Connected to database');
 
@@ -26,9 +31,13 @@ async function setupDatabase() {
       join(__dirname, '../sql/005_simple_passwords.sql')
     ];
 
+    console.log('SQL files to execute:', sqlFiles);
+
     for (const sqlFile of sqlFiles) {
       try {
+        console.log(`Reading file: ${sqlFile}`);
         const sql = readFileSync(sqlFile, 'utf8');
+        console.log(`Executing: ${sqlFile}`);
         await client.query(sql);
         console.log(`Executed ${sqlFile}`);
       } catch (error) {
