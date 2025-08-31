@@ -11,7 +11,12 @@ import setupDatabase from './setup-db.js';
 
 const app = express();
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*', methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'] }));
+// Parse CORS_ORIGIN into an array if it's a comma-separated string
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : '*';
+
+app.use(cors({ origin: allowedOrigins, methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'] }));
 app.use(bodyParser.json({ limit: '2mb' }));
 
 // JWT authentication middleware
@@ -49,6 +54,8 @@ async function startServer() {
     console.log('Starting server setup...');
     console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
     console.log('PGSSL:', process.env.PGSSL);
+    console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
+    console.log('Allowed origins:', allowedOrigins);
     
     // Run database setup first
     console.log('Running database setup...');

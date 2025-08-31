@@ -65,38 +65,46 @@ returns table(
   daily_quota integer,
   can_submit boolean
 )
-language sql
+language plpgsql
 stable
 as $$
-  with user_quota as (
-    select 
-      case 
-        when u.person_id = 'P1' then jsonb_build_object('statute_section', 7, 'city_ordinance_section', 3)
-        when u.person_id = 'P2' then jsonb_build_object('rule_of_court', 7, 'doj_issuance', 2, 'rights_advisory', 1)
-        when u.person_id = 'P3' then jsonb_build_object('pnp_sop', 5, 'incident_checklist', 3, 'agency_circular', 2)
-        when u.person_id = 'P4' then jsonb_build_object('traffic_rule', 6, 'statute_section', 2, 'agency_circular', 2)
-        when u.person_id = 'P5' then jsonb_build_object('rights_advisory', 4, 'constitution_provision', 3, 'doj_issuance', 2, 'executive_issuance', 1)
-        else '{}'::jsonb
-      end as quota
-    from users u where u.id = user_id
-  ),
-  current_counts as (
-    select 
-      e.type,
-      count(*) as current_count
-    from kb_entries e
-    where e.created_by = user_id and e.created_at::date = target_date
-    group by e.type
-  )
+declare
+  quota_record record;
+  current_count_val bigint;
+begin
+  -- Get user's quota configuration
   select 
-    (jsonb_each(uq.quota)).key as entry_type,
-    coalesce(cc.current_count, 0) as current_count,
-    (jsonb_each(uq.quota)).value::integer as daily_quota,
-    coalesce(cc.current_count, 0) < (jsonb_each(uq.quota)).value::integer as can_submit
-  from user_quota uq
-  cross join jsonb_each(uq.quota)
-  left join current_counts cc on cc.type = (jsonb_each(uq.quota)).key
-  order by (jsonb_each(uq.quota)).key;
+    case 
+      when u.person_id = 'P1' then jsonb_build_object('statute_section', 7, 'city_ordinance_section', 3)
+      when u.person_id = 'P2' then jsonb_build_object('rule_of_court', 7, 'doj_issuance', 2, 'rights_advisory', 1)
+      when u.person_id = 'P3' then jsonb_build_object('pnp_sop', 5, 'incident_checklist', 3, 'agency_circular', 2)
+      when u.person_id = 'P4' then jsonb_build_object('traffic_rule', 6, 'statute_section', 2, 'agency_circular', 2)
+      when u.person_id = 'P5' then jsonb_build_object('rights_advisory', 4, 'constitution_provision', 3, 'doj_issuance', 2, 'executive_issuance', 1)
+      else '{}'::jsonb
+    end as quota
+  into quota_record
+  from users u where u.id = user_id;
+  
+  -- Return quota for each entry type
+  for quota_record in 
+    select key as entry_type, value::integer as daily_quota
+    from jsonb_each(quota_record.quota)
+  loop
+    -- Get current count for this entry type
+    select count(*) into current_count_val
+    from kb_entries e
+    where e.created_by = user_id 
+      and e.created_at::date = target_date
+      and e.type = quota_record.entry_type;
+    
+    -- Return the record
+    entry_type := quota_record.entry_type;
+    current_count := coalesce(current_count_val, 0);
+    daily_quota := quota_record.daily_quota;
+    can_submit := coalesce(current_count_val, 0) < quota_record.daily_quota;
+    return next;
+  end loop;
+end;
 $$;
 
 
