@@ -10,9 +10,10 @@ import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
 import { parseWorkbook, computeDayIndex, rowsForDay } from './lib/plan/planLoader';
 import { format } from 'date-fns';
-import { getDay1Date, setDay1Date } from './lib/plan/progressStore';
+import { setDay1Date } from './lib/plan/progressStore';
 import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
 import { fetchAllEntriesFromDb } from './services/kbApi';
+import { getActivePlan, importPlan, removePlan } from './services/plansApi';
 import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -99,31 +100,40 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalStep, setPlanModalStep] = useState(1);
   const [selectedDay1Date, setSelectedDay1Date] = useState('');
-  const [planData, setPlanData] = useState(() => {
-    try {
-      const raw = localStorage.getItem('kb_plan_rows');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (_) {}
-    return null;
-  });
-  const [day1Date, setDay1DateState] = useState(getDay1Date());
+  const [planData, setPlanData] = useState(null);
+  const [day1Date, setDay1DateState] = useState(null);
   const [showChat, setShowChat] = useState(false);
+  const [planLoading, setPlanLoading] = useState(true);
+
+  // Load active plan from database on mount
+  useEffect(() => {
+    const loadActivePlan = async () => {
+      try {
+        setPlanLoading(true);
+        const activePlan = await getActivePlan();
+        if (activePlan) {
+          setPlanData(activePlan.plan_data);
+          setDay1DateState(activePlan.day1_date);
+          setDay1Date(activePlan.day1_date);
+        } else {
+          setPlanData(null);
+          setDay1DateState(null);
+        }
+      } catch (err) {
+        console.error('Failed to load active plan:', err);
+        setPlanData(null);
+        setDay1DateState(null);
+      } finally {
+        setPlanLoading(false);
+      }
+    };
+
+    loadActivePlan();
+  }, []);
 
   const hasPlan = (() => {
-    const d1 = day1Date || getDay1Date();
+    const d1 = day1Date;
     let rows = planData;
-    if (!rows) {
-      try {
-        const raw = localStorage.getItem('kb_plan_rows');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) rows = parsed;
-        }
-      } catch (_) {}
-    }
     return !!d1 && Array.isArray(rows) && rows.length > 0;
   })();
 
@@ -135,18 +145,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     }
   }, [currentView, hasPlan, navigate]);
   
-  // Load persisted plan rows on mount (in case state initializer missed it)
-  useEffect(() => {
-    try {
-      if (!planData) {
-        const raw = localStorage.getItem('kb_plan_rows');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) setPlanData(parsed);
-        }
-      }
-    } catch (_) {}
-  }, [planData]);
+
 
   // Optional: On dashboard load, hydrate local entries from DB (one-way sync-in)
   useEffect(() => {
@@ -572,20 +571,32 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setPlanModalStep(2);
   };
 
-  const handlePlanFinalConfirm = () => {
+  const handlePlanFinalConfirm = async () => {
     if (day1Date && !window.confirm('Reimporting a new plan will reset all progress. Are you sure?')) {
       return;
     }
     
-    setDay1Date(selectedDay1Date);
-    setDay1DateState(selectedDay1Date);
-    // Persist plan rows so they survive refreshes
     try {
-      if (planData) localStorage.setItem('kb_plan_rows', JSON.stringify(planData));
-    } catch (_) {}
-    setShowPlanModal(false);
-    setPlanModalStep(1);
-    setSelectedDay1Date('');
+      // Get plan name from filename
+      const planName = 'Imported Plan'; // You could make this configurable
+      
+      // Import plan to database
+      const planId = await importPlan(planName, selectedDay1Date, planData);
+      
+      if (planId) {
+        setDay1Date(selectedDay1Date);
+        setDay1DateState(selectedDay1Date);
+        setShowPlanModal(false);
+        setPlanModalStep(1);
+        setSelectedDay1Date('');
+        
+        // Refresh the page to ensure all components get the new plan
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Failed to import plan:', err);
+      alert(`Failed to import plan: ${err.message}`);
+    }
   };
 
   const handlePlanCancel = () => {
@@ -595,17 +606,19 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setPlanData(null);
   };
 
-  const handleRemovePlan = () => {
+  const handleRemovePlan = async () => {
     if (!window.confirm('Remove the imported plan and Day 1 setting? This will not delete your saved entries.')) return;
+    
     try {
-      localStorage.removeItem('kb_plan_rows');
-    } catch (_) {}
-    try {
-      // also clear saved Day 1
-      localStorage.removeItem('kbprog:day1');
-    } catch (_) {}
-    setPlanData(null);
-    setDay1DateState(null);
+      await removePlan();
+      setPlanData(null);
+      setDay1DateState(null);
+      // Refresh the page to ensure all components get the updated state
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to remove plan:', err);
+      alert(`Failed to remove plan: ${err.message}`);
+    }
   };
 
   const handleBackToList = () => {

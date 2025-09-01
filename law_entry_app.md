@@ -2,625 +2,401 @@
 
 ## Overview
 
-The **Civilify Law Entry App** is a React-based web application designed as the primary gateway for adding entries into the Civilify Knowledge Base (KB). It provides a comprehensive, dynamic form system for creating and managing legal knowledge base entries with support for multiple legal document types. The app features a complete authentication flow, routing system, and modern UI design.
+The **Civilify Law Entry App** is a React-based web application designed as the primary gateway for adding entries into the Civilify Knowledge Base (KB). It provides a comprehensive, dynamic form system for creating and managing legal knowledge base entries with support for multiple legal document types. The app features a complete authentication system, routing system, and modern UI design.
 
 ## Key Features
 
-- **Authentication System**: Login page with username/password authentication
+- **Authentication System**: Real username/password authentication with individual team passwords
+- **Database Integration**: PostgreSQL with pgvector extension for vector search
+- **Team Management**: 5 team members (P1-P5) with individual daily quotas
 - **Routing System**: Clean URL structure with React Router
 - **Multi-Step Form Wizard**: 5-step dynamic form for entry creation
 - **Entry Management**: Create, edit, delete, search, and filter entries
 - **Dashboard**: Team progress tracking and entry overview
 - **Responsive Design**: Mobile-friendly interface
-- **Local Storage**: Data persistence without backend requirements
+- **Shared Plan Management**: Import and share plans across all team members with database-backed synchronization
 
 ## Technology Stack
 
-- **React 19.1.1** - Main UI framework
-- **TypeScript 4.9.5** - Type safety
-- **React Hook Form 7.62.0** - Form management
-- **Zod 3.23.8** - Schema validation
-- **React Router 6** - Client-side routing
-- **Tailwind CSS 4.1.12** - Styling
-- **Radix UI** - Accessible components
-- **Lucide React** - Icons
-- **Docker** - Containerization for PostgreSQL with pgvector
+- **Frontend**: React 19.1.1, TypeScript 4.9.5, React Hook Form 7.62.0, Zod 3.23.8
+- **Backend**: Node.js, Express.js, PostgreSQL with pgvector
+- **Authentication**: JWT tokens with individual team passwords
+- **Database**: Supabase (PostgreSQL) with DBeaver for management
+- **Styling**: Tailwind CSS 4.1.12, Radix UI components
+- **Deployment**: Vercel (frontend), Render (backend)
 
-## Core Features
+## Authentication System
 
-### 1. Authentication & Routing
-- **Login System**: Username/password authentication (demo mode)
-- **Route Protection**: All routes redirect to login if not authenticated
-- **Clean URLs**: SEO-friendly routing structure
-- **Navigation**: Consistent navigation between pages
+### Team Members & Passwords
+The app uses individual passwords for each team member:
 
-### 2. Multi-Step Form Wizard (5 Steps)
-- **Step 1**: Basic Information (type, title, jurisdiction, etc.)
-- **Step 2**: Sources & Dates (URLs, effective dates)
-- **Step 3**: Content (summary, text, tags)
-- **Step 4**: Type-Specific & Relations (dynamic by type + legal bases/related sections)
-- **Step 5**: Review & Publish
-
-### 3. Dynamic Form System
-- **8 GLI+CPA Entry Types** with specific fields and validation
-- **Real-time validation** with immediate feedback
-- **Auto-save functionality** every 10 seconds
-- **Live preview** of entry data
-- **Auto-generation** of entry IDs
-- **Step Navigation**: URL updates with current step
-
-### 4. Entry Management
-- Create, edit, delete entries
-- Search and filter functionality (including tags)
-- Bulk operations (export, import, clear all)
-- Entry detail view with modal overlay
-- Responsive entry cards with minimalist design
-
-### 5. Dashboard & UI
-- Team progress tracking with daily quotas
-- Modern card-based layout
-- Filter system with collapsible filters
-- Logout functionality
-- Responsive design for all screen sizes
-
-## Supported Entry Types (GLI+CPA)
-
-1. **Constitution Provision** - Constitutional rights and principles
-2. **Statute Section** - Criminal and civil statutes
-3. **City Ordinance Section** - Local government ordinances
-4. **Rule of Court** - Court procedural rules
-5. **Agency Circular** - Government agency circulars
-6. **DOJ Issuance** - Department of Justice issuances
-7. **Executive Issuance** - Executive orders and issuances
-8. **Rights Advisory** - Legal rights information
-
-Police-mode types (e.g., PNP SOP, Traffic Rule, Incident Checklist) were removed in the GLI+CPA version.
-
----
-
-## Initial Setup & Daily Plan
-
-This app can be used immediately with local storage. For best results, import a Daily Plan so the dashboard shows the required daily work per person.
-
-### Prerequisites
-- Node.js 18+ and npm (or yarn/pnpm)
-- Excel file `Civilify_KB30_Schedule_CorePH.xlsx` containing the "Daily Plan" sheet
-
-### Install & Run (Dev)
-```bash
-git clone <repository-url>
-cd law-entry-app
-npm install
-npm start
-```
-
-### Docker Setup (Optional - for Database Integration)
-
-The app includes Docker configuration for PostgreSQL with pgvector extension, which can be used for backend integration.
-
-#### Prerequisites for Docker
-- Docker and Docker Compose installed on your system
-
-#### Quick Start with Docker
-```bash
-# Start PostgreSQL with pgvector
-docker-compose up -d
-
-# The database will be available at:
-# Host: localhost
-# Port: 5432
-# Database: law_entry_db
-# Username: postgres
-# Password: postgres
-```
-
-#### Docker Commands
-```bash
-# Start the database
-docker-compose up -d
-
-# Stop the database
-docker-compose down
-
-# View logs
-docker-compose logs postgres
-
-# Connect to database
-docker exec -it law_entry_postgres psql -U postgres -d law_entry_db
-
-# Remove everything (including data)
-docker-compose down -v
-```
-
-#### pgvector Extension
-The PostgreSQL database includes the pgvector extension for vector operations, which is useful for semantic search capabilities in the law entry application.
-
-### First Time Setup
-1. Open the app at `http://localhost:3000` - you'll see the login page
-2. Enter any username and password (demo mode)
-3. You'll be redirected to the dashboard at `/dashboard`
-
-### Import the Plan and Set Day 1
-1. In the dashboard header actions, click **Import Plan**.
-2. Choose `Civilify_KB30_Schedule_CorePH.xlsx`.
-3. A modal appears asking to **Set Day 1** (project start date). Pick the correct date and confirm.
-4. The app stores the parsed plan in `localStorage` under `kb_plan_rows` and your Day 1 in `kbprog:day1`.
-
-After this:
-- The Team Progress cards show daily quotas by person (Arda, Delos Cientos, Paden, Sendrijas, Tagarao).
-- The date beside “Today’s Team Progress” displays `Day N, Month D YYYY` based on Day 1.
-
-### Re-import or Remove the Plan
-- Use **Re-import Plan** to load a different Excel file; Day 1 will be requested again.
-- Use **Remove Plan** to clear the plan and Day 1 (cards return to placeholders).
-
-### Where the Plan Data Is Used
-- Dashboard (P1–P5 cards) shows per-person required counts for the selected day.
-- Progress is tracked in `localStorage` with keys `kbprog:<YYYY-MM-DD>:<P#>:<type>`.
-
----
-
-## Routing System
-
-The app uses React Router 6 for client-side routing with clean, SEO-friendly URLs.
-
-### Route Structure
-- **`/`** → Login page (default startup)
-- **`/login`** → Login page
-- **`/dashboard`** → Main dashboard with entry list
-- **`/law-entry/:step`** → Law entry form with step number (e.g., `/law-entry/1`, `/law-entry/2`)
-- **`/entry/:entryId`** → View entry details
-- **`/entry/:entryId/edit`** → Edit existing entry
-- **`*`** → Fallback to login page
-
-### Navigation Features
-- **Browser Back/Forward**: Works correctly with step navigation
-- **Direct URL Access**: Users can bookmark and directly access specific pages
-- **Entry Not Found**: Redirects to dashboard if entry doesn't exist
-- **Form State**: Maintains form state during step navigation
-- **Clean URLs**: SEO-friendly and user-friendly URLs
+| Person ID | Name | Username | Password |
+|-----------|------|----------|----------|
+| P1 | Arda | arda | CivilifyP1! |
+| P2 | Delos Cientos | deloscientos | CivilifyP2! |
+| P3 | Paden | paden | CivilifyP3! |
+| P4 | Sendrijas | sendrijas | CivilifyP4! |
+| P5 | Tagarao | tagarao | CivilifyP5! |
 
 ### Authentication Flow
-- **Default Route**: App starts at login page
-- **Authentication**: Accepts any non-empty username/password (demo mode)
-- **Redirect**: After login, redirects to `/dashboard`
-- **Logout**: Logout button navigates back to `/login`
+1. **Login**: User enters username and password
+2. **Validation**: Backend checks username against database and validates password
+3. **JWT Token**: Successful login generates JWT token for session management
+4. **Protected Routes**: All app routes require valid JWT token
+5. **Auto-logout**: Token expires after 24 hours
 
----
+### Database Schema
+```sql
+-- Users table for authentication
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  person_id VARCHAR(10) NOT NULL, -- P1, P2, P3, P4, P5
+  role VARCHAR(20) DEFAULT 'user',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-## Dynamic Form Architecture
-
-### Form State Management
-```typescript
-const methods = useForm<Entry>({
-  defaultValues: { /* type-specific defaults */ },
-  mode: 'onChange',
-  resolver: zodResolver(EntrySchema),
-});
+-- KB entries with user tracking
+CREATE TABLE kb_entries (
+  id SERIAL PRIMARY KEY,
+  entry_id VARCHAR(255) UNIQUE NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  title TEXT NOT NULL,
+  -- ... other fields ...
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
-### Type-Specific Rendering
-```typescript
-{type === 'statute_section' && <StatuteSectionForm />}
-{type === 'rule_of_court' && <RuleOfCourtForm />}
-{type === 'traffic_rule' && <TrafficRuleForm />}
-// ... other types
-```
-
-### Auto-Generation Features
-- **Entry ID**: Generated from type, law family, and section ID
-- **Auto-save**: Periodic saving to localStorage
-- **Draft recovery**: Automatic draft loading on form open
-
-## Component Structure
-
-### Main Components
-- **App.js** - Main application container with routing
-- **Login.js** - Authentication page component
-- **EntryForm.tsx** - Multi-step form wizard
-- **EntryStepper.tsx** - Progress indicator
-- **EntryPreview.tsx** - Live preview component
-- **EntryList.js** - Entry listing and filtering
-- **EntryView.js** - Entry detail view component
-
-### Type-Specific Components
-- **StatuteSectionForm.tsx** - Statute-specific fields
-- **RuleOfCourtForm.tsx** - Court rule fields
-- **TrafficRuleForm.tsx** - Traffic violation fields
-- **IncidentChecklistForm.tsx** - Incident procedure fields
-- **RightsAdvisoryForm.tsx** - Rights information fields
-
-### Utility Components
-- **UrlArray** - Dynamic URL input with chips
-- **TagArray** - Dynamic tag input with chips
-- **LegalBasisPicker** - Legal reference management
-- **Modal** - Popup dialogs
-- **Confetti** - Success animation component
-
-## Data Flow & State Management
-
-### Local Storage Hook (`useLocalStorage.js`)
-```typescript
-export const useLocalStorage = () => {
-  const [entries, setEntries] = useState([]);
-  
-  const addEntry = (entry) => { /* implementation */ };
-  const updateEntry = (entryId, updates) => { /* implementation */ };
-  const deleteEntry = (entryId) => { /* implementation */ };
-  const searchEntries = (query, filters) => { /* implementation */ };
-  
-  return { entries, addEntry, updateEntry, deleteEntry, searchEntries };
-};
-```
-
-### Form Data Flow
-```
-User Input → React Hook Form → Validation → State Update → UI Re-render
-```
-
-### Auto-Save Flow
-```
-Form Changes → Debounced Save → Local Storage → Success Notification
-```
-
-## Schema Validation System
-
-### Base Schema (`BaseEntry`)
-All entry types extend from a base schema with common fields:
-- type, entry_id, title, jurisdiction, law_family
-- section_id, canonical_citation, status
-- effective_date, amendment_date, summary, text
-- source_urls, tags, last_reviewed
-- visibility settings, offline pack settings
-
-### Type-Specific Extensions
-Each entry type extends the base schema with specific fields:
-
-```typescript
-export const StatuteSection = BaseEntry.extend({
-  type: z.literal("statute_section"),
-  elements: z.array(z.string()).default([]),
-  penalties: z.array(z.string()).default([]),
-  defenses: z.array(z.string()).default([]).optional(),
-  prescriptive_period: z.object({ 
-    value: z.number().positive(), 
-    unit: z.enum(["days", "months", "years"]) 
-  }).optional(),
-  standard_of_proof: z.string().optional(),
-  related_sections: z.array(EntryRef).default([]),
-  legal_bases: z.array(LegalBasis).default([]),
-});
-```
-
-## Styling System
-
-### Design Tokens
-```css
-:root {
-  --space-xs: 4px;   --space-sm: 8px;   --space-md: 16px;
-  --space-lg: 24px;  --space-xl: 32px;  --radius: 12px;
-  --primary: #f97316; /* Orange */
-  --background: #ffffff; --border: #e5e7eb;
-}
-```
-
-### Component Classes
-- **kb-form** - Main form container
-- **kb-form-container** - Form layout wrapper
-- **kb-form-layout** - Grid layout (sidebar + content)
-- **kb-form-content** - Form and preview columns
-- **kb-form-input/select** - Form field styling
-- **kb-action-bar** - Sticky footer with buttons
-
-### Responsive Design
-- Mobile-first approach
-- Sidebar collapses to dropdown on small screens
-- Form stacks vertically on mobile
-
-## Advanced Features
-
-### 1. Dynamic Jurisdiction Selection
-- Default: "PH Philippines (PH)"
-- "Other" option transforms into search input
-- Custom jurisdiction support with validation
-
-### 2. Dynamic Array Fields
-- **URLs**: Single input, add on Enter/Space, chip preview
-- **Tags**: Same behavior as URLs
-- **Hover effects**: Darken background, blur text, show remove button
-
-### 3. Search & Filtering
-- **Text search**: Title, ID, content, tags
-- **Type filter**: All 8 GLI+CPA entry types
-- **Jurisdiction filter**: PH + custom jurisdictions
-- **Status filter**: Active, Amended, Repealed, Draft, Approved, Published
-- **Team member filter**: Arda, Delos Cientos, Paden, Sendrijas, Tagarao
-- **Collapsible filters**: Hide/show filter section
-- **Clear filters**: Reset all filters to default
-
-### 4. Auto-Save & Draft Management
-- **Periodic auto-save**: Every 10 seconds
-- **Manual save**: "Save Draft" button
-- **Draft recovery**: Automatic on form open
-- **Success notification**: Modal popup for 1.5 seconds
-
-### 5. Dashboard & Entry Management
-- **Entry Cards**: Minimalist design with title, type badge, URL, and tags
-- **Entry Type Badges**: Orange rounded badges showing entry type
-- **Tag Display**: Comma-separated tags with "+X more" indicator
-- **Modal Entry View**: Click entry title to view details in overlay
-- **Action Buttons**: Edit and delete icons (no view button needed)
-- **Responsive Layout**: Works on all screen sizes
-- **Logout Button**: Positioned on right side of header
-
-## Form Validation Rules
-
-### Required Fields
-- **Title**: Minimum 3 characters
-- **Jurisdiction**: "PH" or valid custom jurisdiction
-- **Law Family**: Required for all entries
-- **Canonical Citation**: Required for all entries
-- **Status**: Must be defined status value
-- **Summary**: Required for all entries
-- **Text**: Required for all entries
-- **Source URLs**: At least one required
-
-### Type-Specific Validation
-- **Statute Section**: Elements and penalties required
-- **Rule of Court**: Rule number and section number required
-- **Traffic Rule**: Violation code and name required
-- **Incident Checklist**: At least one phase required
-- **Rights Advisory**: At least one advice point required
-
-## Local Storage & Persistence
-
-### Storage Keys
-- `kb_entries` - Main entry data
-- `kb_team_progress` - Team progress tracking
-- `kb_daily_quotas` - Daily quota management
-- `kb_entry_draft` - Current form draft
-
-### Data Operations
-- **Export**: Download all entries as JSON
-- **Import**: Upload JSON file to add entries
-- **Clear All**: Remove all entries with confirmation
-- **Auto-save**: Periodic saving of form state
-
-## Usage Guide
-
-### Authentication
-1. Open the app at `http://localhost:3000`
-2. Enter any username and password (demo mode)
-3. Click "Sign In" to access the dashboard
-
-### Creating a New Entry
-1. Click "Create New Entry" button
-2. Complete 5-step form wizard:
-   - **Step 1**: Basic information (type, title, jurisdiction)
-   - **Step 2**: Sources and dates (URLs, effective dates)
-   - **Step 3**: Content (summary, text, tags)
-   - **Step 4**: Type-specific fields (dynamic based on type)
-   - **Step 5**: Review and publish
-3. Click "Create Entry" to save
-
-### Managing Entries
-- **View**: Click entry title to view details in modal overlay
-- **Edit**: Click edit icon to modify existing entry
-- **Delete**: Click delete icon with confirmation
-- **Search**: Use search bar and filters (including tags)
-- **Export/Import**: Bulk operations for data management
-- **Logout**: Click "Logout" button in header to return to login
-
-### Advanced Features
-- **Auto-save**: Form saves automatically every 10 seconds
-- **Draft saving**: Manual save with "Save Draft" button
-- **Live preview**: Real-time preview of entry data (expanded width)
-- **Dynamic fields**: Type-specific form fields
-- **Validation**: Real-time validation with error messages
-- **Form Layout**: Progress card (33% width) and preview card (67% width)
-- **Step Navigation**: URL updates with current step number
-
-## Recent UI Improvements
-
-### Dashboard Enhancements
-- **Minimalist Entry Cards**: Clean design with essential information only
-- **Entry Type Badges**: Orange rounded badges next to entry titles
-- **Tag Display**: Comma-separated format with "+X more" indicator
-- **Modal Entry View**: Overlay display for entry details
-- **Icon Buttons**: Edit and delete actions using SVG icons
-- **Collapsible Filters**: Hide/show filter section by default
-- **Clear Filters Button**: Red button positioned in filter row
-
-### Form Layout Improvements
-- **Progress Card**: Reduced width (33% of available space)
-- **Preview Card**: Expanded width (67% of available space)
-- **Step Navigation**: URL updates reflect current step
-- **Responsive Design**: Mobile-friendly layout
-
-### Authentication & Navigation
-- **Login Page**: Modern design with orange gradient background
-- **Route Protection**: All routes redirect to login if not authenticated
-- **Logout Button**: Positioned on right side of dashboard header
-- **Clean URLs**: SEO-friendly routing structure
-
-## Development Setup
+## Database Setup with DBeaver
 
 ### Prerequisites
-- Node.js 18+
-- npm or yarn
+- **DBeaver**: Download and install from https://dbeaver.io/
+- **Supabase Account**: Create account at https://supabase.com/
+- **Database Connection**: Get connection details from Supabase dashboard
 
-### Installation
+### Connection Setup in DBeaver
+1. **Open DBeaver** and create new connection
+2. **Select PostgreSQL** as database type
+3. **Enter connection details**:
+   - Host: `db.[your-project-ref].supabase.co`
+   - Port: `5432`
+   - Database: `postgres`
+   - Username: `postgres`
+   - Password: `[your-database-password]`
+4. **Test connection** and save
+
+### Database Management
+- **Tables**: View and edit `users`, `kb_entries`, `shared_plans`
+- **SQL Editor**: Run custom queries and migrations
+- **Data Export**: Export data for backup or analysis
+- **Schema Management**: Modify table structures as needed
+
+### Key Tables Overview
+- **`users`**: Team member authentication and profile data
+- **`kb_entries`**: All knowledge base entries with creator tracking
+- **`shared_plans`**: Imported Excel plans shared across team (NEW: Database-backed)
+- **`vector_entries`**: Vector embeddings for semantic search
+
+## Team Progress & Daily Quotas
+
+### Progress Tracking
+- **Daily Quotas**: Each team member has specific daily entry requirements
+- **Progress Cards**: Dashboard shows real-time progress for each team member
+- **Database-Driven**: Team member names and progress fetched from database
+- **Shared View**: All team members see everyone's progress
+
+### Daily Quota System
+- **P1 (Arda)**: Focus on RPC + Cebu Ordinances
+- **P2 (Delos Cientos)**: Rules of Court + DOJ (procedure-heavy)
+- **P3 (Paden)**: PNP SOPs + Incident Checklists
+- **P4 (Sendrijas)**: Traffic/LTO lane
+- **P5 (Tagarao)**: Rights + Constitution + Policy
+
+### Progress Calculation
+- **Daily Counts**: Track entries by type per person per day
+- **Carryover Logic**: Unfinished quotas carry over to next day
+- **Completion Status**: Visual indicators (green/orange/red) for completion
+
+## Shared Plan Management (UPDATED)
+
+### Plan Import Process
+1. **Upload Excel**: Import `Civilify_KB30_Schedule_CorePH.xlsx`
+2. **Set Day 1**: Choose project start date
+3. **Database Storage**: Plan stored in `shared_plans` table (NEW: Database-backed)
+4. **Team Sync**: All team members see the same plan across all devices
+
+### Plan Features
+- **Shared Access**: Everyone sees the same imported plan
+- **Cross-Device Sync**: Plans automatically sync across all devices and users
+- **Progress Tracking**: Real-time updates across all users
+- **Plan History**: Track multiple plans over time
+- **Active Plan**: Only one plan active at a time
+- **Persistent Storage**: Plans survive browser refreshes and device changes
+
+### Plan Data Structure
+```sql
+CREATE TABLE shared_plans (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  day1_date DATE NOT NULL,
+  plan_data JSONB NOT NULL,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_active BOOLEAN DEFAULT true
+);
+
+-- Function to get the current active plan
+CREATE OR REPLACE FUNCTION get_active_plan()
+RETURNS TABLE(
+  id INTEGER,
+  name TEXT,
+  day1_date DATE,
+  plan_data JSONB,
+  created_by INTEGER,
+  created_by_name TEXT,
+  created_at TIMESTAMPTZ
+)
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT 
+    sp.id,
+    sp.name,
+    sp.day1_date,
+    sp.plan_data,
+    sp.created_by,
+    u.name as created_by_name,
+    sp.created_at
+  FROM shared_plans sp
+  LEFT JOIN users u ON sp.created_by = u.id
+  WHERE sp.is_active = true
+  ORDER BY sp.created_at DESC
+  LIMIT 1;
+$$;
+
+-- Function to deactivate all plans (when importing new one)
+CREATE OR REPLACE FUNCTION deactivate_all_plans()
+RETURNS VOID
+LANGUAGE SQL
+AS $$
+  UPDATE shared_plans SET is_active = false;
+$$;
+```
+
+### Plan Synchronization (NEW)
+- **Automatic Loading**: Plans are automatically loaded from database on app startup
+- **Real-time Updates**: All users see plan changes immediately
+- **No Local Storage**: Plans are no longer stored in browser localStorage
+- **Cross-Device Access**: Import a plan on one device, see it on all others
+
+## Backend API Endpoints
+
+### Authentication Endpoints
+- `POST /api/auth/login` - User login with username/password
+- `GET /api/auth/me` - Get current user information
+- `GET /api/auth/team-members` - Get all team members
+- `GET /api/auth/quota/:userId` - Get user's daily quota
+- `GET /api/auth/team-progress` - Get team progress for date
+
+### Entry Management Endpoints
+- `GET /api/kb/entries` - List all entries with creator info
+- `POST /api/kb/entries` - Create new entry (with creator tracking)
+- `PUT /api/kb/entries/:id` - Update existing entry
+- `DELETE /api/kb/entries/:id` - Delete entry
+- `GET /api/kb/entries/search` - Search entries with filters
+
+### Plan Management Endpoints (UPDATED)
+- `GET /api/plans/active` - Get current active plan from database
+- `POST /api/plans/import` - Import new plan to database
+- `DELETE /api/plans/active` - Remove current plan from database
+- `GET /api/plans/history` - Get plan history from database
+
+### Vector Search Endpoints
+- `POST /api/vector/upsert` - Add/update vector embeddings
+- `DELETE /api/vector/:entryId` - Remove vector embeddings
+- `POST /api/vector/search` - Semantic search
+
+## Environment Configuration
+
+### Frontend Environment Variables
 ```bash
-git clone <repository-url>
+# .env file in law-entry-app directory
+REACT_APP_API_BASE=https://your-backend-url.com
+REACT_APP_SUPABASE_URL=https://your-project.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### Backend Environment Variables
+```bash
+# .env file in server directory
+DATABASE_URL=postgresql://postgres:password@host:5432/postgres
+JWT_SECRET=your-jwt-secret-key
+PORT=4000
+NODE_ENV=production
+PGSSL=true
+CORS_ORIGIN=https://your-frontend-domain.vercel.app
+```
+
+## Deployment Setup
+
+### Frontend (Vercel)
+1. **Connect Repository**: Link GitHub repository to Vercel
+2. **Build Settings**: 
+   - Build Command: `npm run build`
+   - Output Directory: `build`
+   - Install Command: `npm install`
+3. **Environment Variables**: Set `REACT_APP_API_BASE` to backend URL
+4. **Deploy**: Automatic deployment on git push
+
+### Backend (Render)
+1. **Create Service**: New Web Service from GitHub repository
+2. **Build Settings**:
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+3. **Environment Variables**: Set `DATABASE_URL`, `JWT_SECRET`, `PGSSL`, `CORS_ORIGIN`
+4. **Database**: Connect to Supabase PostgreSQL
+
+### Database (Supabase)
+1. **Project Setup**: Create new Supabase project
+2. **Database Migration**: Run SQL scripts from `server/sql/` directory
+3. **Connection**: Get connection string for backend
+4. **Row Level Security**: Configure RLS policies as needed
+
+## Development Workflow
+
+### Local Development
+```bash
+# Frontend
 cd law-entry-app
 npm install
 npm start
+
+# Backend
+cd server
+npm install
+npm start
+
+# Database (Docker)
+docker-compose up -d
 ```
+
+### Database Migrations
+```bash
+# Run migrations
+cd server
+npm run migrate
+
+# Or manually in DBeaver
+-- Run SQL files in order:
+-- 001_init.sql
+-- 002_match_fn.sql
+-- 003_migrate_add_created_by.sql
+-- 004_shared_plans.sql (NEW: Required for plan management)
+-- 005_simple_passwords.sql
+```
+
+### Testing Authentication
+1. **Start Backend**: Ensure server is running on port 4000
+2. **Start Frontend**: React app on port 3000
+3. **Login Test**: Use any team member credentials
+4. **Verify**: Check that user info appears in dashboard
+
+## Troubleshooting
+
+### Common Issues
+- **Build Failures**: Check for unused imports and variables
+- **Database Connection**: Verify DATABASE_URL in backend .env
+- **Authentication Errors**: Check JWT_SECRET and token expiration
+- **CORS Issues**: Ensure backend allows frontend domain
+- **Plan Not Loading**: Verify shared_plans table exists and has data
+
+### Database Issues
+- **Connection Refused**: Check Supabase connection string
+- **Missing Tables**: Run migration scripts in DBeaver (especially 004_shared_plans.sql)
+- **Permission Errors**: Verify database user permissions
+- **Plan Import Fails**: Check if shared_plans table structure is correct
+
+### Deployment Issues
+- **Environment Variables**: Ensure all required vars are set
+- **Build Errors**: Check for TypeScript/ESLint errors
+- **API Errors**: Verify backend URL in frontend config
+- **Plan Sync Issues**: Verify database connection and table structure
+
+## Security Considerations
+
+### Authentication Security
+- **Individual Passwords**: Each team member has unique password
+- **JWT Tokens**: Secure session management with expiration
+- **Password Storage**: Simple comparison for small team (not hashed)
+- **Route Protection**: All routes require valid authentication
+
+### Database Security
+- **Connection Security**: Use SSL connections to Supabase
+- **Row Level Security**: Configure RLS policies for data access
+- **API Security**: JWT validation on all protected endpoints
+- **Environment Variables**: Secure storage of sensitive config
+
+## Monitoring & Maintenance
+
+### Database Monitoring
+- **DBeaver**: Regular connection testing and data verification
+- **Supabase Dashboard**: Monitor database performance and usage
+- **Backup Strategy**: Regular exports of critical data
+- **Plan Data**: Monitor shared_plans table for data integrity
+
+### Application Monitoring
+- **Vercel Analytics**: Frontend performance and error tracking
+- **Render Logs**: Backend application logs and error monitoring
+- **User Feedback**: Monitor authentication and usability issues
+- **Plan Synchronization**: Monitor cross-device plan sync success
+
+## Future Enhancements
+
+### Planned Features
+- **Password Hashing**: Implement bcrypt for password security
+- **User Management**: Admin interface for user management
+- **Advanced Search**: Enhanced semantic search capabilities
+- **Mobile App**: React Native version for mobile access
+- **API Documentation**: Swagger/OpenAPI documentation
+- **Plan Versioning**: Track changes to imported plans over time
+
+### Scalability Improvements
+- **Caching**: Redis for session and data caching
+- **Load Balancing**: Multiple backend instances
+- **Database Optimization**: Query optimization and indexing
+- **CDN**: Content delivery network for static assets
 
 ---
 
-## Backend Integration Guide
+## Quick Start Guide
 
-The app ships in a local-storage mode by default. To connect it to a real backend, wire the following integration points.
+### For New Team Members
+1. **Get Credentials**: Receive username and password from admin
+2. **Access App**: Navigate to deployed app URL
+3. **Login**: Use provided credentials
+4. **Import Plan**: If not already done, import the Excel plan (NEW: Will sync to all devices)
+5. **Start Working**: Begin creating entries according to daily quotas
 
-### Auth & Login
-- Add a login screen (OIDC/JWT or session cookie) and expose the current user via a React context (e.g., `AuthContext`).
-- The wizard Step 1 shows a read‑only “Entering as” field. Bind this to the logged-in user (e.g., Tagarao for P5). Until auth is wired, this shows a placeholder "MEMBER".
+### For Administrators
+1. **Database Setup**: Ensure Supabase project is configured
+2. **User Management**: Add/update team members in `users` table
+3. **Plan Management**: Import and manage shared plans (NEW: Database-backed)
+4. **Monitoring**: Regular check of system health and usage
+5. **Plan Synchronization**: Verify plans are syncing across all team devices
 
-Recommended properties for the `AuthContext`:
-```ts
-type AuthUser = {
-  id: string;
-  name: string;   // e.g., "Tagarao"
-  personId?: 'P1'|'P2'|'P3'|'P4'|'P5';
-  roles: string[];
-};
-```
-
-### Entry CRUD API
-Implement these endpoints and swap the local-storage methods in `useLocalStorage` with real HTTP calls. A thin API layer is recommended (e.g., `/src/services/kbApi.ts`).
-
-Expected endpoints (REST):
-- `POST /api/entries` — create
-- `GET /api/entries/:id` — read
-- `PUT /api/entries/:id` — update
-- `DELETE /api/entries/:id` — delete
-- `GET /api/entries/search?q=...&filters=...` — search
-
-Validation should run server-side using the same schema rules (zod or your server’s validator). Return structured errors that can be surfaced inline.
-
-### Plan & Progress API (Optional)
-If you want shared progress across browsers/users:
-- Upload and parse the Excel plan on the server; return normalized JSON.
-- Store/retrieve plan by date via `GET /api/plan?date=YYYY-MM-DD`.
-- Persist counts per day/person/type via `POST /api/progress` and `GET /api/progress?date=...`.
-
-### Environment Configuration
-Use `.env` files to set API roots and feature flags.
-```
-REACT_APP_API_BASE=https://civilify.example.com
-REACT_APP_AUTH_PROVIDER=keycloak
-REACT_APP_FEATURE_DASHBOARD=true
-```
+### For Developers
+1. **Local Setup**: Follow development workflow above
+2. **Database Access**: Use DBeaver for database management
+3. **Testing**: Test all authentication flows and features
+4. **Deployment**: Follow deployment setup for production
+5. **Plan Testing**: Test plan import and cross-device synchronization
 
 ---
 
-## Using the Wizard (Authoring Workflow)
-
-1) Open the app and click **Create New Entry**.
-
-2) Complete Steps 1–5. Notes:
-- Step 1: Type, Title, Jurisdiction. “Entering as” shows the logged-in member when connected to auth.
-- Step 2: Provide at least one Source URL.
-- Step 3: Summary and Legal Text with Tags.
-- Step 4: Type-specific fields + Relations block.
-  - For **Rights Advisory**, at least one Legal Basis is required (internal or external). The Next button stays disabled until provided.
-  - For other types, Relations are optional. A tip hints that linking sources improves citations.
-- Step 5: Review & Publish. Create or update the entry.
-
-3) Drafts & Autosave
-- Drafts save to `localStorage` every 5s. If you return later, the app asks to resume.
-- Cancel shows a confirm dialog and clears the draft.
-
----
-
-## Troubleshooting & Tips
-
-- “Plan not loaded”: Use Import Plan and pick the Excel file; set Day 1. If you still don’t see quotas, clear site data then re-import.
-- “Next disabled on Step 4”: This happens when Rights Advisory has no legal_bases. Add one Internal/External citation to proceed.
-- “Buttons wrap to two lines”: The primary nav buttons use `white-space: nowrap`. Ensure custom CSS doesn’t override.
-- “Auth context not available”: Render the app within your `AuthProvider` and pass user details; bind Step 1 “Entering as”.
-
----
-
-## Migration Notes (GLI+CPA)
-- Removed police-specific types and screens; schemas trimmed to eight GLI+CPA types.
-- Wizard reduced to five steps; Relations integrated into Step 4.
-- Dashboard shows GLI+CPA quotas only.
-
-
-### Available Scripts
-- `npm start` - Start development server
-- `npm build` - Build for production
-- `npm test` - Run tests
-- `npm eject` - Eject from Create React App
-
-## API Integration Points
-
-The app is designed for easy API integration:
-
-### Entry CRUD Operations
-```typescript
-const api = {
-  createEntry: async (entryData) => { /* POST /api/entries */ },
-  updateEntry: async (entryId, updates) => { /* PUT /api/entries/:id */ },
-  deleteEntry: async (entryId) => { /* DELETE /api/entries/:id */ },
-  searchEntries: async (query, filters) => { /* GET /api/entries/search */ }
-};
-```
-
-### Validation Integration
-```typescript
-const validateEntry = async (entryData) => {
-  /* POST /api/entries/validate */
-};
-```
-
-## Best Practices
-
-### Entry Creation
-- Use descriptive titles that clearly identify legal provisions
-- Provide complete citations in canonical format
-- Include multiple source URLs for verification
-- Write comprehensive summaries explaining key points
-- Add relevant tags for better searchability
-
-### Content Quality
-- Verify legal text against official sources
-- Ensure accuracy of all legal information
-- Update status when laws are amended or repealed
-- Review entries regularly for currency
-
-### Organization
-- Use consistent naming conventions
-- Apply appropriate tags for categorization
-- Set correct visibility settings for team access
-- Include in offline packs for field use
-
-## Docker Configuration
-
-The app includes Docker configuration for easy database setup and deployment.
-
-### Docker Files
-- **`Dockerfile`** - Defines the PostgreSQL with pgvector image
-- **`docker-compose.yml`** - Orchestrates the database service
-- **`.dockerignore`** - Excludes unnecessary files from build context
-- **`README.md`** - Docker-specific documentation and commands
-
-### Database Configuration
-- **Base Image**: `ankane/pgvector:latest`
-- **Database**: `law_entry_db`
-- **Username**: `postgres`
-- **Password**: `postgres`
-- **Port**: `5432`
-- **Extensions**: pgvector (for vector operations)
-
-### Data Persistence
-- Database data is stored in a Docker volume named `postgres_data`
-- Data persists between container restarts
-- Volume can be backed up or migrated as needed
-
-### Security Considerations
-- Default credentials are for development use only
-- Change passwords for production environments
-- Consider additional security measures for production deployment
-
-## Conclusion
-
-The Civilify Law Entry App provides a comprehensive, user-friendly interface for managing legal knowledge base entries. Its dynamic form system adapts to different legal document types, while robust validation and auto-save features ensure data quality and user experience.
-
-The app is designed to scale from local storage to full API integration, making it suitable for both development and production environments. The modular component architecture makes it easy to maintain and extend.
-
-The included Docker configuration provides an easy way to set up a PostgreSQL database with pgvector extension for backend integration, enabling semantic search capabilities and scalable data storage.
-
-For questions or support, please refer to the development team or consult the inline code documentation.
+This documentation provides comprehensive information for all users of the Civilify Law Entry App, from team members to administrators and developers. For additional support or questions, please refer to the development team or consult the inline code documentation.

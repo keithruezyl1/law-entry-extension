@@ -1,19 +1,45 @@
 import React from 'react';
 import { DashboardHeader } from '../../../components/kb/DashboardHeader';
-import { computeDayIndex, loadPlanFromUrl, parseWorkbook, rowsForDay, toISODate } from '../../../lib/plan/planLoader';
+import { computeDayIndex, parseWorkbook, rowsForDay, toISODate } from '../../../lib/plan/planLoader';
 import { PersonCard } from '../../../components/kb/PersonCard';
 import { GLI_CPA_TYPES } from '../../../lib/plan/config';
-import { exportDate, clearDate, getDay1Date, setDay1Date } from '../../../lib/plan/progressStore';
+import { exportDate, clearDate, setDay1Date } from '../../../lib/plan/progressStore';
+import { getActivePlan, importPlan } from '../../../services/plansApi';
 
 export default function Dashboard() {
   const [date, setDate] = React.useState<Date>(new Date());
-  const [day1Date, setDay1DateState] = React.useState<string | null>(getDay1Date());
+  const [day1Date, setDay1DateState] = React.useState<string | null>(null);
   const dayIndex = computeDayIndex(date, day1Date);
   const [rows, setRows] = React.useState<any[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
 
+  // Load active plan from database on mount
   React.useEffect(() => {
-    loadPlanFromUrl().then(setRows).catch(() => setRows([]));
+    const loadActivePlan = async () => {
+      try {
+        setLoading(true);
+        const activePlan = await getActivePlan();
+        if (activePlan) {
+          setRows(activePlan.plan_data);
+          // Set the day1 date from the database plan
+          if (activePlan.day1_date) {
+            setDay1DateState(activePlan.day1_date);
+            setDay1Date(activePlan.day1_date);
+          }
+        } else {
+          setRows(null);
+        }
+      } catch (err) {
+        console.error('Failed to load active plan:', err);
+        setError('Failed to load active plan from database');
+        setRows(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActivePlan();
   }, []);
 
   const onImportPlan = async () => {
@@ -24,9 +50,31 @@ export default function Dashboard() {
       input.onchange = async () => {
         const file = input.files?.[0];
         if (!file) return;
-        const buf = await file.arrayBuffer();
-        const parsed = parseWorkbook(buf);
-        setRows(parsed);
+        
+        try {
+          setLoading(true);
+          const buf = await file.arrayBuffer();
+          const parsed = parseWorkbook(buf);
+          
+          // Get plan name from filename
+          const planName = file.name.replace('.xlsx', '');
+          
+          // Import plan to database
+          const planId = await importPlan(planName, day1Date || new Date().toISOString().split('T')[0], parsed);
+          
+          if (planId) {
+            // Update local state with the new plan
+            setRows(parsed);
+            setError(null);
+            // Refresh the page to ensure all components get the new plan
+            window.location.reload();
+          }
+        } catch (err: any) {
+          console.error('Failed to import plan:', err);
+          setError(`Failed to import plan: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
       };
       input.click();
     } catch (e: any) {
@@ -79,8 +127,8 @@ export default function Dashboard() {
           }}
         />
         {error && <div className="mb-4 text-sm text-red-600 text-center">{error}</div>}
-        {!rows && <div className="text-sm text-muted-foreground text-center">Loading plan…</div>}
-        {rows && (
+        {loading && <div className="text-sm text-muted-foreground text-center">Loading plan…</div>}
+        {!loading && rows && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-items-center">
             {people.map((p) => (
               <PersonCard key={p} person={p} dateISO={todayISO} requirements={reqByPerson[p]} />
