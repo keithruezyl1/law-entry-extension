@@ -546,7 +546,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       setEditingEntry(null);
     } catch (err) {
       console.error('Error saving entry:', err);
-      alert('Failed to save entry. Please try again.');
+      const msg = (err && err.message) ? String(err.message) : 'Please try again.';
+      alert(`Failed to save entry: ${msg}`);
     }
   };
 
