@@ -134,51 +134,65 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
   };
 
   const renderTypeSpecificFields = () => {
-    console.log('Entry type:', entry.type);
-    console.log('Entry data:', entry);
-    
+    if (!entry.type) return null;
+
     switch (entry.type) {
-      case 'constitution_provision':
+      case 'statute_section':
         return (
           <>
-            {renderArrayField('topics', entry.topics, 'Topics')}
-            {renderArrayField('jurisprudence', entry.jurisprudence, 'Jurisprudence')}
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Elements:</span>
+                <span className="value">{entry.elements && entry.elements.length > 0 ? entry.elements.join(', ') : 'Empty'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Penalties:</span>
+                <span className="value">{entry.penalties && entry.penalties.length > 0 ? entry.penalties.join(', ') : 'Empty'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Defenses:</span>
+                <span className="value">{entry.defenses && entry.defenses.length > 0 ? entry.defenses.join(', ') : 'Empty'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Prescriptive Period:</span>
+                <span className="value">{entry.prescriptive_period ? JSON.stringify(entry.prescriptive_period) : 'Empty'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Standard of Proof:</span>
+                <span className="value">{entry.standard_of_proof || 'Empty'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Rule Number:</span>
+                <span className="value">{entry.rule_no || 'Empty'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Section Number:</span>
+                <span className="value">{entry.section_no || 'Empty'}</span>
+              </div>
+            </div>
+            {renderLegalBases(entry.legal_bases)}
             {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
           </>
         );
 
-      case 'statute_section':
       case 'city_ordinance_section':
         return (
           <>
-            {renderArrayField('elements', entry.elements, 'Elements')}
-            {renderArrayField('penalties', entry.penalties, 'Penalties')}
-            {renderArrayField('defenses', entry.defenses, 'Defenses')}
-            {entry.prescriptive_period && (
-              <div className="field-group">
-                <h4>Prescriptive Period</h4>
-                <div className="info-grid">
-                  {entry.prescriptive_period.value && (
-                    <div className="info-item">
-                      <span className="label">Value:</span>
-                      <span className="value">{entry.prescriptive_period.value}</span>
-                    </div>
-                  )}
-                  {entry.prescriptive_period.unit && (
-                    <div className="info-item">
-                      <span className="label">Unit:</span>
-                      <span className="value">{entry.prescriptive_period.unit}</span>
-                    </div>
-                  )}
-                </div>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Elements:</span>
+                <span className="value">{entry.elements && entry.elements.length > 0 ? entry.elements.join(', ') : 'Empty'}</span>
               </div>
-            )}
-            {entry.standard_of_proof && (
-              <div className="field-group">
-                <h4>Standard of Proof</h4>
-                <div className="text-content">{entry.standard_of_proof}</div>
+              <div className="info-item">
+                <span className="label">Penalties:</span>
+                <span className="value">{entry.penalties && entry.penalties.length > 0 ? entry.penalties.join(', ') : 'Empty'}</span>
               </div>
-            )}
+              <div className="info-item">
+                <span className="label">Defenses:</span>
+                <span className="value">{entry.defenses && entry.defenses.length > 0 ? entry.defenses.join(', ') : 'Empty'}</span>
+              </div>
+            </div>
+            {renderLegalBases(entry.legal_bases)}
             {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
           </>
         );
@@ -189,16 +203,17 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Rule Number:</span>
-                <span className="value">{entry.rule_no}</span>
+                <span className="value">{entry.rule_no || 'Empty'}</span>
               </div>
               <div className="info-item">
                 <span className="label">Section Number:</span>
-                <span className="value">{entry.section_no}</span>
+                <span className="value">{entry.section_no || 'Empty'}</span>
               </div>
             </div>
             {renderArrayField('triggers', entry.triggers, 'Triggers')}
             {renderArrayField('time_limits', entry.time_limits, 'Time Limits')}
             {renderArrayField('required_forms', entry.required_forms, 'Required Forms')}
+            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
           </>
         );
 
@@ -208,26 +223,27 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Circular Number:</span>
-                <span className="value">{entry.circular_no}</span>
+                <span className="value">{entry.circular_no || 'Empty'}</span>
               </div>
-              {entry.section_no && (
-                <div className="info-item">
-                  <span className="label">Section Number:</span>
-                  <span className="value">{entry.section_no}</span>
-                </div>
-              )}
+              <div className="info-item">
+                <span className="label">Section Number:</span>
+                <span className="value">{entry.section_no || 'Empty'}</span>
+              </div>
             </div>
             {renderArrayField('applicability', entry.applicability, 'Applicability')}
             {renderLegalBases(entry.legal_bases)}
+            {renderArrayField('supersedes', entry.supersedes, 'Supersedes')}
           </>
         );
 
       case 'doj_issuance':
         return (
           <>
-            <div className="info-item">
-              <span className="label">Issuance Number:</span>
-              <span className="value">{entry.issuance_no}</span>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Issuance Number:</span>
+                <span className="value">{entry.issuance_no || 'Empty'}</span>
+              </div>
             </div>
             {renderArrayField('applicability', entry.applicability, 'Applicability')}
             {renderArrayField('supersedes', entry.supersedes, 'Supersedes')}
@@ -238,9 +254,11 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
       case 'executive_issuance':
         return (
           <>
-            <div className="info-item">
-              <span className="label">Instrument Number:</span>
-              <span className="value">{entry.instrument_no}</span>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Instrument Number:</span>
+                <span className="value">{entry.instrument_no || 'Empty'}</span>
+              </div>
             </div>
             {renderArrayField('applicability', entry.applicability, 'Applicability')}
             {renderArrayField('supersedes', entry.supersedes, 'Supersedes')}
@@ -264,19 +282,17 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Violation Code:</span>
-                <span className="value">{entry.violation_code}</span>
+                <span className="value">{entry.violation_code || 'Empty'}</span>
               </div>
               <div className="info-item">
                 <span className="label">Violation Name:</span>
-                <span className="value">{entry.violation_name}</span>
+                <span className="value">{entry.violation_name || 'Empty'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">License Action:</span>
+                <span className="value">{entry.license_action || 'Empty'}</span>
               </div>
             </div>
-            {entry.license_action && (
-              <div className="field-group">
-                <h4>License Action</h4>
-                <div className="text-content">{entry.license_action}</div>
-              </div>
-            )}
             {renderFineSchedule(entry.fine_schedule)}
             {renderArrayField('apprehension_flow', entry.apprehension_flow, 'Apprehension Flow')}
             {renderLegalBases(entry.legal_bases)}
@@ -286,9 +302,11 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
       case 'incident_checklist':
         return (
           <>
-            <div className="info-item">
-              <span className="label">Incident:</span>
-              <span className="value">{entry.incident}</span>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Incident:</span>
+                <span className="value">{entry.incident || 'Empty'}</span>
+              </div>
             </div>
             {renderPhases(entry.phases)}
             {renderArrayField('forms', entry.forms, 'Forms')}
@@ -300,17 +318,34 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
       case 'rights_advisory':
         return (
           <>
-            <div className="info-item">
-              <span className="label">Rights Scope:</span>
-              <span className="value">{entry.rights_scope}</span>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Rights Scope:</span>
+                <span className="value">{entry.rights_scope || 'Empty'}</span>
+              </div>
             </div>
             {renderArrayField('advice_points', entry.advice_points, 'Advice Points')}
             {renderLegalBases(entry.legal_bases)}
+            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
+          </>
+        );
+
+      case 'constitution_provision':
+        return (
+          <>
+            {renderArrayField('topics', entry.topics, 'Topics')}
+            {renderArrayField('jurisprudence', entry.jurisprudence, 'Jurisprudence')}
+            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
           </>
         );
 
       default:
-        return null;
+        return (
+          <div className="info-item">
+            <span className="label">Entry Type:</span>
+            <span className="value">{entry.type}</span>
+          </div>
+        );
     }
   };
 
@@ -396,25 +431,9 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             </div>
           </div>
 
-          {/* Summary Section */}
-          {entry.summary && (
-            <div className="entry-section">
-              <h3>Summary</h3>
-              <div className="summary-text">{entry.summary}</div>
-            </div>
-          )}
-
-          {/* Full Text Content */}
-          {entry.text && (
-            <div className="entry-section">
-              <h3>Full Text Content</h3>
-              <div className="text-content">{entry.text}</div>
-            </div>
-          )}
-
-          {/* Timeline Information */}
+          {/* Dates */}
           <div className="entry-section">
-            <h3>Timeline Information</h3>
+            <h3>Dates</h3>
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Effective Date:</span>
@@ -437,6 +456,42 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             </div>
           </div>
 
+          {/* Source URLs */}
+          {entry.source_urls && entry.source_urls.length > 0 && (
+            <div className="entry-section">
+              <h3>Source URLs</h3>
+              <div className="source-urls">
+                {entry.source_urls.map((url, index) => (
+                  <a
+                    key={index}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="source-url"
+                  >
+                    {url}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Summary */}
+          {entry.summary && (
+            <div className="entry-section">
+              <h3>Summary</h3>
+              <div className="summary-text">{entry.summary}</div>
+            </div>
+          )}
+
+          {/* Full Text Content */}
+          {entry.text && (
+            <div className="entry-section">
+              <h3>Full Text Content</h3>
+              <div className="text-content">{entry.text}</div>
+            </div>
+          )}
+
           {/* Tags */}
           {entry.tags && entry.tags.length > 0 && (
             <div className="entry-section">
@@ -454,26 +509,6 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             <h3>{entryType ? entryType.label : 'Entry'} Details</h3>
             {renderTypeSpecificFields()}
           </div>
-
-          {/* Source URLs */}
-          {entry.source_urls && entry.source_urls.length > 0 && (
-            <div className="entry-section">
-              <h3>Source References</h3>
-              <div className="source-urls">
-                {entry.source_urls.map((url, index) => (
-                  <a
-                    key={index}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="source-url"
-                  >
-                    {url}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Raw Text */}
           {entry.text_raw && (
