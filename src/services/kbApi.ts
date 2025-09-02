@@ -173,11 +173,17 @@ export class KbApiService {
 export const kbApi = KbApiService.getInstance();
 
 // Live API helpers (optional – to dynamically reflect DB state)
-const KB_BASE_URL = (process.env.REACT_APP_VECTOR_API_URL || 'http://localhost:4000') + '/api/kb';
+const API_BASE = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_VECTOR_API_URL || 'http://localhost:4000');
+const KB_BASE_URL = `${API_BASE}/api/kb`;
 
 export async function fetchAllEntriesFromDb(): Promise<any[]> {
   try {
-    const resp = await fetch(`${KB_BASE_URL}/entries`);
+    const token = localStorage.getItem('auth_token');
+    const resp = await fetch(`${KB_BASE_URL}/entries`, {
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
     const json = await resp.json();
     if (!json?.success) return [];
     return json.entries || [];

@@ -8,7 +8,14 @@ const router = Router();
 router.get('/entries', async (req, res) => {
   try {
     const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
+      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family,
+              section_id, status, effective_date, amendment_date, last_reviewed, visibility, source_urls,
+              elements, penalties, defenses, prescriptive_period, standard_of_proof, rule_no, section_no,
+              triggers, time_limits, required_forms, circular_no, applicability, issuance_no, instrument_no,
+              supersedes, steps_brief, forms_required, failure_states, violation_code, violation_name, license_action,
+              fine_schedule, apprehension_flow, incident, phases, forms, handoff, rights_callouts, rights_scope,
+              advice_points, topics, jurisprudence, legal_bases, related_sections,
+              created_at, updated_at
        from kb_entries
        order by updated_at desc`,
       []
@@ -26,7 +33,14 @@ router.get('/entries/:entryId', async (req, res) => {
     const entryId = String(req.params.entryId || '').trim();
     if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
     const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
+      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family,
+              section_id, status, effective_date, amendment_date, last_reviewed, visibility, source_urls,
+              elements, penalties, defenses, prescriptive_period, standard_of_proof, rule_no, section_no,
+              triggers, time_limits, required_forms, circular_no, applicability, issuance_no, instrument_no,
+              supersedes, steps_brief, forms_required, failure_states, violation_code, violation_name, license_action,
+              fine_schedule, apprehension_flow, incident, phases, forms, handoff, rights_callouts, rights_scope,
+              advice_points, topics, jurisprudence, legal_bases, related_sections,
+              created_at, updated_at
        from kb_entries where entry_id = $1`,
       [entryId]
     );
@@ -49,6 +63,47 @@ const UpsertSchema = z.object({
   tags: z.array(z.string()).optional(),
   jurisdiction: z.string().optional(),
   law_family: z.string().optional(),
+  section_id: z.string().optional(),
+  status: z.string().optional(),
+  effective_date: z.string().optional(),
+  amendment_date: z.string().nullable().optional(),
+  last_reviewed: z.string().optional(),
+  visibility: z.any().optional(),
+  source_urls: z.array(z.string()).optional(),
+  elements: z.any().optional(),
+  penalties: z.any().optional(),
+  defenses: z.any().optional(),
+  prescriptive_period: z.string().optional(),
+  standard_of_proof: z.string().optional(),
+  rule_no: z.string().optional(),
+  section_no: z.string().optional(),
+  triggers: z.any().optional(),
+  time_limits: z.any().optional(),
+  required_forms: z.any().optional(),
+  circular_no: z.string().optional(),
+  applicability: z.any().optional(),
+  issuance_no: z.string().optional(),
+  instrument_no: z.string().optional(),
+  supersedes: z.any().optional(),
+  steps_brief: z.any().optional(),
+  forms_required: z.any().optional(),
+  failure_states: z.any().optional(),
+  violation_code: z.string().optional(),
+  violation_name: z.string().optional(),
+  license_action: z.string().optional(),
+  fine_schedule: z.any().optional(),
+  apprehension_flow: z.any().optional(),
+  incident: z.string().optional(),
+  phases: z.any().optional(),
+  forms: z.any().optional(),
+  handoff: z.any().optional(),
+  rights_callouts: z.any().optional(),
+  rights_scope: z.string().optional(),
+  advice_points: z.any().optional(),
+  topics: z.any().optional(),
+  jurisprudence: z.any().optional(),
+  legal_bases: z.any().optional(),
+  related_sections: z.any().optional(),
 });
 
 router.post('/entries', async (req, res) => {
@@ -67,9 +122,30 @@ router.post('/entries', async (req, res) => {
     const embedding = await embedText(contentForEmbedding);
     const embeddingLiteral = `[${embedding.join(',')}]`;
 
+    // Optional created_by from JWT middleware
+    const createdBy = req.user?.userId || null;
+
     await query(
-      `insert into kb_entries (entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, embedding)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::vector)
+      `insert into kb_entries (
+         entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family,
+         section_id, status, effective_date, amendment_date, last_reviewed, visibility, source_urls,
+         elements, penalties, defenses, prescriptive_period, standard_of_proof, rule_no, section_no,
+         triggers, time_limits, required_forms, circular_no, applicability, issuance_no, instrument_no,
+         supersedes, steps_brief, forms_required, failure_states, violation_code, violation_name, license_action,
+         fine_schedule, apprehension_flow, incident, phases, forms, handoff, rights_callouts, rights_scope,
+         advice_points, topics, jurisprudence, legal_bases, related_sections,
+         embedding, created_by
+       )
+       values (
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,
+         $10,$11,$12,$13,$14,$15,$16,
+         $17,$18,$19,$20,$21,$22,$23,
+         $24,$25,$26,$27,$28,$29,$30,
+         $31,$32,$33,$34,$35,$36,$37,
+         $38,$39,$40,$41,$42,$43,$44,$45,
+         $46,$47,$48,$49,$50,$51,
+         $52::vector, $53
+       )
        on conflict (entry_id) do update set
          type=excluded.type,
          title=excluded.title,
@@ -79,6 +155,47 @@ router.post('/entries', async (req, res) => {
          tags=excluded.tags,
          jurisdiction=excluded.jurisdiction,
          law_family=excluded.law_family,
+         section_id=excluded.section_id,
+         status=excluded.status,
+         effective_date=excluded.effective_date,
+         amendment_date=excluded.amendment_date,
+         last_reviewed=excluded.last_reviewed,
+         visibility=excluded.visibility,
+         source_urls=excluded.source_urls,
+         elements=excluded.elements,
+         penalties=excluded.penalties,
+         defenses=excluded.defenses,
+         prescriptive_period=excluded.prescriptive_period,
+         standard_of_proof=excluded.standard_of_proof,
+         rule_no=excluded.rule_no,
+         section_no=excluded.section_no,
+         triggers=excluded.triggers,
+         time_limits=excluded.time_limits,
+         required_forms=excluded.required_forms,
+         circular_no=excluded.circular_no,
+         applicability=excluded.applicability,
+         issuance_no=excluded.issuance_no,
+         instrument_no=excluded.instrument_no,
+         supersedes=excluded.supersedes,
+         steps_brief=excluded.steps_brief,
+         forms_required=excluded.forms_required,
+         failure_states=excluded.failure_states,
+         violation_code=excluded.violation_code,
+         violation_name=excluded.violation_name,
+         license_action=excluded.license_action,
+         fine_schedule=excluded.fine_schedule,
+         apprehension_flow=excluded.apprehension_flow,
+         incident=excluded.incident,
+         phases=excluded.phases,
+         forms=excluded.forms,
+         handoff=excluded.handoff,
+         rights_callouts=excluded.rights_callouts,
+         rights_scope=excluded.rights_scope,
+         advice_points=excluded.advice_points,
+         topics=excluded.topics,
+         jurisprudence=excluded.jurisprudence,
+         legal_bases=excluded.legal_bases,
+         related_sections=excluded.related_sections,
          embedding=excluded.embedding,
          updated_at=now()`,
       [
@@ -91,7 +208,49 @@ router.post('/entries', async (req, res) => {
         JSON.stringify(parsed.tags || []),
         parsed.jurisdiction || null,
         parsed.law_family || null,
+        parsed.section_id || null,
+        parsed.status || null,
+        parsed.effective_date || null,
+        parsed.amendment_date || null,
+        parsed.last_reviewed || null,
+        JSON.stringify(parsed.visibility ?? { gli: true, cpa: false }),
+        JSON.stringify(parsed.source_urls || []),
+        JSON.stringify(parsed.elements || []),
+        JSON.stringify(parsed.penalties || []),
+        JSON.stringify(parsed.defenses || []),
+        parsed.prescriptive_period || null,
+        parsed.standard_of_proof || null,
+        parsed.rule_no || null,
+        parsed.section_no || null,
+        JSON.stringify(parsed.triggers || []),
+        JSON.stringify(parsed.time_limits || []),
+        JSON.stringify(parsed.required_forms || []),
+        parsed.circular_no || null,
+        JSON.stringify(parsed.applicability || []),
+        parsed.issuance_no || null,
+        parsed.instrument_no || null,
+        JSON.stringify(parsed.supersedes || []),
+        JSON.stringify(parsed.steps_brief || []),
+        JSON.stringify(parsed.forms_required || []),
+        JSON.stringify(parsed.failure_states || []),
+        parsed.violation_code || null,
+        parsed.violation_name || null,
+        parsed.license_action || null,
+        JSON.stringify(parsed.fine_schedule || []),
+        JSON.stringify(parsed.apprehension_flow || []),
+        parsed.incident || null,
+        JSON.stringify(parsed.phases || []),
+        JSON.stringify(parsed.forms || []),
+        JSON.stringify(parsed.handoff || []),
+        JSON.stringify(parsed.rights_callouts || []),
+        parsed.rights_scope || null,
+        JSON.stringify(parsed.advice_points || []),
+        JSON.stringify(parsed.topics || []),
+        JSON.stringify(parsed.jurisprudence || []),
+        JSON.stringify(parsed.legal_bases || []),
+        JSON.stringify(parsed.related_sections || []),
         embeddingLiteral,
+        createdBy,
       ]
     );
 

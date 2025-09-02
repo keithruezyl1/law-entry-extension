@@ -28,7 +28,8 @@ async function setupDatabase() {
       join(__dirname, '../sql/002_match_fn.sql'),
       join(__dirname, '../sql/003_migrate_add_created_by.sql'),
       join(__dirname, '../sql/004_shared_plans.sql'),
-      join(__dirname, '../sql/005_simple_passwords.sql')
+      join(__dirname, '../sql/005_simple_passwords.sql'),
+      join(__dirname, '../sql/006_kb_entries_extend.sql'),
     ];
 
     console.log('SQL files to execute:', sqlFiles);

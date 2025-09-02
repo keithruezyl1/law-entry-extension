@@ -14,6 +14,7 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { generateEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 import { semanticSearch } from '../../services/vectorApi';
@@ -175,6 +176,7 @@ const stepListBase: Step[] = [
 ];
 
 export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel }: EntryFormProps) {
+  const { user } = useAuth();
   console.log('EntryForm received entry prop:', entry);
   console.log('EntryForm is editing:', !!entry);
   console.log('EntryForm entry prop:', entry);
@@ -503,7 +505,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       console.error('Failed to clear draft', e);
     }
     
-    onSave(sanitized);
+    const withMember = {
+      ...sanitized,
+      team_member_id: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
+      created_by_name: user?.name || user?.username,
+    } as any;
+    onSave(withMember);
     navigate('/dashboard');
   };
 
@@ -601,7 +608,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                   <div className="kb-form-field-group">
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">Entering as</label>
-                                      <Input className="kb-form-input bg-gray-50" placeholder="MEMBER" readOnly />
+                                      <Input className="kb-form-input bg-gray-50" placeholder="MEMBER" value={user?.name || user?.username || 'MEMBER'} readOnly />
                                     </div>
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">

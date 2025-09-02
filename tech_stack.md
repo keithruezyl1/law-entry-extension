@@ -108,7 +108,7 @@ CREATE TABLE shared_plans (
 CREATE TABLE vector_entries (
   id SERIAL PRIMARY KEY,
   entry_id VARCHAR(255) UNIQUE NOT NULL,
-  embedding vector(3072), -- OpenAI text-embedding-3-large dimensions
+  embedding vector(1536), -- OpenAI text-embedding-3-small dimensions
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
@@ -444,3 +444,4 @@ export const pool = new Pool({
 ---
 
 This technology stack provides a robust, scalable foundation for the Civilify Law Entry App with modern web technologies, secure authentication, and efficient data management.
+

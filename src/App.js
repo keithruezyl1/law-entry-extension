@@ -100,6 +100,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalStep, setPlanModalStep] = useState(1);
   const [selectedDay1Date, setSelectedDay1Date] = useState('');
+  const day1InputRef = React.useRef(null);
   const [planData, setPlanData] = useState(null);
   const [day1Date, setDay1DateState] = useState(null);
   const [showChat, setShowChat] = useState(false);
@@ -133,7 +134,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   const hasPlan = (() => {
     const d1 = day1Date;
-    let rows = planData;
+    const rows = planData;
     return !!d1 && Array.isArray(rows) && rows.length > 0;
   })();
 
@@ -328,10 +329,22 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     }
   };
 
-  const handleCreateNew = () => {
+  const handleCreateNew = async () => {
     if (!hasPlan) {
-      alert('Please import a plan first before creating entries. Use "Import Plan".');
-      return;
+      try {
+        // Re-check with server before blocking
+        const activePlan = await getActivePlan();
+        if (activePlan) {
+          setPlanData(activePlan.plan_data);
+          setDay1DateState(activePlan.day1_date);
+        } else {
+          alert('Please import a plan first before creating entries. Use "Import Plan".');
+          return;
+        }
+      } catch (_) {
+        alert('Please import a plan first before creating entries. Use "Import Plan".');
+        return;
+      }
     }
     try {
       const raw = localStorage.getItem('kb_entry_draft');
@@ -397,6 +410,47 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               tags: entryData.tags,
               jurisdiction: entryData.jurisdiction,
               law_family: entryData.law_family,
+              section_id: entryData.section_id,
+              status: entryData.status,
+              effective_date: entryData.effective_date,
+              amendment_date: entryData.amendment_date,
+              last_reviewed: entryData.last_reviewed,
+              visibility: entryData.visibility,
+              source_urls: entryData.source_urls,
+              elements: entryData.elements,
+              penalties: entryData.penalties,
+              defenses: entryData.defenses,
+              prescriptive_period: entryData.prescriptive_period,
+              standard_of_proof: entryData.standard_of_proof,
+              rule_no: entryData.rule_no,
+              section_no: entryData.section_no,
+              triggers: entryData.triggers,
+              time_limits: entryData.time_limits,
+              required_forms: entryData.required_forms,
+              circular_no: entryData.circular_no,
+              applicability: entryData.applicability,
+              issuance_no: entryData.issuance_no,
+              instrument_no: entryData.instrument_no,
+              supersedes: entryData.supersedes,
+              steps_brief: entryData.steps_brief,
+              forms_required: entryData.forms_required,
+              failure_states: entryData.failure_states,
+              violation_code: entryData.violation_code,
+              violation_name: entryData.violation_name,
+              license_action: entryData.license_action,
+              fine_schedule: entryData.fine_schedule,
+              apprehension_flow: entryData.apprehension_flow,
+              incident: entryData.incident,
+              phases: entryData.phases,
+              forms: entryData.forms,
+              handoff: entryData.handoff,
+              rights_callouts: entryData.rights_callouts,
+              rights_scope: entryData.rights_scope,
+              advice_points: entryData.advice_points,
+              topics: entryData.topics,
+              jurisprudence: entryData.jurisprudence,
+              legal_bases: entryData.legal_bases,
+              related_sections: entryData.related_sections,
             };
             upsertEntry(payload).then((resp) => {
               if (!resp?.success) console.warn('Vector upsert failed:', resp?.error);
@@ -431,6 +485,47 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               tags: entryData.tags,
               jurisdiction: entryData.jurisdiction,
               law_family: entryData.law_family,
+              section_id: entryData.section_id,
+              status: entryData.status,
+              effective_date: entryData.effective_date,
+              amendment_date: entryData.amendment_date,
+              last_reviewed: entryData.last_reviewed,
+              visibility: entryData.visibility,
+              source_urls: entryData.source_urls,
+              elements: entryData.elements,
+              penalties: entryData.penalties,
+              defenses: entryData.defenses,
+              prescriptive_period: entryData.prescriptive_period,
+              standard_of_proof: entryData.standard_of_proof,
+              rule_no: entryData.rule_no,
+              section_no: entryData.section_no,
+              triggers: entryData.triggers,
+              time_limits: entryData.time_limits,
+              required_forms: entryData.required_forms,
+              circular_no: entryData.circular_no,
+              applicability: entryData.applicability,
+              issuance_no: entryData.issuance_no,
+              instrument_no: entryData.instrument_no,
+              supersedes: entryData.supersedes,
+              steps_brief: entryData.steps_brief,
+              forms_required: entryData.forms_required,
+              failure_states: entryData.failure_states,
+              violation_code: entryData.violation_code,
+              violation_name: entryData.violation_name,
+              license_action: entryData.license_action,
+              fine_schedule: entryData.fine_schedule,
+              apprehension_flow: entryData.apprehension_flow,
+              incident: entryData.incident,
+              phases: entryData.phases,
+              forms: entryData.forms,
+              handoff: entryData.handoff,
+              rights_callouts: entryData.rights_callouts,
+              rights_scope: entryData.rights_scope,
+              advice_points: entryData.advice_points,
+              topics: entryData.topics,
+              jurisprudence: entryData.jurisprudence,
+              legal_bases: entryData.legal_bases,
+              related_sections: entryData.related_sections,
             };
             upsertEntry(payload).then((resp) => {
               if (!resp?.success) console.warn('Vector upsert failed:', resp?.error);
@@ -590,8 +685,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         setPlanModalStep(1);
         setSelectedDay1Date('');
         
-        // Refresh the page to ensure all components get the new plan
-        window.location.reload();
+        // Ensure state is hydrated for gating without full reload
+        const active = await getActivePlan();
+        if (active) {
+          setPlanData(active.plan_data);
+          setDay1DateState(active.day1_date);
+        }
       }
     } catch (err) {
       console.error('Failed to import plan:', err);
@@ -938,6 +1037,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             <input
               type="date"
               className="border rounded-lg px-3 py-2 w-full mb-4"
+              ref={day1InputRef}
               value={selectedDay1Date}
               onChange={(e) => setSelectedDay1Date(e.target.value)}
             />

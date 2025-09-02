@@ -10,7 +10,7 @@ This guide walks you through running and testing the app end-to-end:
 - PostgreSQL 15+ with the `pgvector` extension installed
 - OpenAI API key with access to embeddings and GPT models
 
-Tip: Keep the embedding model consistent for indexing and querying. Default here is `text-embedding-3-large` (3072 dimensions).
+Tip: Keep the embedding model consistent for indexing and querying. Default here is `text-embedding-3-small` (1536 dimensions).
 
 ---
 
@@ -28,7 +28,7 @@ cp env.example .env
 # - DATABASE_URL=postgres://user:password@localhost:5432/civilify_kb
 # - PGSSL=false (set true if your DB requires SSL)
 # - OPENAI_API_KEY=sk-... (your key)
-# - OPENAI_EMBEDDING_MODEL=text-embedding-3-large (3072 dims)
+# - OPENAI_EMBEDDING_MODEL=text-embedding-3-small (1536 dims)
 ```
 
 2. Install dependencies
@@ -178,7 +178,7 @@ curl -X DELETE "http://localhost:4000/api/kb/entries?date=$(date +%F)"
 - CORS error from frontend → Set `CORS_ORIGIN` in `server/.env` to your frontend URL (e.g., `http://localhost:3000`) and restart the server.
 - 400 from `/api/kb/entries` → Ensure `entry_id` is present. The UI auto-generates this based on Type/Law Family/Section.
 - OpenAI errors → Check API key, network restrictions, or model allowances.
-- Dimension mismatch → Model `text-embedding-3-large` requires `vector(3072)`; `text-embedding-3-small` requires `vector(1536)`.
+- Dimension mismatch → Model `text-embedding-3-small` requires `vector(1536)`; `text-embedding-3-large` would require `vector(3072)`.
 - No search results → Index may be empty or the query is unrelated. Try a broader query or verify upserts in server logs.
 - Create button disabled → Import a plan and set Day 1 first; the UI is plan-gated.
 - Import skipped entries → The importer adds only entries whose `entry_id` does not already exist in DB.
