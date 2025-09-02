@@ -119,8 +119,14 @@ router.post('/entries', async (req, res) => {
       parsed.text || '',
       (parsed.tags || []).join(', '),
     ].join('\n\n');
-    const embedding = await embedText(contentForEmbedding);
-    const embeddingLiteral = `[${embedding.join(',')}]`;
+    let embeddingLiteral = null;
+    try {
+      const embedding = await embedText(contentForEmbedding);
+      embeddingLiteral = `[${embedding.join(',')}]`;
+    } catch (err) {
+      console.warn('[kb] embedText failed; saving without embedding:', String(err?.message || err));
+      embeddingLiteral = null; // allow insert; vectors can be backfilled later
+    }
 
     // Optional created_by from JWT middleware
     const createdBy = req.user?.userId || null;
@@ -196,7 +202,7 @@ router.post('/entries', async (req, res) => {
          jurisprudence=excluded.jurisprudence,
          legal_bases=excluded.legal_bases,
          related_sections=excluded.related_sections,
-         embedding=excluded.embedding,
+         embedding=COALESCE(excluded.embedding, kb_entries.embedding),
          updated_at=now()`,
       [
         parsed.entry_id,
