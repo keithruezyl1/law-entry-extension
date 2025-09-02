@@ -182,7 +182,9 @@ export async function fetchAllEntriesFromDb(): Promise<any[]> {
     const resp = await fetch(`${KB_BASE_URL}/entries`, {
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        'Cache-Control': 'no-cache',
       },
+      cache: 'no-store',
     });
     const json = await resp.json();
     if (!json?.success) return [];

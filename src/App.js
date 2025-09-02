@@ -152,7 +152,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   
 
 
-  // Optional: On dashboard load, hydrate local entries from DB (one-way sync-in)
+  // On dashboard load, hydrate entries from DB
   useEffect(() => {
     const loadFromDb = async () => {
       if (currentView !== 'list') return;
@@ -178,11 +178,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               localStorage.setItem('law_entries', JSON.stringify(merged));
             } catch {}
           }
+        } else {
+          // If DB returns empty, ensure local storage is also in sync
+          try {
+            localStorage.setItem('law_entries', JSON.stringify([]));
+          } catch {}
         }
       } catch {}
     };
     loadFromDb();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
 
   // Redirect to login if on root path (this is now handled by the router)
