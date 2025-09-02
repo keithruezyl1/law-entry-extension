@@ -138,7 +138,7 @@ router.post('/entries', async (req, res) => {
          elements, penalties, defenses, prescriptive_period, standard_of_proof, rule_no, section_no,
          triggers, time_limits, required_forms, circular_no, applicability, issuance_no, instrument_no,
          supersedes, steps_brief, forms_required, failure_states, violation_code, violation_name, license_action,
-         fine_schedule, apprehension_flow, incident, phases, forms, handoff, rights_callouts, rights_scope,
+         fine_schedule, apprehension_flow, incident, phases, handoff, rights_callouts, rights_scope,
          advice_points, topics, jurisprudence, legal_bases, related_sections,
          embedding, created_by
        )
@@ -148,9 +148,9 @@ router.post('/entries', async (req, res) => {
          $17,$18,$19,$20,$21,$22,$23,
          $24,$25,$26,$27,$28,$29,$30,
          $31,$32,$33,$34,$35,$36,$37,
-         $38,$39,$40,$41,$42,$43,$44,$45,
-         $46,$47,$48,$49,$50,$51,
-         $52::vector, $53
+         $38,$39,$40,$41,$42,$43,$44,
+         $45,$46,$47,$48,$49,$50,
+         $51::vector, $52
        )
        on conflict (entry_id) do update set
          type=excluded.type,
@@ -193,7 +193,6 @@ router.post('/entries', async (req, res) => {
          apprehension_flow=excluded.apprehension_flow,
          incident=excluded.incident,
          phases=excluded.phases,
-         forms=excluded.forms,
          handoff=excluded.handoff,
          rights_callouts=excluded.rights_callouts,
          rights_scope=excluded.rights_scope,
