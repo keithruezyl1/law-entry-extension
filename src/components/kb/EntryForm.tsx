@@ -14,10 +14,10 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
 import { generateEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 import { semanticSearch } from '../../services/vectorApi';
+import { useAuth } from '../../contexts/AuthContext';
 
 type EntryFormProps = {
   entry?: Partial<Entry> | null;
