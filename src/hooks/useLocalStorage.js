@@ -167,6 +167,8 @@ export const useLocalStorage = () => {
       if (!existing) throw new Error('Entry not found');
       const merged = { ...existing, ...updates };
       if (!merged.entry_id) throw new Error('entry_id is required');
+      
+      // Send complete payload with all type-specific fields
       const payload = {
         entry_id: merged.entry_id,
         type: merged.type,
@@ -177,14 +179,75 @@ export const useLocalStorage = () => {
         tags: merged.tags,
         jurisdiction: merged.jurisdiction,
         law_family: merged.law_family,
+        section_id: merged.section_id,
+        status: merged.status,
+        effective_date: merged.effective_date,
+        amendment_date: merged.amendment_date,
+        last_reviewed: merged.last_reviewed,
+        visibility: merged.visibility,
+        source_urls: merged.source_urls,
+        elements: merged.elements,
+        penalties: merged.penalties,
+        defenses: merged.defenses,
+        prescriptive_period: merged.prescriptive_period,
+        standard_of_proof: merged.standard_of_proof,
+        rule_no: merged.rule_no,
+        section_no: merged.section_no,
+        triggers: merged.triggers,
+        time_limits: merged.time_limits,
+        required_forms: merged.required_forms,
+        circular_no: merged.circular_no,
+        applicability: merged.applicability,
+        issuance_no: merged.issuance_no,
+        instrument_no: merged.instrument_no,
+        supersedes: merged.supersedes,
+        steps_brief: merged.steps_brief,
+        forms_required: merged.forms_required,
+        failure_states: merged.failure_states,
+        violation_code: merged.violation_code,
+        violation_name: merged.violation_name,
+        license_action: merged.license_action,
+        fine_schedule: merged.fine_schedule,
+        apprehension_flow: merged.apprehension_flow,
+        incident: merged.incident,
+        phases: merged.phases,
+        forms: merged.forms,
+        handoff: merged.handoff,
+        rights_callouts: merged.rights_callouts,
+        rights_scope: merged.rights_scope,
+        advice_points: merged.advice_points,
+        topics: merged.topics,
+        jurisprudence: merged.jurisprudence,
+        legal_bases: merged.legal_bases,
+        related_sections: merged.related_sections,
       };
-      const resp = await upsertEntry(payload);
-      if (!resp?.success) throw new Error(resp?.error || 'Upsert failed');
+
+      // Use the proper PUT endpoint for updates
+      const response = await fetch(`${process.env.REACT_APP_API_BASE || ''}/api/kb/entries/${merged.entry_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Update failed');
+      }
+
+      const result = await response.json();
+      if (!result?.success) throw new Error(result?.error || 'Update failed');
+
+      // Refresh entries from database
       const dbEntries = await fetchAllEntriesFromDb();
       if (Array.isArray(dbEntries)) {
         const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
         setEntries(mapped);
       }
+
+      console.log('Entry updated successfully:', result);
     } catch (err) {
       console.error('Error updating entry:', err);
       setError('Failed to update entry');

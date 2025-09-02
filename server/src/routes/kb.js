@@ -95,16 +95,6 @@ const UpsertSchema = z.object({
 router.post('/entries', async (req, res) => {
   try {
     const parsed = UpsertSchema.parse(req.body);
-    console.log('[kb] POST /entries - Received data:', {
-      entry_id: parsed.entry_id,
-      type: parsed.type,
-      title: parsed.title,
-      status: parsed.status,
-      elements: parsed.elements,
-      penalties: parsed.penalties,
-      defenses: parsed.defenses
-    });
-    
     if (!parsed.entry_id || parsed.entry_id.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'entry_id is required' });
     }
@@ -254,6 +244,161 @@ router.delete('/entries/:entryId', async (req, res) => {
     if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
     await query('delete from kb_entries where entry_id = $1', [entryId]);
     res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ success: false, error: String(e.message || e) });
+  }
+});
+
+// Update existing entry by entry_id
+router.put('/entries/:entryId', async (req, res) => {
+  try {
+    const entryId = String(req.params.entryId || '').trim();
+    if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
+    
+    const parsed = UpsertSchema.parse(req.body);
+    if (parsed.entry_id !== entryId) {
+      return res.status(400).json({ success: false, error: 'entry_id in body must match URL parameter' });
+    }
+
+    console.log('[kb] PUT /entries - Updating entry:', {
+      entry_id: parsed.entry_id,
+      type: parsed.type,
+      title: parsed.title,
+      status: parsed.status,
+      elements: parsed.elements,
+      penalties: parsed.penalties,
+      defenses: parsed.defenses
+    });
+
+    const contentForEmbedding = [
+      parsed.title,
+      parsed.canonical_citation || '',
+      parsed.summary || '',
+      parsed.text || '',
+      (parsed.tags || []).join(', '),
+    ].join('\n\n');
+    
+    let embeddingLiteral = null;
+    try {
+      const embedding = await embedText(contentForEmbedding);
+      embeddingLiteral = `[${embedding.join(',')}]`;
+    } catch (err) {
+      console.warn('[kb] embedText failed; updating without new embedding:', String(err?.message || err));
+      embeddingLiteral = null;
+    }
+
+    // Update all fields
+    await query(
+      `update kb_entries set
+         type=$2,
+         title=$3,
+         canonical_citation=$4,
+         summary=$5,
+         text=$6,
+         tags=$7,
+         jurisdiction=$8,
+         law_family=$9,
+         section_id=$10,
+         status=$11,
+         effective_date=$12,
+         amendment_date=$13,
+         last_reviewed=$14,
+         visibility=$15,
+         source_urls=$16,
+         elements=$17,
+         penalties=$18,
+         defenses=$19,
+         prescriptive_period=$20,
+         standard_of_proof=$21,
+         rule_no=$22,
+         section_no=$23,
+         triggers=$24,
+         time_limits=$25,
+         required_forms=$26,
+         circular_no=$27,
+         applicability=$28,
+         issuance_no=$29,
+         instrument_no=$30,
+         supersedes=$31,
+         steps_brief=$32,
+         forms_required=$33,
+         failure_states=$34,
+         violation_code=$35,
+         violation_name=$36,
+         license_action=$37,
+         fine_schedule=$38,
+         apprehension_flow=$39,
+         incident=$40,
+         phases=$41,
+         forms=$42,
+         handoff=$43,
+         rights_callouts=$44,
+         rights_scope=$45,
+         advice_points=$46,
+         topics=$47,
+         jurisprudence=$48,
+         legal_bases=$49,
+         related_sections=$50,
+         embedding=COALESCE($51::vector, kb_entries.embedding),
+         updated_at=now()
+       where entry_id=$1`,
+      [
+        parsed.entry_id,
+        parsed.type,
+        parsed.title,
+        parsed.canonical_citation || null,
+        parsed.summary || null,
+        parsed.text || null,
+        JSON.stringify(parsed.tags || []),
+        parsed.jurisdiction || null,
+        parsed.law_family || null,
+        parsed.section_id || null,
+        parsed.status || null,
+        parsed.effective_date || null,
+        parsed.amendment_date || null,
+        parsed.last_reviewed || null,
+        JSON.stringify(parsed.visibility ?? { gli: true, cpa: false }),
+        JSON.stringify(parsed.source_urls || []),
+        JSON.stringify(parsed.elements || []),
+        JSON.stringify(parsed.penalties || []),
+        JSON.stringify(parsed.defenses || []),
+        JSON.stringify(parsed.prescriptive_period || null),
+        parsed.standard_of_proof || null,
+        parsed.rule_no || null,
+        parsed.section_no || null,
+        JSON.stringify(parsed.triggers || []),
+        JSON.stringify(parsed.time_limits || []),
+        JSON.stringify(parsed.required_forms || []),
+        parsed.circular_no || null,
+        JSON.stringify(parsed.applicability || []),
+        parsed.issuance_no || null,
+        parsed.instrument_no || null,
+        JSON.stringify(parsed.supersedes || []),
+        JSON.stringify(parsed.steps_brief || []),
+        JSON.stringify(parsed.forms_required || []),
+        JSON.stringify(parsed.failure_states || []),
+        parsed.violation_code || null,
+        parsed.violation_name || null,
+        parsed.license_action || null,
+        JSON.stringify(parsed.fine_schedule || []),
+        JSON.stringify(parsed.apprehension_flow || []),
+        parsed.incident || null,
+        JSON.stringify(parsed.phases || []),
+        JSON.stringify(parsed.forms || []),
+        JSON.stringify(parsed.handoff || []),
+        JSON.stringify(parsed.rights_callouts || []),
+        parsed.rights_scope || null,
+        JSON.stringify(parsed.advice_points || []),
+        JSON.stringify(parsed.topics || []),
+        JSON.stringify(parsed.jurisprudence || []),
+        JSON.stringify(parsed.legal_bases || []),
+        JSON.stringify(parsed.related_sections || []),
+        embeddingLiteral,
+      ]
+    );
+
+    res.json({ success: true, entry_id: parsed.entry_id });
   } catch (e) {
     console.error(e);
     res.status(400).json({ success: false, error: String(e.message || e) });

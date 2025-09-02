@@ -393,7 +393,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const handleEditEntry = (entryId) => {
     console.log('handleEditEntry called with entryId:', entryId);
     console.log('Entry type:', typeof entryId);
-    navigate(`/entry/${entryId}/edit`);
+    
+    // Find the entry to edit
+    const entryToEdit = entries.find(entry => entry.id === entryId || entry.entry_id === entryId);
+    if (entryToEdit) {
+      setEditingEntry(entryToEdit);
+      navigate(`/law-entry/1?edit=${entryId}`);
+    } else {
+      console.error('Entry not found for editing:', entryId);
+      alert('Entry not found for editing');
+    }
   };
 
   const handleViewEntry = (entryId) => {
@@ -405,6 +414,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       if (editingEntry) {
         await updateEntry(editingEntry.id, entryData);
         console.log('Entry updated:', entryData);
+        
+        // Clear editing state after successful update
+        setEditingEntry(null);
+        
         // Fire-and-forget vector upsert to keep RAG index in sync
         try {
           if (!entryData.entry_id) {
