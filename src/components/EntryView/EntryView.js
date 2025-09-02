@@ -5,7 +5,7 @@ import { getJurisdiction } from '../../data/jurisdictions';
 // import { getTagByValue } from '../../data/tags';
 import './EntryView.css';
 
-const EntryView = ({ entry, onEdit, onDelete }) => {
+const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   const navigate = useNavigate();
   if (!entry) {
     return (
@@ -142,18 +142,6 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
           <>
             <div className="info-grid">
               <div className="info-item">
-                <span className="label">Elements:</span>
-                <span className="value">{entry.elements && entry.elements.length > 0 ? entry.elements.join(', ') : 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Penalties:</span>
-                <span className="value">{entry.penalties && entry.penalties.length > 0 ? entry.penalties.join(', ') : 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Defenses:</span>
-                <span className="value">{entry.defenses && entry.defenses.length > 0 ? entry.defenses.join(', ') : 'Empty'}</span>
-              </div>
-              <div className="info-item">
                 <span className="label">Prescriptive Period:</span>
                 <span className="value">{entry.prescriptive_period ? JSON.stringify(entry.prescriptive_period) : 'Empty'}</span>
               </div>
@@ -161,15 +149,10 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
                 <span className="label">Standard of Proof:</span>
                 <span className="value">{entry.standard_of_proof || 'Empty'}</span>
               </div>
-              <div className="info-item">
-                <span className="label">Rule Number:</span>
-                <span className="value">{entry.rule_no || 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Section Number:</span>
-                <span className="value">{entry.section_no || 'Empty'}</span>
-              </div>
             </div>
+            {renderArrayField('elements', entry.elements, 'Elements')}
+            {renderArrayField('penalties', entry.penalties, 'Penalties')}
+            {renderArrayField('defenses', entry.defenses, 'Defenses')}
             {renderLegalBases(entry.legal_bases)}
             {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
           </>
@@ -350,14 +333,7 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
   };
 
   const getTeamMemberName = (teamMemberId) => {
-    const teamMembers = {
-      1: 'P1 - RPC + Cebu Ordinances',
-      2: 'P2 - Rules of Court + DOJ',
-      3: 'P3 - PNP SOPs + Incident Checklists',
-      4: 'P4 - Traffic/LTO lane',
-      5: 'P5 - Rights + Constitution + Policy'
-    };
-    return teamMembers[teamMemberId] || `Team Member ${teamMemberId}`;
+    return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId}`;
   };
 
   return (

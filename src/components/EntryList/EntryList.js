@@ -5,7 +5,7 @@ import EntryView from '../EntryView/EntryView';
 // import { getAllTags } from '../../data/tags';
 import './EntryList.css';
 
-const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries }) => {
+const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries, teamMemberNames = {} }) => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   console.log('EntryList received entries:', entries);
   console.log('EntryList entries length:', entries.length);
@@ -66,14 +66,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
   };
 
   const getTeamMemberName = (teamMemberId) => {
-    const teamMembers = {
-      1: 'Arda',
-      2: 'Delos Cientos',
-      3: 'Paden',
-      4: 'Sendrijas',
-      5: 'Tagarao'
-    };
-    return teamMembers[teamMemberId] || `Team Member ${teamMemberId}`;
+    return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId}`;
   };
 
   return (

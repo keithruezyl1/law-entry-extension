@@ -282,7 +282,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   console.log('Entries length:', entries.length);
 
   // Team member names from database - use the same data as dbTeamMembers
-  // Note: teamMemberNames is computed but not currently used in this component
+  const teamMemberNames = useMemo(() => {
+    const names = {};
+    dbTeamMembers.forEach(member => {
+      names[member.id] = member.name;
+    });
+    return names;
+  }, [dbTeamMembers]);
 
   // Handle scroll for header background opacity
   useEffect(() => {
@@ -493,6 +499,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         const newEntry = await addEntry(entryData);
         console.log('New entry created and saved to localStorage:', newEntry);
         console.log('Total entries in localStorage:', entries.length + 1);
+        
+        // Clear all localStorage drafts/autosaves for create entry
+        try {
+          localStorage.removeItem('kb_entry_draft');
+          // Clear any other draft-related keys
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('kb_entry_') || key.startsWith('entry_draft_')) {
+              localStorage.removeItem(key);
+            }
+          });
+          console.log('Cleared all entry drafts from localStorage');
+        } catch (e) {
+          console.warn('Failed to clear localStorage drafts:', e);
+        }
         // Fire-and-forget vector upsert (does not block UX)
         try {
           if (!entryData.entry_id) {
@@ -940,13 +960,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         )}
 
         {currentView === 'list' && (
-          <EntryList
-            entries={entries}
-            onViewEntry={handleViewEntry}
-            onEditEntry={handleEditEntry}
-            onDeleteEntry={handleDeleteEntry}
-            searchEntries={searchEntries}
-          />
+                  <EntryList
+          entries={entries}
+          onViewEntry={handleViewEntry}
+          onEditEntry={handleEditEntry}
+          onDeleteEntry={handleDeleteEntry}
+          searchEntries={searchEntries}
+          teamMemberNames={teamMemberNames}
+        />
         )}
 
         {currentView === 'form' && (
@@ -966,6 +987,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             entry={getEntryById(selectedEntryId)}
             onEdit={() => handleEditEntry(selectedEntryId)}
             onDelete={() => handleDeleteEntry(selectedEntryId)}
+            teamMemberNames={teamMemberNames}
           />
         )}
       </main>
