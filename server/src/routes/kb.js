@@ -59,7 +59,7 @@ const UpsertSchema = z.object({
   elements: z.array(z.string()).optional(),
   penalties: z.array(z.string()).optional(),
   defenses: z.array(z.string()).optional(),
-  prescriptive_period: z.array(z.string()).optional(),
+  prescriptive_period: z.any().optional(),
   standard_of_proof: z.string().optional(),
   rule_no: z.string().optional(),
   section_no: z.string().optional(),
@@ -95,6 +95,16 @@ const UpsertSchema = z.object({
 router.post('/entries', async (req, res) => {
   try {
     const parsed = UpsertSchema.parse(req.body);
+    console.log('[kb] POST /entries - Received data:', {
+      entry_id: parsed.entry_id,
+      type: parsed.type,
+      title: parsed.title,
+      status: parsed.status,
+      elements: parsed.elements,
+      penalties: parsed.penalties,
+      defenses: parsed.defenses
+    });
+    
     if (!parsed.entry_id || parsed.entry_id.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'entry_id is required' });
     }
