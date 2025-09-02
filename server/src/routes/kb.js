@@ -8,14 +8,7 @@ const router = Router();
 router.get('/entries', async (req, res) => {
   try {
     const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family,
-              section_id, status, effective_date, amendment_date, last_reviewed, visibility, source_urls,
-              elements, penalties, defenses, prescriptive_period, standard_of_proof, rule_no, section_no,
-              triggers, time_limits, required_forms, circular_no, applicability, issuance_no, instrument_no,
-              supersedes, steps_brief, forms_required, failure_states, violation_code, violation_name, license_action,
-              fine_schedule, apprehension_flow, incident, phases, forms, handoff, rights_callouts, rights_scope,
-              advice_points, topics, jurisprudence, legal_bases, related_sections,
-              created_at, updated_at
+      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
        from kb_entries
        order by updated_at desc`,
       []
@@ -33,14 +26,7 @@ router.get('/entries/:entryId', async (req, res) => {
     const entryId = String(req.params.entryId || '').trim();
     if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
     const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family,
-              section_id, status, effective_date, amendment_date, last_reviewed, visibility, source_urls,
-              elements, penalties, defenses, prescriptive_period, standard_of_proof, rule_no, section_no,
-              triggers, time_limits, required_forms, circular_no, applicability, issuance_no, instrument_no,
-              supersedes, steps_brief, forms_required, failure_states, violation_code, violation_name, license_action,
-              fine_schedule, apprehension_flow, incident, phases, forms, handoff, rights_callouts, rights_scope,
-              advice_points, topics, jurisprudence, legal_bases, related_sections,
-              created_at, updated_at
+      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
        from kb_entries where entry_id = $1`,
       [entryId]
     );
@@ -63,47 +49,6 @@ const UpsertSchema = z.object({
   tags: z.array(z.string()).optional(),
   jurisdiction: z.string().optional(),
   law_family: z.string().optional(),
-  section_id: z.string().optional(),
-  status: z.string().optional(),
-  effective_date: z.string().optional(),
-  amendment_date: z.string().nullable().optional(),
-  last_reviewed: z.string().optional(),
-  visibility: z.any().optional(),
-  source_urls: z.array(z.string()).optional(),
-  elements: z.any().optional(),
-  penalties: z.any().optional(),
-  defenses: z.any().optional(),
-  prescriptive_period: z.string().optional(),
-  standard_of_proof: z.string().optional(),
-  rule_no: z.string().optional(),
-  section_no: z.string().optional(),
-  triggers: z.any().optional(),
-  time_limits: z.any().optional(),
-  required_forms: z.any().optional(),
-  circular_no: z.string().optional(),
-  applicability: z.any().optional(),
-  issuance_no: z.string().optional(),
-  instrument_no: z.string().optional(),
-  supersedes: z.any().optional(),
-  steps_brief: z.any().optional(),
-  forms_required: z.any().optional(),
-  failure_states: z.any().optional(),
-  violation_code: z.string().optional(),
-  violation_name: z.string().optional(),
-  license_action: z.string().optional(),
-  fine_schedule: z.any().optional(),
-  apprehension_flow: z.any().optional(),
-  incident: z.string().optional(),
-  phases: z.any().optional(),
-  forms: z.any().optional(),
-  handoff: z.any().optional(),
-  rights_callouts: z.any().optional(),
-  rights_scope: z.string().optional(),
-  advice_points: z.any().optional(),
-  topics: z.any().optional(),
-  jurisprudence: z.any().optional(),
-  legal_bases: z.any().optional(),
-  related_sections: z.any().optional(),
 });
 
 router.post('/entries', async (req, res) => {
@@ -125,10 +70,9 @@ router.post('/entries', async (req, res) => {
       embeddingLiteral = `[${embedding.join(',')}]`;
     } catch (err) {
       console.warn('[kb] embedText failed; saving without embedding:', String(err?.message || err));
-      embeddingLiteral = null; // allow insert; vectors can be backfilled later
+      embeddingLiteral = null;
     }
 
-    // Optional created_by from JWT middleware
     const createdBy = req.user?.userId || null;
 
     // 1) Ensure row exists with required non-null columns
@@ -142,63 +86,58 @@ router.post('/entries', async (req, res) => {
     // 2) Update all fields (single authoritative update)
     await query(
       `update kb_entries set
-         type=$2,
-         title=$3,
-         canonical_citation=$4,
-         summary=$5,
-         text=$6,
-         tags=$7,
-         jurisdiction=$8,
-         law_family=$9,
-         section_id=$10,
-         status=$11,
-         effective_date=$12,
-         amendment_date=$13,
-         last_reviewed=$14,
-         visibility=$15,
-         source_urls=$16,
-         elements=$17,
-         penalties=$18,
-         defenses=$19,
-         prescriptive_period=$20,
-         standard_of_proof=$21,
-         rule_no=$22,
-         section_no=$23,
-         triggers=$24,
-         time_limits=$25,
-         required_forms=$26,
-         circular_no=$27,
-         applicability=$28,
-         issuance_no=$29,
-         instrument_no=$30,
-         supersedes=$31,
-         steps_brief=$32,
-         forms_required=$33,
-         failure_states=$34,
-         violation_code=$35,
-         violation_name=$36,
-         license_action=$37,
-         fine_schedule=$38,
-         apprehension_flow=$39,
-         incident=$40,
-         phases=$41,
-         forms=$42,
-         handoff=$43,
-         rights_callouts=$44,
-         rights_scope=$45,
-         advice_points=$46,
-         topics=$47,
-         jurisprudence=$48,
-         legal_bases=$49,
-         related_sections=$50,
-         embedding=COALESCE($51::vector, kb_entries.embedding),
-         created_by=$52,
+         canonical_citation=$2,
+         summary=$3,
+         text=$4,
+         tags=$5,
+         jurisdiction=$6,
+         law_family=$7,
+         section_id=$8,
+         status=$9,
+         effective_date=$10,
+         amendment_date=$11,
+         last_reviewed=$12,
+         visibility=$13,
+         source_urls=$14,
+         elements=$15,
+         penalties=$16,
+         defenses=$17,
+         prescriptive_period=$18,
+         standard_of_proof=$19,
+         rule_no=$20,
+         section_no=$21,
+         triggers=$22,
+         time_limits=$23,
+         required_forms=$24,
+         circular_no=$25,
+         applicability=$26,
+         issuance_no=$27,
+         instrument_no=$28,
+         supersedes=$29,
+         steps_brief=$30,
+         forms_required=$31,
+         failure_states=$32,
+         violation_code=$33,
+         violation_name=$34,
+         license_action=$35,
+         fine_schedule=$36,
+         apprehension_flow=$37,
+         incident=$38,
+         phases=$39,
+         forms=$40,
+         handoff=$41,
+         rights_callouts=$42,
+         rights_scope=$43,
+         advice_points=$44,
+         topics=$45,
+         jurisprudence=$46,
+         legal_bases=$47,
+         related_sections=$48,
+         embedding=COALESCE($49::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
         parsed.entry_id,
-        parsed.type,
-        parsed.title,
         parsed.canonical_citation || null,
         parsed.summary || null,
         parsed.text || null,
@@ -247,7 +186,6 @@ router.post('/entries', async (req, res) => {
         JSON.stringify(parsed.legal_bases || []),
         JSON.stringify(parsed.related_sections || []),
         embeddingLiteral,
-        createdBy,
       ]
     );
 

@@ -404,7 +404,15 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             </div>
           )}
 
-          {/* Dates */}
+          {/* Full Text Content */}
+          {entry.text && (
+            <div className="entry-section">
+              <h3>Full Text Content</h3>
+              <div className="text-content">{entry.text}</div>
+            </div>
+          )}
+
+          {/* Timeline Information */}
           <div className="entry-section">
             <h3>Timeline Information</h3>
             <div className="info-grid">
@@ -429,6 +437,18 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             </div>
           </div>
 
+          {/* Tags */}
+          {entry.tags && entry.tags.length > 0 && (
+            <div className="entry-section">
+              <h3>Tags</h3>
+              <div className="tags-list">
+                {entry.tags.map(tag => (
+                  <span key={tag} className="tag">{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Type-Specific Information */}
           <div className="entry-section">
             <h3>{entryType ? entryType.label : 'Entry'} Details</h3>
@@ -452,26 +472,6 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
                   </a>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Tags */}
-          {entry.tags && entry.tags.length > 0 && (
-            <div className="entry-section">
-              <h3>Tags & Categories</h3>
-              <div className="tags-list">
-                {entry.tags.map(tag => (
-                  <span key={tag} className="tag">{tag}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Raw Text Content */}
-          {entry.text && (
-            <div className="entry-section">
-              <h3>Full Text Content</h3>
-              <div className="text-content">{entry.text}</div>
             </div>
           )}
 

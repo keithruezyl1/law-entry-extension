@@ -23,8 +23,9 @@
 }
 
 .entry-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  /* Remove gradient background */
+  background: #f8fafc;
+  color: #333;
   padding: 2.5rem;
   display: flex;
   justify-content: space-between;
@@ -40,8 +41,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-  opacity: 0.3;
+  background: none; /* Remove grain effect */
 }
 
 .entry-title-section {
@@ -54,43 +54,41 @@
   font-size: 2.25rem;
   margin-bottom: 1rem;
   font-weight: 700;
-  color: white;
+  color: #3b82f6; /* Blue text for entry title */
   line-height: 1.2;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .entry-id {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  color: rgba(255,255,255,0.9);
+  color: #6b7280;
   margin-bottom: 0.75rem;
   font-size: 1rem;
-  background: rgba(255,255,255,0.1);
+  background: #f3f4f6;
   padding: 0.5rem 1rem;
   border-radius: 6px;
   display: inline-block;
-  backdrop-filter: blur(10px);
 }
 
 .entry-type {
   font-size: 1rem;
-  color: rgba(255,255,255,0.9);
+  color: white;
   font-weight: 600;
   margin-bottom: 0.75rem;
-  background: rgba(255,255,255,0.15);
+  background: #f97316; /* Orange background */
   padding: 0.5rem 1rem;
   border-radius: 20px;
   display: inline-block;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .offline-pack-indicator {
-  background: rgba(255,255,255,0.2);
+  background: #f3f4f6;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   font-size: 0.9rem;
   display: inline-block;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.3);
+  border: 1px solid #e5e7eb;
+  color: #374151;
 }
 
 .entry-actions {
@@ -101,25 +99,25 @@
 }
 
 .btn-icon {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #374151;
   padding: 0.75rem;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
 }
 
 .btn-icon:hover {
-  background: rgba(255,255,255,0.25);
+  background: #e5e7eb;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .btn-icon-danger:hover {
-  background: rgba(239, 68, 68, 0.8);
-  border-color: rgba(239, 68, 68, 0.8);
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
 }
 
 .entry-sections {
@@ -157,7 +155,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #3b82f6; /* Blue accent */
   border-radius: 2px;
 }
 
@@ -165,7 +163,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, #667eea 0%, transparent 100%);
+  background: linear-gradient(90deg, #3b82f6 0%, transparent 100%);
   margin-left: 1rem;
 }
 
@@ -258,7 +256,7 @@
 }
 
 .source-url {
-  color: #667eea;
+  color: #3b82f6;
   text-decoration: none;
   padding: 0.75rem 1rem;
   background: #f8fafc;
@@ -292,7 +290,8 @@
 }
 
 .tag {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* Plain orange background with white text */
+  background: #f97316;
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
@@ -322,24 +321,17 @@
   font-size: 1.1rem;
   line-height: 1.7;
   color: #334155;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: #f8fafc;
   padding: 1.5rem;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #3b82f6; /* Blue accent */
   position: relative;
 }
 
+/* Remove lightbulb emoji */
 .summary-text::before {
-  content: '💡';
-  position: absolute;
-  top: -0.5rem;
-  left: -0.5rem;
-  background: white;
-  border-radius: 50%;
-  padding: 0.25rem;
-  font-size: 1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  content: none;
 }
 
 .field-group {
@@ -362,7 +354,7 @@
 
 .field-group h4::before {
   content: '•';
-  color: #667eea;
+  color: #3b82f6;
   font-size: 1.5rem;
   font-weight: bold;
 }
@@ -393,7 +385,7 @@
   content: '→';
   position: absolute;
   left: 0.5rem;
-  color: #667eea;
+  color: #3b82f6;
   font-weight: bold;
 }
 
@@ -414,7 +406,7 @@
 }
 
 .basis-type {
-  background: #667eea;
+  background: #3b82f6;
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
@@ -489,7 +481,7 @@
   left: 0;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
 }
 
 .phase-item h5 {
@@ -498,7 +490,7 @@
   font-size: 1.125rem;
   font-weight: 600;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #3b82f6;
 }
 
 .steps-list {
@@ -512,7 +504,7 @@
   background: #f8fafc;
   border-radius: 6px;
   margin-bottom: 0.75rem;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid #3b82f6;
   position: relative;
   padding-left: 1.5rem;
 }
@@ -528,7 +520,7 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
   border-radius: 2px;
 }
 
@@ -574,7 +566,7 @@
 }
 
 .btn-primary {
-  background: #667eea;
+  background: #3b82f6;
   color: white;
   padding: 0.75rem 1.5rem;
   border: none;
@@ -586,7 +578,7 @@
 }
 
 .btn-primary:hover {
-  background: #5a67d8;
+  background: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
@@ -645,7 +637,7 @@
 /* Enhanced focus states for accessibility */
 .btn-icon:focus,
 .source-url:focus {
-  outline: 2px solid #667eea;
+  outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
 
