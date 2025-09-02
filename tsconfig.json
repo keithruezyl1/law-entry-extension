@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es2020",
+    "target": "es2018",
     "lib": [
       "dom",
       "dom.iterable",
-      "es2020"
+      "es2018"
     ],
     "baseUrl": "src",
     "allowJs": true,
