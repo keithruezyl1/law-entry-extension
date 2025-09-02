@@ -242,7 +242,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         const token = localStorage.getItem('auth_token');
         if (!token) return;
         
-        const response = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:4000/api'}/auth/team-members`, {
+        const ORIGIN_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:4000';
+        const API_BASE = ORIGIN_BASE.endsWith('/api') ? ORIGIN_BASE : `${ORIGIN_BASE}/api`;
+        const response = await fetch(`${API_BASE}/auth/team-members`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
