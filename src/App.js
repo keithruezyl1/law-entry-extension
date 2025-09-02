@@ -131,11 +131,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     loadActivePlan();
   }, []);
 
-  const hasPlan = (() => {
-    const d1 = day1Date;
-    const rows = planData;
-    return !!d1 && Array.isArray(rows) && rows.length > 0;
+  const planRows = (() => {
+    if (Array.isArray(planData)) return planData;
+    if (planData && Array.isArray(planData.rows)) return planData.rows;
+    if (planData && Array.isArray(planData.data)) return planData.data;
+    return [];
   })();
+  const hasPlan = (!!day1Date) && planRows.length > 0;
 
   // Guard: prevent opening the form route when no plan is imported
   useEffect(() => {
@@ -811,7 +813,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             let currentDayReqs = member.dailyQuota;
             const today = new Date();
             const dayIndex = computeDayIndex(today, day1Date);
-            const dayRows = rowsForDay(planData, dayIndex);
+            const dayRows = rowsForDay(planRows, dayIndex);
             const personRow = dayRows.find((r) => String(r.Person).trim() === `P${personId}`);
             
             if (personRow) {
