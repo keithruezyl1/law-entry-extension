@@ -396,9 +396,17 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             </div>
           </div>
 
+          {/* Summary Section */}
+          {entry.summary && (
+            <div className="entry-section">
+              <h3>Summary</h3>
+              <div className="summary-text">{entry.summary}</div>
+            </div>
+          )}
+
           {/* Dates */}
           <div className="entry-section">
-            <h3>Dates</h3>
+            <h3>Timeline Information</h3>
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Effective Date:</span>
@@ -421,10 +429,16 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             </div>
           </div>
 
+          {/* Type-Specific Information */}
+          <div className="entry-section">
+            <h3>{entryType ? entryType.label : 'Entry'} Details</h3>
+            {renderTypeSpecificFields()}
+          </div>
+
           {/* Source URLs */}
           {entry.source_urls && entry.source_urls.length > 0 && (
             <div className="entry-section">
-              <h3>Source URLs</h3>
+              <h3>Source References</h3>
               <div className="source-urls">
                 {entry.source_urls.map((url, index) => (
                   <a
@@ -444,7 +458,7 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
           {/* Tags */}
           {entry.tags && entry.tags.length > 0 && (
             <div className="entry-section">
-              <h3>Tags</h3>
+              <h3>Tags & Categories</h3>
               <div className="tags-list">
                 {entry.tags.map(tag => (
                   <span key={tag} className="tag">{tag}</span>
@@ -453,19 +467,13 @@ const EntryView = ({ entry, onEdit, onDelete }) => {
             </div>
           )}
 
-          {/* Summary */}
-          {entry.summary && (
+          {/* Raw Text Content */}
+          {entry.text && (
             <div className="entry-section">
-              <h3>Summary</h3>
-              <div className="summary-text">{entry.summary}</div>
+              <h3>Full Text Content</h3>
+              <div className="text-content">{entry.text}</div>
             </div>
           )}
-
-          {/* Type-Specific Information */}
-          <div className="entry-section">
-            <h3>{entryType ? entryType.label : 'Entry'} Details</h3>
-            {renderTypeSpecificFields()}
-          </div>
 
           {/* Raw Text */}
           {entry.text_raw && (

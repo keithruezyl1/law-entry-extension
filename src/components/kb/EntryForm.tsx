@@ -608,7 +608,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                   <div className="kb-form-field-group">
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">Entering as</label>
-                                      <Input className="kb-form-input bg-gray-50" placeholder="MEMBER" value={user?.name || user?.username || 'MEMBER'} readOnly />
+                                      <Input className="kb-form-input bg-gray-50" placeholder="Team Member" value={user?.name || user?.username || 'Team Member'} readOnly />
                                     </div>
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">

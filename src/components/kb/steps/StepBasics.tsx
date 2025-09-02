@@ -57,7 +57,7 @@ export function StepBasics() {
           <Label htmlFor="entered_by">Entering as</Label>
           <Input
             id="entered_by"
-            value={user?.name || 'MEMBER'}
+            value={user?.name || user?.username || 'Team Member'}
             className="mt-1 bg-gray-50"
             readOnly
           />
