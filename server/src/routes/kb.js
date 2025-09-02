@@ -133,10 +133,10 @@ router.post('/entries', async (req, res) => {
 
     // 1) Ensure row exists with required non-null columns
     await query(
-      `insert into kb_entries (entry_id, type, title)
-       values ($1, $2, $3)
-       on conflict (entry_id) do update set type=excluded.type, title=excluded.title`,
-      [parsed.entry_id, parsed.type, parsed.title]
+      `insert into kb_entries (entry_id, type, title, created_by)
+       values ($1, $2, $3, $4)
+       on conflict (entry_id) do update set type=excluded.type, title=excluded.title, created_by=excluded.created_by`,
+      [parsed.entry_id, parsed.type, parsed.title, createdBy]
     );
 
     // 2) Update all fields (single authoritative update)
