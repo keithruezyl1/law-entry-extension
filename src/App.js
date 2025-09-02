@@ -141,11 +141,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   // Guard: prevent opening the form route when no plan is imported
   useEffect(() => {
-    if (currentView === 'form' && !hasPlan) {
+    if (currentView !== 'form') return;
+    // Wait until plan loading completes to avoid false negatives on first mount
+    if (planLoading) return;
+    if (!hasPlan) {
       alert('Please import a plan first before creating entries.');
       navigate('/dashboard');
     }
-  }, [currentView, hasPlan, navigate]);
+  }, [currentView, hasPlan, navigate, planLoading]);
   
 
 
