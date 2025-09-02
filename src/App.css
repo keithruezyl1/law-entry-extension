@@ -350,6 +350,18 @@ body {
   display: inline-block;
 }
 
+/* Ensure Create New Entry button is orange */
+.App-nav .btn-primary {
+  background: #ff6b35 !important;
+  color: white !important;
+}
+
+.App-nav .btn-primary:hover {
+  background: #e55a2b !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 107, 53, 0.3);
+}
+
 .btn-primary:hover {
   background: #e55a2b;
   transform: translateY(-1px);
