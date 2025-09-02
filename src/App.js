@@ -396,10 +396,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     navigate(`/entry/${entryId}`);
   };
 
-  const handleSaveEntry = (entryData) => {
+  const handleSaveEntry = async (entryData) => {
     try {
       if (editingEntry) {
-        updateEntry(editingEntry.id, entryData);
+        await updateEntry(editingEntry.id, entryData);
         console.log('Entry updated:', entryData);
         // Fire-and-forget vector upsert to keep RAG index in sync
         try {
@@ -473,7 +473,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             setShowConfetti(true);
           }
         }
-        const newEntry = addEntry(entryData);
+        const newEntry = await addEntry(entryData);
         console.log('New entry created and saved to localStorage:', newEntry);
         console.log('Total entries in localStorage:', entries.length + 1);
         // Fire-and-forget vector upsert (does not block UX)
@@ -540,7 +540,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         } catch (e) {
           console.warn('Vector upsert error:', e);
         }
-        alert(`Entry "${entryData.title}" has been successfully saved to localStorage!`);
+        alert(`Entry "${entryData.title}" has been saved to the database and indexed.`);
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);

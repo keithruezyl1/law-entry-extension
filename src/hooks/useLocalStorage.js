@@ -142,7 +142,7 @@ export const useLocalStorage = () => {
       const resp = await upsertEntry(payload);
       if (!resp?.success) throw new Error(resp?.error || 'Upsert failed');
 
-      // Refresh from DB
+      // Refresh from DB for authoritative state
       const dbEntries = await fetchAllEntriesFromDb();
       if (Array.isArray(dbEntries)) {
         const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
