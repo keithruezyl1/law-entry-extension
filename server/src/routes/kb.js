@@ -131,10 +131,12 @@ router.post('/entries', async (req, res) => {
     // Optional created_by from JWT middleware
     const createdBy = req.user?.userId || null;
 
-    // 1) Ensure row exists (minimal insert)
+    // 1) Ensure row exists with required non-null columns
     await query(
-      `insert into kb_entries (entry_id) values ($1) on conflict (entry_id) do nothing`,
-      [parsed.entry_id]
+      `insert into kb_entries (entry_id, type, title)
+       values ($1, $2, $3)
+       on conflict (entry_id) do update set type=excluded.type, title=excluded.title`,
+      [parsed.entry_id, parsed.type, parsed.title]
     );
 
     // 2) Update all fields (single authoritative update)
