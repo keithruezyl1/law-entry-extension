@@ -100,7 +100,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalStep, setPlanModalStep] = useState(1);
   const [selectedDay1Date, setSelectedDay1Date] = useState('');
-  const day1InputRef = React.useRef(null);
   const [planData, setPlanData] = useState(null);
   const [day1Date, setDay1DateState] = useState(null);
   const [showChat, setShowChat] = useState(false);
@@ -1034,15 +1033,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       >
         {planModalStep === 1 ? (
           <div className="modal-content">
+            <div className="text-center mb-3" style={{ fontWeight: 600 }}>Set Day 1</div>
             <input
               type="date"
               className="border rounded-lg px-3 py-2 w-full mb-4"
-              ref={day1InputRef}
               value={selectedDay1Date}
               onChange={(e) => setSelectedDay1Date(e.target.value)}
+              onFocus={(e) => e.currentTarget.showPicker && e.currentTarget.showPicker()}
+              onClick={(e) => e.currentTarget.showPicker && e.currentTarget.showPicker()}
             />
-            <div className="modal-buttons">
-              <button className="modal-button" onClick={handleDay1Confirm}>
+            <div className="modal-buttons" style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+              <button disabled={!selectedDay1Date} className="modal-button" onClick={handleDay1Confirm}>
                 Continue
               </button>
               <button className="modal-button cancel" onClick={handlePlanCancel}>
