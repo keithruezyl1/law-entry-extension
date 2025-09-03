@@ -755,22 +755,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             </div>
           </div>
 
-          {/* Prescriptive Period display for types that have it */}
-          {currentEntry?.prescriptive_period && (
-            <div className="entry-section">
-              <h3>Prescriptive Period</h3>
-              <div className="field-group">
-                {String(currentEntry.prescriptive_period?.value).toUpperCase() === 'NA' ? (
-                  <div>No prescriptive period</div>
-                ) : (
-                  <div>
-                    {currentEntry.prescriptive_period?.value} {currentEntry.prescriptive_period?.unit}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Raw Text */}
           {currentEntry.text_raw && (
             <div className="entry-section">

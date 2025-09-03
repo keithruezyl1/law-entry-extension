@@ -88,8 +88,21 @@ const UpsertSchema = z.object({
   advice_points: z.array(z.string()).optional(),
   topics: z.array(z.string()).optional(),
   jurisprudence: z.array(z.string()).optional(),
-  legal_bases: z.any().optional(),
-  related_sections: z.any().optional(),
+  legal_bases: z.array(z.object({
+    type: z.enum(['internal', 'external']),
+    entry_id: z.string().optional(),
+    citation: z.string().optional(),
+    url: z.string().optional(),
+    note: z.string().optional(),
+    topic: z.string().optional()
+  })).optional(),
+  related_sections: z.array(z.object({
+    type: z.enum(['internal', 'external']),
+    entry_id: z.string().optional(),
+    citation: z.string().optional(),
+    url: z.string().optional(),
+    note: z.string().optional()
+  })).optional(),
   created_by_name: z.string().optional(),
   verified: z.boolean().optional(),
   verified_by: z.string().optional(),
