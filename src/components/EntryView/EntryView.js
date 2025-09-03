@@ -636,7 +636,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                     <div className="verification-status">
                       <span className="verified-badge">Verified</span>
                       {/* Only P3 and P5 can see verification buttons */}
-                      {user && (user.personId === 'P3' || user.personId === 'P5') && (
+                      {user && ((user.personId === 'P3' || user.personId === 'P5' || user.person_id === 'P3' || user.person_id === 'P5')) && (
                         <button
                           onClick={handleReverify}
                           disabled={isVerifying}
@@ -651,7 +651,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                     <div className="verification-status">
                       <span className="unverified-badge">Not Verified</span>
                       {/* Only P3 and P5 can see verification buttons */}
-                      {user && (user.personId === 'P3' || user.personId === 'P5') && (
+                      {user && ((user.personId === 'P3' || user.personId === 'P5' || user.person_id === 'P3' || user.person_id === 'P5')) && (
                         <button
                           onClick={handleVerify}
                           disabled={isVerifying}

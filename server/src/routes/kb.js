@@ -466,7 +466,7 @@ router.post('/entries/:entryId/verify', async (req, res) => {
     // Get user details
     const userResult = await query(
       'SELECT name, person_id FROM users WHERE id = $1',
-      [req.user.userId]
+      [req.user.userId || req.user.id]
     );
     
     if (!userResult.rows.length) {
@@ -522,7 +522,7 @@ router.post('/entries/:entryId/reverify', async (req, res) => {
     // Get user details
     const userResult = await query(
       'SELECT name, person_id FROM users WHERE id = $1',
-      [req.user.userId]
+      [req.user.userId || req.user.id]
     );
     
     if (!userResult.rows.length) {
