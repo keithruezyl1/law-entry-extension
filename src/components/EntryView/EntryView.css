@@ -40,18 +40,31 @@
   line-height: 1.3;
 }
 
-.entry-id {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  color: #006621;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
+.entry-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.entry-type {
-  font-size: 0.875rem;
-  color: #667eea;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
+.entry-id-badge {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  color: #065f46;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+}
+
+.entry-type-badge {
+  font-size: 0.85rem;
+  color: #fff;
+  font-weight: 600;
+  background: #f97316; /* orange-500 */
+  border: 1px solid #fb923c; /* orange-300 */
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
 }
 
 .offline-pack-indicator {
@@ -571,6 +584,20 @@
   cursor: pointer;
   transition: all 0.2s ease;
   margin-top: 1rem;
+}
+
+.btn-verify {
+  background: #10b981; /* emerald-500 */
+  color: white;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  border-radius: 9999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-verify:hover {
+  background: #059669; /* emerald-600 */
 }
 
 .btn-primary:hover {

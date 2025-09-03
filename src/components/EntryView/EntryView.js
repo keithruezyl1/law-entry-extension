@@ -305,19 +305,32 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
       );
     };
 
+    const pp = (() => {
+      const v = entry.prescriptive_period;
+      if (!v) return null;
+      try {
+        if (typeof v === 'string') {
+          const parsed = JSON.parse(v);
+          if (parsed && parsed.value && parsed.unit) return `${parsed.value} ${String(parsed.unit).replace(/s$/,'')}s`;
+        }
+        if (typeof v === 'object' && v.value && v.unit) {
+          return `${v.value} ${String(v.unit).replace(/s$/,'')}s`;
+        }
+      } catch {}
+      return String(v);
+    })();
+
     switch (entry.type) {
       case 'statute_section':
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Prescriptive Period', entry.prescriptive_period, 'object')}
+              {renderField('Prescriptive Period', pp || 'Empty')}
               {renderField('Standard of Proof', entry.standard_of_proof)}
             </div>
             {renderArrayFieldStructured('elements', entry.elements, 'Elements')}
             {renderArrayFieldStructured('penalties', entry.penalties, 'Penalties')}
             {renderArrayFieldStructured('defenses', entry.defenses, 'Defenses')}
-            {renderLegalBasesStructured(entry.legal_bases)}
-            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
           </div>
         );
 
@@ -329,8 +342,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
               {renderField('Penalties', entry.penalties, 'array')}
               {renderField('Defenses', entry.defenses, 'array')}
             </div>
-            {renderLegalBasesStructured(entry.legal_bases)}
-            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
           </div>
         );
 
@@ -344,7 +355,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             {renderArrayFieldStructured('triggers', entry.triggers, 'Triggers')}
             {renderArrayFieldStructured('time_limits', entry.time_limits, 'Time Limits')}
             {renderArrayFieldStructured('required_forms', entry.required_forms, 'Required Forms')}
-            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
           </div>
         );
 
@@ -356,7 +366,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
               {renderField('Section Number', entry.section_no)}
             </div>
             {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
-            {renderLegalBasesStructured(entry.legal_bases)}
             {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
           </div>
         );
@@ -369,7 +378,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             </div>
             {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
             {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
-            {renderLegalBasesStructured(entry.legal_bases)}
           </div>
         );
 
@@ -381,7 +389,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             </div>
             {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
             {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
-            {renderLegalBasesStructured(entry.legal_bases)}
           </div>
         );
 
@@ -389,7 +396,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             {renderArrayFieldStructured('steps_brief', entry.steps_brief, 'Steps Brief')}
-            {renderLegalBasesStructured(entry.legal_bases)}
             {renderArrayFieldStructured('forms_required', entry.forms_required, 'Forms Required')}
             {renderArrayFieldStructured('failure_states', entry.failure_states, 'Failure States')}
           </div>
@@ -405,7 +411,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             </div>
             {renderFineScheduleStructured(entry.fine_schedule)}
             {renderArrayFieldStructured('apprehension_flow', entry.apprehension_flow, 'Apprehension Flow')}
-            {renderLegalBasesStructured(entry.legal_bases)}
           </div>
         );
 
@@ -429,8 +434,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
               {renderField('Rights Scope', entry.rights_scope)}
             </div>
             {renderArrayFieldStructured('advice_points', entry.advice_points, 'Advice Points')}
-            {renderLegalBasesStructured(entry.legal_bases)}
-            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
           </div>
         );
 
@@ -439,7 +442,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           <div className="type-specific-fields">
             {renderArrayFieldStructured('topics', entry.topics, 'Topics')}
             {renderArrayFieldStructured('jurisprudence', entry.jurisprudence, 'Jurisprudence')}
-            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
           </div>
         );
 
@@ -465,9 +467,11 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
       <div className="entry-view-content">
         <div className="entry-header">
           <div className="entry-title-section">
-            <h1>{entry.title}</h1>
-            <div className="entry-id">{entry.entry_id}</div>
-            <div className="entry-type">{entryType ? entryType.label : entry.type}</div>
+            <div className="entry-title-row">
+              <h1>{entry.title}</h1>
+              <span className="entry-id-badge">{entry.entry_id}</span>
+              <span className="entry-type-badge">{entryType ? entryType.label : entry.type}</span>
+            </div>
             {entry.offline && entry.offline.pack_include && (
               <div className="offline-pack-indicator">
                 Included in Offline Pack
@@ -545,8 +549,47 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
               </div>
               {entry.last_reviewed && (
                 <div className="info-item">
-                  <span className="label">Last Reviewed:</span>
-                  <span className="value">{formatDate(entry.last_reviewed)}</span>
+                  <span className="label">{`Last Reviewed${entry?.verified_by ? ` (${entry.verified_by})` : ''}:`}</span>
+                  <span className="value">
+                    {formatDate(entry.last_reviewed)}
+                    {(() => {
+                      try {
+                        const token = localStorage.getItem('auth_token') || '';
+                        const payload = JSON.parse(atob((token || '').split('.')[1] || 'e30='));
+                        const pid = String(payload?.personId || payload?.pid || '').toUpperCase();
+                        const isVerifier = pid === 'P3' || pid === 'P5' || pid === 'P03' || pid === 'P05';
+                        if (!isVerifier) return null;
+                        const name = (payload?.name || payload?.username || '').trim() || (pid === 'P3' ? 'Paden' : 'Tagarao');
+                        return (
+                          <button
+                            className="btn-verify"
+                            style={{ marginLeft: '0.5rem' }}
+                            onClick={async () => {
+                              try {
+                                const now = new Date().toISOString();
+                                const body = { ...entry, last_reviewed: now, verified_by: name };
+                                const base = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_VECTOR_API_URL || 'http://localhost:4000');
+                                const url = `${base}/api/kb/entries/${encodeURIComponent(entry.entry_id)}`;
+                                await fetch(url, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                                  body: JSON.stringify(body),
+                                });
+                                window.dispatchEvent(new Event('refresh-entries'));
+                                alert('Entry verified');
+                              } catch (e) {
+                                alert('Failed to verify');
+                              }
+                            }}
+                          >
+                            Verify
+                          </button>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </span>
                 </div>
               )}
               {entry.amendment_date && (
