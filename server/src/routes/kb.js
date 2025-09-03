@@ -93,6 +93,7 @@ const UpsertSchema = z.object({
   created_by_name: z.string().optional(),
   verified: z.boolean().optional(),
   verified_by: z.string().optional(),
+  verified_at: z.string().optional(),
 });
 
 router.post('/entries', async (req, res) => {
@@ -197,7 +198,8 @@ router.post('/entries', async (req, res) => {
          created_by_name=$49,
          verified=COALESCE($50, kb_entries.verified),
          verified_by=COALESCE($51, kb_entries.verified_by),
-         embedding=COALESCE($52::vector, kb_entries.embedding),
+         verified_at=COALESCE($52::timestamptz, kb_entries.verified_at),
+         embedding=COALESCE($53::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
@@ -252,6 +254,7 @@ router.post('/entries', async (req, res) => {
         createdByName,
         parsed.verified ?? null,
         parsed.verified_by || null,
+        parsed.verified_at || null,
         embeddingLiteral,
       ]
     );
@@ -368,7 +371,8 @@ router.put('/entries/:entryId', async (req, res) => {
          related_sections=$50,
          verified=COALESCE($51, kb_entries.verified),
          verified_by=COALESCE($52, kb_entries.verified_by),
-         embedding=COALESCE($53::vector, kb_entries.embedding),
+         verified_at=COALESCE($53::timestamptz, kb_entries.verified_at),
+         embedding=COALESCE($54::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
@@ -424,6 +428,7 @@ router.put('/entries/:entryId', async (req, res) => {
         JSON.stringify(parsed.related_sections || []),
         parsed.verified ?? null,
         parsed.verified_by || null,
+        parsed.verified_at || null,
         embeddingLiteral,
       ]
     );

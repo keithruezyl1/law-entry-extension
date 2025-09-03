@@ -480,6 +480,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               jurisprudence: entryData.jurisprudence,
               legal_bases: entryData.legal_bases,
               related_sections: entryData.related_sections,
+              // Any update clears verification
+              verified: false,
+              verified_by: null,
+              verified_at: null,
             };
             upsertEntry(payload).then((resp) => {
               if (!resp?.success) console.warn('Vector upsert failed:', resp?.error);

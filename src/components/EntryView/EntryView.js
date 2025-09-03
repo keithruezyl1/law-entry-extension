@@ -567,7 +567,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                             onClick={async () => {
                               try {
                                 const now = new Date().toISOString();
-                                const body = { ...entry, last_reviewed: now, verified_by: name, verified: true };
+                                const body = { ...entry, last_reviewed: now, verified_by: name, verified: true, verified_at: now };
                                 const base = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_VECTOR_API_URL || 'http://localhost:4000');
                                 const url = `${base}/api/kb/entries/${encodeURIComponent(entry.entry_id)}`;
                                 await fetch(url, {
@@ -582,7 +582,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                               }
                             }}
                           >
-                            Verify
+                            {entry.verified ? 'Re-verify' : 'Verify'}
                           </button>
                         );
                       } catch {
@@ -592,10 +592,12 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                   </span>
                 </div>
               )}
-              <div className="info-item">
-                <span className="label">Verified:</span>
-                <span className="value">{entry.verified ? 'Yes' : 'No'}</span>
-              </div>
+              {entry.verified && (
+                <div className="info-item">
+                  <span className="label">Verified:</span>
+                  <span className="value">{`Yes${entry.verified_at ? ` (${formatDate(entry.verified_at)})` : ''}`}</span>
+                </div>
+              )}
               {entry.amendment_date && (
                 <div className="info-item">
                   <span className="label">Amendment Date:</span>

@@ -19,3 +19,14 @@ SELECT column_name, data_type
 FROM information_schema.columns 
 WHERE table_name = 'kb_entries' 
   AND column_name = 'created_by_name';
+
+-- Also add verification columns
+ALTER TABLE kb_entries ADD COLUMN IF NOT EXISTS verified boolean DEFAULT false;
+ALTER TABLE kb_entries ADD COLUMN IF NOT EXISTS verified_by text;
+ALTER TABLE kb_entries ADD COLUMN IF NOT EXISTS verified_at timestamp with time zone;
+
+-- Verify verification columns
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'kb_entries'
+  AND column_name IN ('verified', 'verified_by', 'verified_at');
