@@ -475,6 +475,11 @@ router.post('/entries/:entryId/verify', async (req, res) => {
     
     const user = userResult.rows[0];
     
+    // Only P3 and P5 can verify entries
+    if (user.person_id !== 'P3' && user.person_id !== 'P5') {
+      return res.status(403).json({ success: false, error: 'Only P3 and P5 team members can verify entries' });
+    }
+    
     // Update entry verification status
     await query(
       `UPDATE kb_entries SET 
@@ -508,6 +513,28 @@ router.post('/entries/:entryId/reverify', async (req, res) => {
   try {
     const entryId = String(req.params.entryId || '').trim();
     if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
+    
+    // User info is already available from authenticateToken middleware
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ success: false, error: 'User not authenticated' });
+    }
+    
+    // Get user details
+    const userResult = await query(
+      'SELECT name, person_id FROM users WHERE id = $1',
+      [req.user.userId]
+    );
+    
+    if (!userResult.rows.length) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Only P3 and P5 can re-verify entries
+    if (user.person_id !== 'P3' && user.person_id !== 'P5') {
+      return res.status(403).json({ success: false, error: 'Only P3 and P5 team members can re-verify entries' });
+    }
     
     // Update entry verification status to null
     await query(

@@ -178,8 +178,20 @@ const stepListBase: Step[] = [
 
 export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel }: EntryFormProps) {
   const { user } = useAuth();
+  
+  // Explicit mode detection
+  const isEditMode = !!entry;
+  const isCreateMode = !entry;
+  
+  console.log('EntryForm mode detection:', {
+    isEditMode,
+    isCreateMode,
+    entryId: entry?.entry_id || (entry as any)?.id,
+    entryType: entry?.type
+  });
+  
   console.log('EntryForm received entry prop:', entry);
-  console.log('EntryForm is editing:', !!entry);
+  console.log('EntryForm is editing:', isEditMode);
   console.log('EntryForm entry prop:', entry);
   console.log('EntryForm entry visibility:', entry?.visibility);
   console.log('EntryForm entry source_urls:', entry?.source_urls);
@@ -188,7 +200,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   
   const navigate = useNavigate();
   const { step } = useParams();
-  const initialStep = parseInt(step || '1');
+  
+  // Get step from URL params or query string (for edit mode)
+  const getInitialStep = () => {
+    // For new entries: /law-entry/:step - use URL param directly
+    if (!entry && step) {
+      return parseInt(step);
+    }
+    
+    // For edit mode: /entry/:id/edit?step=X - use query string
+    if (entry) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryStep = urlParams.get('step');
+      if (queryStep) {
+        return parseInt(queryStep);
+      }
+    }
+    
+    // Default to step 1 for both modes
+    return 1;
+  };
+  
+  const initialStep = getInitialStep();
   
   const methods = useForm<Entry>({
     resolver: zodResolver(EntrySchema as any),
@@ -259,9 +292,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const citation = watch('canonical_citation');
   const entry_id = watch('entry_id');
 
-  // Auto-generate entry ID and set last_reviewed for new entries
+  // Auto-generate entry ID and set last_reviewed for new entries (CREATE MODE ONLY)
   useEffect(() => {
-    if (!entry && !entry_id && type && lawFamily) {
+    // Only run in create mode
+    if (isCreateMode && !entry_id && type && lawFamily) {
       // Generate entry ID based on type, law family, and section ID
       const generatedId = generateEntryId(type, lawFamily, sectionId || '');
       setValue('entry_id', generatedId);
@@ -270,13 +304,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       const today = new Date().toISOString().slice(0, 10);
       setValue('last_reviewed', today);
     }
-  }, [entry, entry_id, type, lawFamily, sectionId, setValue]);
+  }, [isCreateMode, entry_id, type, lawFamily, sectionId, setValue]);
 
   // Step 4 always has content (dynamic type-specific + relations)
   const hasTypeSpecific = true;
   const steps = useMemo(() => (hasTypeSpecific ? stepListBase : stepListBase.filter((s) => s.id !== 4)), [hasTypeSpecific]);
   const [currentStep, setCurrentStep] = useState(initialStep);
   const formCardRef = React.useRef<HTMLDivElement | null>(null);
+  
+  // Sync current step with URL when editing (only affects edit mode)
+  useEffect(() => {
+    // Only run this effect in edit mode
+    if (!entry) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryStep = urlParams.get('step');
+    if (queryStep) {
+      const stepNum = parseInt(queryStep);
+      if (stepNum !== currentStep && stepNum >= 1 && stepNum <= 5) {
+        setCurrentStep(stepNum);
+      }
+    }
+  }, [entry, currentStep]);
   const [showDraftSaved, setShowDraftSaved] = useState<boolean>(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
@@ -495,6 +544,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }
     
+    // In edit mode only: ensure form data is preserved by triggering a re-render
+    if (entry) {
+      // Force form to re-render with current values to ensure data persistence
+      // This is only needed in edit mode, not in create mode
+      const currentValues = getValues();
+      methods.reset(currentValues as any);
+    }
+    
     setCurrentStep((s) => {
       const next = Math.min(steps[steps.length - 1].id, s + 1);
       // Update URL - check if we're in edit mode
@@ -526,6 +583,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         console.error('Failed to auto-save draft:', e);
         setIsAutoSaving(false);
       }
+    }
+    
+    // In edit mode only: ensure form data is preserved by triggering a re-render
+    if (entry) {
+      // Force form to re-render with current values to ensure data persistence
+      // This is only needed in edit mode, not in create mode
+      const currentValues = getValues();
+      methods.reset(currentValues as any);
     }
     
     setCurrentStep((s) => {
@@ -566,9 +631,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   };
   const abortCancel = () => setShowCancelConfirm(false);
 
-  // Enhanced autosave: save on form changes and every 5 seconds (only for new entries)
+  // Enhanced autosave: save on form changes and every 5 seconds (CREATE MODE ONLY)
   useEffect(() => {
-    if (entry) return; // Don't auto-save when editing existing entries
+    // Only run auto-save in create mode
+    if (isEditMode) return; // Don't auto-save when editing existing entries
     
     // Save immediately when form values change
     const subscription = watch((value) => {
@@ -695,7 +761,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   };
 
   // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
+  // Disabled when editing existing entries to avoid confusion
   useEffect(() => {
+    // Don't run duplicate detection when editing existing entries
+    if (entry) {
+      setNearDuplicates([]);
+      return;
+    }
+    
     const idTokens = [citation, lawFamily, sectionId].filter(Boolean).join(' ');
     const q = `${title || ''} ${idTokens}`.trim();
     if (!q) {
@@ -874,7 +947,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 currentStep={currentStep}
                 onStepClick={(step) => {
                   setCurrentStep(step);
-                  navigate(`/law-entry/${step}`);
+                  // Maintain edit URL structure when editing existing entries
+                  if (entry) {
+                    const entryId = (entry as any).id || entry.entry_id;
+                    navigate(`/entry/${entryId}/edit?step=${step}`);
+                  } else {
+                    navigate(`/law-entry/${step}`);
+                  }
                 }}
               />
             </div>

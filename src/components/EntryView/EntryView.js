@@ -635,26 +635,32 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                   {currentEntry.verified ? (
                     <div className="verification-status">
                       <span className="verified-badge">Verified</span>
-                      <button
-                        onClick={handleReverify}
-                        disabled={isVerifying}
-                        className="btn-reverify"
-                        title="Reset verification status"
-                      >
-                        {isVerifying ? 'Processing...' : 'Re-verify'}
-                      </button>
+                      {/* Only P3 and P5 can see verification buttons */}
+                      {user && (user.personId === 'P3' || user.personId === 'P5') && (
+                        <button
+                          onClick={handleReverify}
+                          disabled={isVerifying}
+                          className="btn-reverify"
+                          title="Reset verification status"
+                        >
+                          {isVerifying ? 'Processing...' : 'Re-verify'}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="verification-status">
                       <span className="unverified-badge">Not Verified</span>
-                      <button
-                        onClick={handleVerify}
-                        disabled={isVerifying}
-                        className="btn-verify"
-                        title="Mark entry as verified"
-                      >
-                        {isVerifying ? 'Processing...' : 'Verify'}
-                      </button>
+                      {/* Only P3 and P5 can see verification buttons */}
+                      {user && (user.personId === 'P3' || user.personId === 'P5') && (
+                        <button
+                          onClick={handleVerify}
+                          disabled={isVerifying}
+                          className="btn-verify"
+                          title="Mark entry as verified"
+                        >
+                          {isVerifying ? 'Processing...' : 'Verify'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </span>
