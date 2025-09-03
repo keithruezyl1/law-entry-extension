@@ -674,9 +674,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     navigate('/dashboard');
   };
 
-  // Debounced semantic suggestions for potential near-duplicates
+  // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
   useEffect(() => {
-    const q = `${title || ''} ${citation || ''}`.trim();
+    const idTokens = [citation, lawFamily, sectionId].filter(Boolean).join(' ');
+    const q = `${title || ''} ${idTokens}`.trim();
     if (!q) {
       setNearDuplicates([]);
       return;
@@ -692,9 +693,35 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const t = setTimeout(async () => {
       try {
         setSearchingDupes(true);
-        const resp = await semanticSearch(q, 5);
+        // ask for more results, then filter client-side by a threshold
+        const resp = await semanticSearch(q, 10);
         if (!cancelled) {
-          setNearDuplicates(resp.success ? (resp.results || []) : []);
+          const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','law','act','rule','rules','section','sec','article','anti','provision']);
+          const tokenize = (s: string) => String(s || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .split(/\s+/)
+            .filter(Boolean)
+            .filter(w => !STOPWORDS.has(w));
+          const overlap = (a: string, b: string) => {
+            const A = new Set(tokenize(a));
+            const B = new Set(tokenize(b));
+            if (A.size === 0 || B.size === 0) return 0;
+            let inter = 0;
+            A.forEach(w => { if (B.has(w)) inter++; });
+            return inter / Math.min(A.size, B.size);
+          };
+
+          const resultsRaw = (resp.success ? (resp.results || []) : []);
+          const filtered = resultsRaw.filter((r: any) => {
+            const sim = Number(r.similarity || r.score || 0);
+            const candidateTitle = String((r.title || r.canonical_citation || ''));
+            const sameType = !type || !r.type || r.type === type;
+            const tokOverlap = overlap(title || '', candidateTitle);
+            // Keep only very similar items, or moderately similar of same type with good token overlap
+            return sim >= 0.88 || (sameType && tokOverlap >= 0.5 && sim >= 0.6);
+          });
+          setNearDuplicates(filtered);
         }
       } catch (_) {
         if (!cancelled) setNearDuplicates([]);

@@ -561,49 +561,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 <span className="label">Effective Date:</span>
                 <span className="value">{formatDate(entry.effective_date)}</span>
               </div>
-              <div className="info-item">
-                <span className="label">{`Last Reviewed${entry?.verified_by ? ` (${entry.verified_by})` : ''}:`}</span>
-                <span className="value">
-                  {formatDate(entry.last_reviewed)}
-                  {(() => {
-                      try {
-                        const token = localStorage.getItem('auth_token') || '';
-                        const payload = JSON.parse(atob((token || '').split('.')[1] || 'e30='));
-                        const pid = String(payload?.personId || payload?.pid || '').toUpperCase();
-                        const isVerifier = pid === 'P3' || pid === 'P5' || pid === 'P03' || pid === 'P05';
-                        if (!isVerifier) return null;
-                        const name = (payload?.name || payload?.username || '').trim() || (pid === 'P3' ? 'Paden' : 'Tagarao');
-                        return (
-                          <button
-                            className="btn-verify"
-                            style={{ marginLeft: '0.5rem' }}
-                            onClick={async () => {
-                              try {
-                                const now = new Date().toISOString();
-                                const body = { ...entry, last_reviewed: now, verified_by: name, verified: true, verified_at: now };
-                                const base = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_VECTOR_API_URL || 'http://localhost:4000');
-                                const url = `${base}/api/kb/entries/${encodeURIComponent(entry.entry_id)}`;
-                                await fetch(url, {
-                                  method: 'PUT',
-                                  headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-                                  body: JSON.stringify(body),
-                                });
-                                window.dispatchEvent(new Event('refresh-entries'));
-                                alert('Entry verified');
-                              } catch (e) {
-                                alert('Failed to verify');
-                              }
-                            }}
-                          >
-                            {entry.verified ? 'Re-verify' : 'Verify'}
-                          </button>
-                        );
-                      } catch {
-                        return null;
-                      }
-                    })()}
-                </span>
-              </div>
+              {/* Last Reviewed hidden per requirement (auto-set on create) */}
               {entry.verified && (
                 <div className="info-item">
                   <span className="label">Verified:</span>
