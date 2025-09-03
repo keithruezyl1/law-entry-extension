@@ -500,3 +500,58 @@
     height: 44px;
   }
 }
+
+/* Entry Badges */
+.entry-badges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.entry-type-badge {
+  background: #ff6b35;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-active {
+  background: #10b981;
+  color: white;
+}
+
+.status-draft {
+  background: #6b7280;
+  color: white;
+}
+
+.status-amended {
+  background: #f59e0b;
+  color: white;
+}
+
+.status-repealed {
+  background: #ef4444;
+  color: white;
+}
+
+.status-approved {
+  background: #3b82f6;
+  color: white;
+}
+
+.status-published {
+  background: #8b5cf6;
+  color: white;
+}

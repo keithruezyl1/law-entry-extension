@@ -353,6 +353,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         if (d instanceof Date) return d.toISOString().slice(0, 10);
         return null;
       };
+
       const normalizeStringArray = (val: any): string[] => {
         if (Array.isArray(val)) return val.filter((v) => typeof v === 'string');
         if (val == null || val === '') return [];
@@ -907,32 +908,32 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
             <div className="shadow-lg rounded-lg border-2 border-red-300 bg-red-50 min-w-[320px] max-w-[500px]">
               {/* Header */}
-              <div className="flex items-start justify-between p-4 border-b border-red-200">
+              <div className="flex items-start justify-between p-6 border-b border-red-200">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-red-800">Possible Matches</h3>
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Possible Matches</h3>
                 </div>
                 <button 
-                  className="w-6 h-6 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full flex items-center justify-center transition-colors duration-200 ml-4 flex-shrink-0"
+                  className="w-8 h-8 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full flex items-center justify-center transition-colors duration-200 ml-6 flex-shrink-0"
                   onClick={() => setNearDuplicates([])}
                   title="Close notification"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               
               {/* Matches list */}
-              <div className="p-4">
-                <ul className="space-y-3">
+              <div className="p-6">
+                <ul className="space-y-4">
                   {nearDuplicates.slice(0, 5).map((m: any, i: number) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="w-2 h-2 bg-red-400 rounded-full mt-2 flex-shrink-0"></span>
+                    <li key={i} className="flex items-start gap-4">
+                      <span className="w-3 h-3 bg-red-400 rounded-full mt-2 flex-shrink-0"></span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 text-sm leading-tight">{m.title}</div>
-                        <div className="text-xs text-gray-500 mt-1">{m.type}</div>
+                        <div className="font-medium text-gray-900 text-sm leading-tight mb-2">{m.title}</div>
+                        <div className="text-xs text-gray-500 mb-2">{m.type}</div>
                         {m.canonical_citation && (
-                          <div className="text-xs text-blue-600 mt-1 font-mono bg-blue-50 px-2 py-1 rounded">
+                          <div className="text-xs text-blue-600 font-mono bg-blue-50 px-3 py-2 rounded">
                             {m.canonical_citation}
                           </div>
                         )}
@@ -940,15 +941,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                     </li>
                   ))}
                 </ul>
-              </div>
-              
-              {/* Action footer */}
-              <div className="px-4 pb-4">
-                <div className="bg-red-100 rounded-lg p-3 border border-red-200">
-                  <div className="text-xs text-red-700 leading-relaxed">
-                    <strong>Action required:</strong> Review these potential duplicates and close this notification to continue.
-                  </div>
-                </div>
               </div>
             </div>
           </div>

@@ -26,9 +26,9 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
         <p className="text-sm text-muted-foreground">{help}</p>
       )}
       
-      <div className="space-y-2">
+      <div className="space-y-3">
         {fields.map((field, index) => (
-          <div key={field.id} className="flex gap-2">
+          <div key={field.id} className="flex gap-2 mb-3">
             <Input
               {...register(`${name}.${index}` as const)}
               placeholder="e.g., https://official-government-website.gov.ph"
@@ -40,7 +40,7 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
               variant="outline"
               size="icon"
               onClick={() => remove(index)}
-              className="shrink-0"
+              className="shrink-0 px-4 py-3 min-w-[60px]"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

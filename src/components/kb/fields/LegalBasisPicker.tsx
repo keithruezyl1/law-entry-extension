@@ -25,7 +25,9 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const options = useMemo(() => {
     if (!query) return existingEntries.slice(0, 8);
     const q = query.toLowerCase();
-    return existingEntries.filter((e) => (e.entry_id + ' ' + e.title).toLowerCase().includes(q)).slice(0, 8);
+    return existingEntries.filter((e) => 
+      (e.entry_id + ' ' + e.title + ' ' + (e.canonical_citation || '')).toLowerCase().includes(q)
+    ).slice(0, 8);
   }, [existingEntries, query]);
 
   return (
@@ -76,7 +78,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     />
                   )}
                   {itemType === 'external' && (
-                    <input type="hidden" value="external" {...register(`${name}.${i}.type` as any)} />
+                    <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
                   )}
                 </div>
 
@@ -176,6 +178,9 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               >
                 <div className="font-medium text-sm">{o.title}</div>
                 <div className="text-xs text-muted-foreground">{o.entry_id}</div>
+                {o.canonical_citation && (
+                  <div className="text-xs text-muted-foreground">{o.canonical_citation}</div>
+                )}
               </button>
             ))}
           </div>

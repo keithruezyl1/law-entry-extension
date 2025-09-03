@@ -75,6 +75,8 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
   };
 
   const getTeamMemberName = (teamMemberId) => {
+    if (!teamMemberId) return 'Unassigned';
+    if (!teamMemberNames || Object.keys(teamMemberNames).length === 0) return 'Unknown';
     return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId}`;
   };
 
@@ -211,14 +213,23 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
                 <div className="entry-main">
                   <div className="entry-title-row">
                     <h3 className="entry-title" onClick={() => setSelectedEntry(entry)}>{entry.title || 'Untitled Entry'}</h3>
-                    <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
+                    <div className="entry-badges">
+                      <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
+                      {entry.status && (
+                        <span className={`status-badge status-${entry.status}`}>
+                          {entry.status}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="entry-subtitle-row">
                     <div className="entry-subtitle">civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}</div>
                     
-                    <div className="entry-team-member">
-                      Team: {getTeamMemberName(entry.team_member_id)}
-                    </div>
+                    {entry.team_member_id && (
+                      <div className="entry-team-member">
+                        Team: {getTeamMemberName(entry.team_member_id)}
+                      </div>
+                    )}
                     
                     {entry.tags && entry.tags.length > 0 && (
                       <div className="entry-tags-text">

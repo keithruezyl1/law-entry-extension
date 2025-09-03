@@ -94,11 +94,16 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
     return (
       <div className="field-group">
         <h4>Legal Bases</h4>
-        <div className="legal-bases-list">
+        <div className="legal-bases-grid">
           {legalBases.map((basis, index) => (
-            <div key={index} className="legal-basis-item">
-              <span className="basis-type">{basis.type}</span>
-              <span className="basis-content">
+            <div key={index} className="legal-basis-card">
+              <div className="basis-header">
+                <span className={`basis-type-pill ${basis.type}`}>
+                  {basis.type === 'internal' ? 'Internal' : 'External'}
+                </span>
+                {basis.topic && <span className="basis-topic-pill">{basis.topic}</span>}
+              </div>
+              <div className="basis-content">
                 {basis.type === 'internal' ? (
                   <button
                     className="link-button"
@@ -114,10 +119,17 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                     {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
                   </button>
                 ) : (
-                  basis.citation
+                  <span className="external-citation">{basis.citation}</span>
                 )}
-              </span>
-              {basis.topic && <span className="basis-topic">({basis.topic})</span>}
+              </div>
+              {basis.note && <div className="basis-note">{basis.note}</div>}
+              {basis.url && (
+                <div className="basis-url">
+                  <a href={basis.url} target="_blank" rel="noopener noreferrer" className="url-link">
+                    {basis.url}
+                  </a>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -731,24 +743,39 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             <div className="field-group">
               <h4>Related Sections</h4>
               {currentEntry.related_sections && currentEntry.related_sections.length > 0 ? (
-                <ul className="array-list">
+                <div className="related-sections-grid">
                   {currentEntry.related_sections.map((rel, idx) => (
-                    <li key={idx}>
-                      {rel?.type === 'internal' && rel?.entry_id ? (
-                        <button className="link-button" onClick={async () => {
-                          const target = await fetchEntryById(rel.entry_id);
-                          if (target) {
-                            window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
-                          }
-                        }}>
-                          {rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}
-                        </button>
-                      ) : (
-                        String(rel?.citation || rel)
+                    <div key={idx} className="related-section-card">
+                      <div className="section-header">
+                        <span className={`section-type-pill ${rel?.type || 'unknown'}`}>
+                          {rel?.type === 'internal' ? 'Internal' : 'External'}
+                        </span>
+                      </div>
+                      <div className="section-content">
+                        {rel?.type === 'internal' && rel?.entry_id ? (
+                          <button className="link-button" onClick={async () => {
+                            const target = await fetchEntryById(rel.entry_id);
+                            if (target) {
+                              window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                            }
+                          }}>
+                            {rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}
+                          </button>
+                        ) : (
+                          <span className="external-citation">{String(rel?.citation || rel)}</span>
+                        )}
+                      </div>
+                      {rel?.note && <div className="section-note">{rel.note}</div>}
+                      {rel?.url && (
+                        <div className="section-url">
+                          <a href={rel.url} target="_blank" rel="noopener noreferrer" className="url-link">
+                            {rel.url}
+                          </a>
+                        </div>
                       )}
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <div className="empty-field">Empty</div>
               )}
