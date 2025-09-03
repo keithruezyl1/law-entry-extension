@@ -5,7 +5,7 @@ import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Trash2, Plus, Search } from 'lucide-react';
 
-type EntryLite = { id?: string; entry_id: string; title: string; type?: string };
+type EntryLite = { id?: string; entry_id: string; title: string; type?: string; canonical_citation?: string };
 
 interface LegalBasisPickerProps {
   name: string; // e.g., 'legal_bases' or 'phases.0.steps.1.legal_bases'
@@ -176,12 +176,12 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   setQuery('');
                 }}
               >
-                <div className="font-medium text-sm">{o.title}</div>
-                <div className="text-xs text-muted-foreground">{o.entry_id}</div>
-                {o.canonical_citation && (
-                  <div className="text-xs text-muted-foreground">{o.canonical_citation}</div>
-                )}
-              </button>
+                                  <div className="font-medium text-sm">{o.title}</div>
+                  <div className="text-xs text-muted-foreground">{o.entry_id}</div>
+                  {o.canonical_citation && (
+                    <div className="text-xs text-muted-foreground">{o.canonical_citation}</div>
+                  )}
+                </button>
             ))}
           </div>
         </div>
