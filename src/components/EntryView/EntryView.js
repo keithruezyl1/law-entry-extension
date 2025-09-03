@@ -4,6 +4,7 @@ import { getEntryType } from '../../data/entryTypes';
 import { getJurisdiction } from '../../data/jurisdictions';
 // import { getTagByValue } from '../../data/tags';
 import './EntryView.css';
+import { fetchEntryById } from '../../services/kbApi';
 
 const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   const navigate = useNavigate();
@@ -59,7 +60,23 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             <div key={index} className="legal-basis-item">
               <span className="basis-type">{basis.type}</span>
               <span className="basis-content">
-                {basis.type === 'internal' ? basis.entry_id : basis.citation}
+                {basis.type === 'internal' ? (
+                  <button
+                    className="link-button"
+                    onClick={async () => {
+                      const entryId = basis.entry_id;
+                      if (!entryId) return;
+                      const target = await fetchEntryById(entryId);
+                      if (target) {
+                        window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                      }
+                    }}
+                  >
+                    {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
+                  </button>
+                ) : (
+                  basis.citation
+                )}
               </span>
               {basis.topic && <span className="basis-topic">({basis.topic})</span>}
             </div>
@@ -439,7 +456,8 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   };
 
   const getTeamMemberName = (teamMemberId) => {
-    return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId}`;
+    if (entry.created_by_name) return entry.created_by_name;
+    return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId || 'undefined'}`;
   };
 
   return (
@@ -596,6 +614,39 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           <div className="entry-section">
             <h3>{entryType ? entryType.label : 'Entry'} Details</h3>
             {renderTypeSpecificFields()}
+          </div>
+
+          {/* Relations - always visible */}
+          <div className="entry-section">
+            <h3>Relations</h3>
+            {renderLegalBases(entry.legal_bases) || (
+              <div className="field-group"><h4>Legal Bases</h4><div className="empty-field">Empty</div></div>
+            )}
+            <div className="field-group">
+              <h4>Related Sections</h4>
+              {entry.related_sections && entry.related_sections.length > 0 ? (
+                <ul className="array-list">
+                  {entry.related_sections.map((rel, idx) => (
+                    <li key={idx}>
+                      {rel?.type === 'internal' && rel?.entry_id ? (
+                        <button className="link-button" onClick={async () => {
+                          const target = await fetchEntryById(rel.entry_id);
+                          if (target) {
+                            window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                          }
+                        }}>
+                          {rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}
+                        </button>
+                      ) : (
+                        String(rel?.citation || rel)
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-field">Empty</div>
+              )}
+            </div>
           </div>
 
           {/* Raw Text */}

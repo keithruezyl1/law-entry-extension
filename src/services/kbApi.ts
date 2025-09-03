@@ -194,4 +194,23 @@ export async function fetchAllEntriesFromDb(): Promise<any[]> {
   }
 }
 
+// Helper to fetch one entry by id with all fields
+export async function fetchEntryById(entryId: string): Promise<any | null> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const resp = await fetch(`${KB_BASE_URL}/entries/${encodeURIComponent(entryId)}`, {
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        'Cache-Control': 'no-cache',
+      },
+      cache: 'no-store',
+    });
+    const json = await resp.json();
+    if (!json?.success) return null;
+    return json.entry || null;
+  } catch {
+    return null;
+  }
+}
+
 

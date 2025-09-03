@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { getEntryTypeOptions } from '../../data/entryTypes';
 import { getJurisdictionOptions } from '../../data/jurisdictions';
 import EntryView from '../EntryView/EntryView';
@@ -7,6 +7,15 @@ import './EntryList.css';
 
 const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries, teamMemberNames = {} }) => {
   const [selectedEntry, setSelectedEntry] = useState(null);
+  // Listen for requests to open an entry detail (from EntryView link clicks)
+  useEffect(() => {
+    const handler = (e) => {
+      const entry = e?.detail?.entry;
+      if (entry) setSelectedEntry(entry);
+    };
+    window.addEventListener('open-entry-detail', handler);
+    return () => window.removeEventListener('open-entry-detail', handler);
+  }, []);
   console.log('EntryList received entries:', entries);
   console.log('EntryList entries length:', entries.length);
   
