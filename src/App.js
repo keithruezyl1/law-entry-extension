@@ -378,7 +378,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     const entryToEdit = entries.find(entry => entry.id === entryId || entry.entry_id === entryId);
     if (entryToEdit) {
       setEditingEntry(entryToEdit);
-      navigate(`/law-entry/1?edit=${entryId}`);
+      // Route to dedicated edit URL so edit mode is activated and drafts do not load
+      navigate(`/entry/${entryId}/edit?step=1`);
     } else {
       console.error('Entry not found for editing:', entryId);
       alert('Entry not found for editing');
