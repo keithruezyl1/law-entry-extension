@@ -343,6 +343,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       
       // Create a comprehensive reset object with all fields
       // Normalize helpers for edit mode
+      const normalizeDate = (d: any): any => {
+        if (!d) return null;
+        if (typeof d === 'string') {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+          const dt = new Date(d);
+          return isNaN(dt.getTime()) ? null : dt.toISOString().slice(0, 10);
+        }
+        if (d instanceof Date) return d.toISOString().slice(0, 10);
+        return null;
+      };
       const normalizeStringArray = (val: any): string[] => {
         if (Array.isArray(val)) return val.filter((v) => typeof v === 'string');
         if (val == null || val === '') return [];
@@ -380,13 +390,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         section_id: entry.section_id || '',
         canonical_citation: entry.canonical_citation || '',
         status: entry.status || '',
-        effective_date: entry.effective_date || new Date().toISOString().slice(0, 10),
-        amendment_date: entry.amendment_date || null,
+        effective_date: normalizeDate(entry.effective_date) || new Date().toISOString().slice(0, 10),
+        amendment_date: normalizeDate(entry.amendment_date),
         summary: entry.summary || '',
         text: entry.text || '',
         source_urls: entry.source_urls && entry.source_urls.length > 0 ? entry.source_urls : [''],
         tags: entry.tags || [],
-        last_reviewed: entry.last_reviewed || new Date().toISOString().slice(0, 10),
+        last_reviewed: normalizeDate(entry.last_reviewed) || new Date().toISOString().slice(0, 10),
         visibility: entry.visibility || { gli: true, cpa: false },
         // Type-specific fields
         elements: normalizeStringArray((entry as any)?.elements),

@@ -171,11 +171,11 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
                   onChange={(e) => handleFilterChange('team_member_id', e.target.value)}
                 >
                   <option value="all">All Team Members</option>
-                  <option value="1">Arda</option>
-                  <option value="2">Delos Cientos</option>
-                  <option value="3">Paden</option>
-                  <option value="4">Sendrijas</option>
-                  <option value="5">Tagarao</option>
+                  {Object.entries(teamMemberNames).map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -215,6 +215,10 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
                   </div>
                   <div className="entry-subtitle-row">
                     <div className="entry-subtitle">civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}</div>
+                    
+                    <div className="entry-team-member">
+                      Team: {getTeamMemberName(entry.team_member_id)}
+                    </div>
                     
                     {entry.tags && entry.tags.length > 0 && (
                       <div className="entry-tags-text">

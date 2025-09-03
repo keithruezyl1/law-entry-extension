@@ -292,8 +292,9 @@
 
 .entry-subtitle-row {
   display: flex;
-  align-items: center;
-  gap: 0.625rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 .entry-subtitle {
@@ -303,6 +304,17 @@
   line-height: 1.4;
   margin-right: 10px;
   flex-shrink: 0;
+}
+
+.entry-team-member {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 500;
+  background: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
 }
 
 .entry-snippet {

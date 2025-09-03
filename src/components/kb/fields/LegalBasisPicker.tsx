@@ -76,7 +76,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     />
                   )}
                   {itemType === 'external' && (
-                    <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
+                    <input type="hidden" value="external" {...register(`${name}.${i}.type` as any)} />
                   )}
                 </div>
 
