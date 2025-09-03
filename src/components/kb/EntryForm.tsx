@@ -662,9 +662,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     console.log('Effective date value:', withMember.effective_date);
     
     // Automatically update progress for the user
-    if (user?.personId && sanitized.type) {
+    if ((user?.username || user?.personId) && sanitized.type) {
       const today = new Date().toISOString().split('T')[0];
-      updateProgressForEntry(today, user.personId, sanitized.type);
+      const who = String(user.username || user.personId).trim();
+      updateProgressForEntry(today, who, sanitized.type);
+      window.dispatchEvent(new Event('refresh-progress'));
     }
     
     onSave(withMember);

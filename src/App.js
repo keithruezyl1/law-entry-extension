@@ -131,6 +131,24 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     loadActivePlan();
   }, []);
 
+  // React to verification refresh or progress changes
+  useEffect(() => {
+    const reload = async () => {
+      try {
+        const dbEntries = await fetchAllEntriesFromDb();
+        if (Array.isArray(dbEntries)) {
+          setEntries(dbEntries.map((e) => ({ ...e, id: e.entry_id })));
+        }
+      } catch {}
+    };
+    window.addEventListener('refresh-entries', reload);
+    window.addEventListener('refresh-progress', () => setHeaderOpacity((v) => v));
+    return () => {
+      window.removeEventListener('refresh-entries', reload);
+      window.removeEventListener('refresh-progress', () => setHeaderOpacity((v) => v));
+    };
+  }, []);
+
   const planRows = (() => {
     if (Array.isArray(planData)) return planData;
     if (planData && Array.isArray(planData.rows)) return planData.rows;
@@ -830,8 +848,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         </div>
         <div className="team-members-grid">
           {dbTeamMembers.map(member => {
-            const personId = member.id;
-            const personName = member.name; // Use actual name from database
+            const personKey = (member.username || member.name || member.id);
+            const personName = member.name || member.username || member.id; // display label
             
             // Check if plan is imported
             const _hasPlan = !!day1Date && Array.isArray(planData) && planData.length > 0;
@@ -839,7 +857,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             if (!_hasPlan) {
               // Show empty card when no plan is imported
               return (
-                <div key={personId} className="team-member-card">
+                <div key={personKey} className="team-member-card">
                   <h4>{personName}</h4>
                   <div className="member-progress">
                     <span className="progress-count">0 / 0</span>
@@ -861,7 +879,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const today = new Date();
             const dayIndex = computeDayIndex(today, day1Date);
             const dayRows = rowsForDay(planRows, dayIndex);
-            const personRow = dayRows.find((r) => String(r.Person).trim() === `P${personId}`);
+            const personRow = dayRows.find((r) => String(r.Person).trim() === `P${personKey}`);
             
             if (personRow) {
               currentDayReqs = {
@@ -877,10 +895,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             }
             
             const totalReq = Object.values(currentDayReqs).reduce((sum, quota) => sum + quota, 0);
-            const totalDone = teamProgress[personId]?.total || 0;
+            const todayISO = new Date().toISOString().split('T')[0];
+            const progressKey = `${personKey}_${todayISO}`;
+            const totalDone = teamProgress[progressKey]?.total || 0;
             
             return (
-              <div key={personId} className="team-member-card">
+              <div key={personKey} className="team-member-card">
                 <h4>{personName}</h4>
                 <div className="member-progress">
                   <span className="progress-count">{totalDone} / {totalReq}</span>
@@ -894,7 +914,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 <div className="member-breakdown">
                   {Object.entries(currentDayReqs).filter(([, quota]) => quota > 0).map(([type, quota]) => (
                     <span key={type} className="quota-item">
-                      {type}: {teamProgress[personId]?.[type] || 0}/{quota}
+                      {type}: {teamProgress[progressKey]?.[type] || 0}/{quota}
                     </span>
                   ))}
                 </div>
