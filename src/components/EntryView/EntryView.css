@@ -639,6 +639,12 @@
   font-weight: 600;
 }
 
+.verification-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .btn-primary:hover {
   background: #ea580c; /* Orange-600 */
   transform: translateY(-1px);

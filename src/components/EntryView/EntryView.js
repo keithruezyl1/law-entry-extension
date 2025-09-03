@@ -633,33 +633,29 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 <span className="label">Verification Status:</span>
                 <span className="value">
                   {currentEntry.verified ? (
-                    <span className="verified-badge">Verified</span>
+                    <div className="verification-status">
+                      <span className="verified-badge">Verified</span>
+                      <button
+                        onClick={handleReverify}
+                        disabled={isVerifying}
+                        className="btn-reverify"
+                        title="Reset verification status"
+                      >
+                        {isVerifying ? 'Processing...' : 'Re-verify'}
+                      </button>
+                    </div>
                   ) : (
-                    <span className="unverified-badge">Not Verified</span>
-                  )}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Actions:</span>
-                <span className="value">
-                  {currentEntry.verified ? (
-                    <button
-                      onClick={handleReverify}
-                      disabled={isVerifying}
-                      className="btn-reverify"
-                      title="Reset verification status"
-                    >
-                      {isVerifying ? 'Processing...' : 'Re-verify'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleVerify}
-                      disabled={isVerifying}
-                      className="btn-verify"
-                      title="Mark entry as verified"
-                    >
-                      {isVerifying ? 'Processing...' : 'Verify'}
-                    </button>
+                    <div className="verification-status">
+                      <span className="unverified-badge">Not Verified</span>
+                      <button
+                        onClick={handleVerify}
+                        disabled={isVerifying}
+                        className="btn-verify"
+                        title="Mark entry as verified"
+                      >
+                        {isVerifying ? 'Processing...' : 'Verify'}
+                      </button>
+                    </div>
                   )}
                 </span>
               </div>

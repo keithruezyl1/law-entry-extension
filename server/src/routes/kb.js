@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
 
@@ -465,7 +466,6 @@ router.post('/entries/:entryId/verify', async (req, res) => {
     }
     
     const token = authHeader.substring(7);
-    const jwt = await import('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     
     if (!decoded || !decoded.id) {
