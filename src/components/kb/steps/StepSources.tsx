@@ -22,6 +22,7 @@ export function StepSources() {
             <Input
               {...register('effective_date')}
               type="date"
+              placeholder="YYYY-MM-DD"
               className="mt-1"
             />
             {errors.effective_date && (
@@ -35,6 +36,7 @@ export function StepSources() {
               <Input
                 {...register('amendment_date')}
                 type="date"
+                placeholder="YYYY-MM-DD"
                 className="mt-1"
               />
               {errors.amendment_date && (

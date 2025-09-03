@@ -86,7 +86,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder={idPlaceholder}
-                      {...register(`${name}.${i}.entry_id` as const)}
+                      {...register((isExternal ? `${name}.${i}.citation` : `${name}.${i}.entry_id`) as const)}
                     />
                   </div>
                   <div>

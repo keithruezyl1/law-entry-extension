@@ -56,10 +56,21 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
             <FormControl>
               <Input
                 {...field}
-                type="number"
-                placeholder="e.g., 10 (number of time units)"
+                type="text"
+                placeholder="type NA if no prescription period"
                 className="kb-form-input"
-                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  // accept NA or number; store NA as string, numbers as Number
+                  if (v.trim().toUpperCase() === 'NA') {
+                    field.onChange('NA' as any);
+                  } else if (v === '') {
+                    field.onChange(undefined as any);
+                  } else {
+                    const n = Number(v);
+                    field.onChange(isNaN(n) ? v : (n as any));
+                  }
+                }}
               />
             </FormControl>
             <FormMessage />
@@ -74,6 +85,7 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
           <FormItem className="kb-field-spaced">
             <FormLabel className="kb-form-label kb-label-spaced-sm">Prescriptive Period Unit</FormLabel>
             <FormControl>
+              {/* Hide when value is NA */}
               <Select
                 {...field}
                 options={[
@@ -82,6 +94,7 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
                   { value: 'years', label: 'Years' }
                 ]}
                 className="kb-form-select"
+                style={{ display: (typeof (field as any).value === 'string' && String((field as any).value).toUpperCase() === 'NA') ? 'none' : undefined }}
               />
             </FormControl>
             <FormMessage />

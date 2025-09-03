@@ -74,7 +74,13 @@ export const StatuteSection = BaseEntry.extend({
   elements: z.array(z.string()).default([]),
   penalties: z.array(z.string()).default([]),
   defenses: z.array(z.string()).default([]).optional(),
-  prescriptive_period: z.object({ value: z.number().positive(), unit: z.enum(["days", "months", "years"]) }).optional(),
+  // Allow NA string for value, or a positive number; entire field optional
+  prescriptive_period: z
+    .object({
+      value: z.union([z.number().positive(), z.string().transform((v) => v.toUpperCase()).refine((v) => v === 'NA', { message: "Use a number or 'NA'" )]),
+      unit: z.enum(["days", "months", "years"]).optional(),
+    })
+    .optional(),
   standard_of_proof: z.string().optional(),
   related_sections: z.array(EntryRef).default([]),
   legal_bases: z.array(LegalBasis).default([]),

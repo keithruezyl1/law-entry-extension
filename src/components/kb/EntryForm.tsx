@@ -342,6 +342,35 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       console.log('Resetting form with entry data:', entry);
       
       // Create a comprehensive reset object with all fields
+      // Normalize helpers for edit mode
+      const normalizeStringArray = (val: any): string[] => {
+        if (Array.isArray(val)) return val.filter((v) => typeof v === 'string');
+        if (val == null || val === '') return [];
+        if (typeof val === 'string') return [val];
+        return [];
+      };
+
+      // Normalize legacy relations where external items may use `entry_id`
+      const normalizeRelations = (arr: any[] | undefined) => {
+        if (!Array.isArray(arr)) return [] as any[];
+        return arr.map((it) => {
+          if (!it) return it;
+          // Strings -> assume internal relation id
+          if (typeof it === 'string') {
+            return { type: 'internal', entry_id: it };
+          }
+          // Default missing type to internal when entry_id is present
+          if (!it.type && it.entry_id) {
+            return { ...it, type: 'internal' };
+          }
+          // Legacy external stored under entry_id
+          if (it.type === 'external' && it.entry_id && !it.citation) {
+            return { ...it, citation: it.entry_id, entry_id: undefined };
+          }
+          return it;
+        });
+      };
+
       const resetData = {
         type: entry.type || 'statute_section',
         entry_id: entry.entry_id || '',
@@ -360,40 +389,40 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         last_reviewed: entry.last_reviewed || new Date().toISOString().slice(0, 10),
         visibility: entry.visibility || { gli: true, cpa: false },
         // Type-specific fields
-        elements: (entry as any)?.elements || [],
-        penalties: (entry as any)?.penalties || [],
-        defenses: (entry as any)?.defenses || [],
+        elements: normalizeStringArray((entry as any)?.elements),
+        penalties: normalizeStringArray((entry as any)?.penalties),
+        defenses: normalizeStringArray((entry as any)?.defenses),
         prescriptive_period: (entry as any)?.prescriptive_period || null,
         standard_of_proof: (entry as any)?.standard_of_proof || '',
         rule_no: (entry as any)?.rule_no || '',
         section_no: (entry as any)?.section_no || '',
-        triggers: (entry as any)?.triggers || [],
-        time_limits: (entry as any)?.time_limits || [],
-        required_forms: (entry as any)?.required_forms || [],
+        triggers: normalizeStringArray((entry as any)?.triggers),
+        time_limits: normalizeStringArray((entry as any)?.time_limits),
+        required_forms: normalizeStringArray((entry as any)?.required_forms),
         circular_no: (entry as any)?.circular_no || '',
-        applicability: (entry as any)?.applicability || [],
+        applicability: normalizeStringArray((entry as any)?.applicability),
         issuance_no: (entry as any)?.issuance_no || '',
         instrument_no: (entry as any)?.instrument_no || '',
-        supersedes: (entry as any)?.supersedes || [],
-        steps_brief: (entry as any)?.steps_brief || [],
-        forms_required: (entry as any)?.forms_required || [],
-        failure_states: (entry as any)?.failure_states || [],
+        supersedes: normalizeRelations((entry as any)?.supersedes),
+        steps_brief: normalizeStringArray((entry as any)?.steps_brief),
+        forms_required: normalizeStringArray((entry as any)?.forms_required),
+        failure_states: normalizeStringArray((entry as any)?.failure_states),
         violation_code: (entry as any)?.violation_code || '',
         violation_name: (entry as any)?.violation_name || '',
         license_action: (entry as any)?.license_action || '',
-        fine_schedule: (entry as any)?.fine_schedule || [],
-        apprehension_flow: (entry as any)?.apprehension_flow || [],
+        fine_schedule: Array.isArray((entry as any)?.fine_schedule) ? (entry as any)?.fine_schedule : [],
+        apprehension_flow: normalizeStringArray((entry as any)?.apprehension_flow),
         incident: (entry as any)?.incident || '',
-        phases: (entry as any)?.phases || [],
-        forms: (entry as any)?.forms || [],
-        handoff: (entry as any)?.handoff || [],
-        rights_callouts: (entry as any)?.rights_callouts || [],
+        phases: Array.isArray((entry as any)?.phases) ? (entry as any)?.phases : [],
+        forms: normalizeStringArray((entry as any)?.forms),
+        handoff: normalizeStringArray((entry as any)?.handoff),
+        rights_callouts: normalizeStringArray((entry as any)?.rights_callouts),
         rights_scope: (entry as any)?.rights_scope || '',
-        advice_points: (entry as any)?.advice_points || [],
-        topics: (entry as any)?.topics || [],
-        jurisprudence: (entry as any)?.jurisprudence || [],
-        legal_bases: (entry as any)?.legal_bases || [],
-        related_sections: (entry as any)?.related_sections || [],
+        advice_points: normalizeStringArray((entry as any)?.advice_points),
+        topics: normalizeStringArray((entry as any)?.topics),
+        jurisprudence: normalizeStringArray((entry as any)?.jurisprudence),
+        legal_bases: normalizeRelations((entry as any)?.legal_bases),
+        related_sections: normalizeRelations((entry as any)?.related_sections),
       };
       
       console.log('Comprehensive reset data:', resetData);
