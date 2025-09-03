@@ -710,13 +710,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         // ask for more results, then filter client-side by a threshold
         const resp = await semanticSearch(q, 10);
         if (!cancelled) {
-          const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','law','act','rule','rules','section','sec','article','anti','provision','possession','dangerous','drugs','firearms','weapons','illegal','unlawful','criminal','offense','crime']);
+          // Smart stopwords - filter out only the most generic words
+          const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','at','by','with','from','into','during','including','until','against','among','throughout','despite','towards','upon']);
           const tokenize = (s: string) => String(s || '')
             .toLowerCase()
             .replace(/[^a-z0-9\s]/g, ' ')
             .split(/\s+/)
             .filter(Boolean)
-            .filter(w => !STOPWORDS.has(w));
+            .filter(w => !STOPWORDS.has(w) && w.length > 2); // Only keep meaningful words
           
           const overlap = (a: string, b: string) => {
             const A = new Set(tokenize(a));
@@ -727,27 +728,49 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             return inter / Math.min(A.size, B.size);
           };
 
-          // Enhanced similarity scoring
-          const calculateSimilarity = (title1: string, title2: string, type1: string, type2: string) => {
-            const baseSim = overlap(title1, title2);
-            const typeBonus = type1 === type2 ? 0.1 : 0;
-            const lengthPenalty = Math.abs(title1.length - title2.length) / Math.max(title1.length, title2.length) * 0.2;
-            return Math.min(1, baseSim + typeBonus - lengthPenalty);
-          };
-
           const resultsRaw = (resp.success ? (resp.results || []) : []);
+          
+          // Debug logging
+          console.log('Duplicate detection:', {
+            query: q,
+            resultsCount: resultsRaw.length,
+            title: title,
+            type: type,
+            results: resultsRaw.slice(0, 3) // Show first 3 results for debugging
+          });
+          
           const filtered = resultsRaw.filter((r: any) => {
             const sim = Number(r.similarity || r.score || 0);
             const candidateTitle = String((r.title || r.canonical_citation || ''));
             const sameType = !type || !r.type || r.type === type;
             
-            // Enhanced filtering with stricter thresholds
-            const enhancedSim = calculateSimilarity(title || '', candidateTitle, type || '', r.type || '');
+            // Calculate token overlap for meaningful word similarity
             const tokOverlap = overlap(title || '', candidateTitle);
             
-            // Much stricter criteria - only show truly similar entries
-            return (enhancedSim >= 0.75 && tokOverlap >= 0.6) || (sim >= 0.92);
+            // Show entries that could be duplicates - not too strict, not too loose
+            const shouldShow = 
+              // High semantic similarity (very likely duplicate)
+              sim >= 0.8 ||
+              // Good semantic similarity with decent token overlap
+              (sim >= 0.6 && tokOverlap >= 0.3) ||
+              // Same type with good token overlap (potential duplicate)
+              (sameType && tokOverlap >= 0.4 && sim >= 0.5) ||
+              // High token overlap (very similar wording)
+              tokOverlap >= 0.6;
+            
+            // Debug logging for each result
+            console.log('Result:', {
+              title: candidateTitle,
+              similarity: sim,
+              tokenOverlap: tokOverlap,
+              sameType,
+              shouldShow
+            });
+            
+            return shouldShow;
           });
+          
+          console.log('Filtered duplicates:', filtered.length);
           setNearDuplicates(filtered);
         }
       } catch (_) {
