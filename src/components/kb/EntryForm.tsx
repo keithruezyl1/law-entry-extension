@@ -710,13 +710,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         // ask for more results, then filter client-side by a threshold
         const resp = await semanticSearch(q, 10);
         if (!cancelled) {
-          const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','law','act','rule','rules','section','sec','article','anti','provision']);
+          const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','law','act','rule','rules','section','sec','article','anti','provision','possession','dangerous','drugs','firearms','weapons','illegal','unlawful','criminal','offense','crime']);
           const tokenize = (s: string) => String(s || '')
             .toLowerCase()
             .replace(/[^a-z0-9\s]/g, ' ')
             .split(/\s+/)
             .filter(Boolean)
             .filter(w => !STOPWORDS.has(w));
+          
           const overlap = (a: string, b: string) => {
             const A = new Set(tokenize(a));
             const B = new Set(tokenize(b));
@@ -726,14 +727,26 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             return inter / Math.min(A.size, B.size);
           };
 
+          // Enhanced similarity scoring
+          const calculateSimilarity = (title1: string, title2: string, type1: string, type2: string) => {
+            const baseSim = overlap(title1, title2);
+            const typeBonus = type1 === type2 ? 0.1 : 0;
+            const lengthPenalty = Math.abs(title1.length - title2.length) / Math.max(title1.length, title2.length) * 0.2;
+            return Math.min(1, baseSim + typeBonus - lengthPenalty);
+          };
+
           const resultsRaw = (resp.success ? (resp.results || []) : []);
           const filtered = resultsRaw.filter((r: any) => {
             const sim = Number(r.similarity || r.score || 0);
             const candidateTitle = String((r.title || r.canonical_citation || ''));
             const sameType = !type || !r.type || r.type === type;
+            
+            // Enhanced filtering with stricter thresholds
+            const enhancedSim = calculateSimilarity(title || '', candidateTitle, type || '', r.type || '');
             const tokOverlap = overlap(title || '', candidateTitle);
-            // Keep only very similar items, or moderately similar of same type with good token overlap
-            return sim >= 0.88 || (sameType && tokOverlap >= 0.5 && sim >= 0.6);
+            
+            // Much stricter criteria - only show truly similar entries
+            return (enhancedSim >= 0.75 && tokOverlap >= 0.6) || (sim >= 0.92);
           });
           setNearDuplicates(filtered);
         }
@@ -757,24 +770,51 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       <div className="kb-form mx-auto max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Toast for possible duplicates */}
         {nearDuplicates && nearDuplicates.length > 0 && (
-          <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 1000 }}>
-            <div className="shadow-lg rounded-lg border border-red-200 bg-red-50 w-[360px]">
-              <div className="flex items-start justify-between p-3 border-b border-red-200">
-                <div className="font-semibold text-sm text-red-800">Possible matches</div>
-                <button className="text-xs text-red-600 hover:text-red-800" onClick={() => setNearDuplicates([])}>Close</button>
+          <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
+            <div className="shadow-lg rounded-lg border-2 border-red-300 bg-red-50 min-w-[320px] max-w-[500px]">
+              {/* Header */}
+              <div className="flex items-start justify-between p-4 border-b border-red-200">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-red-800">Possible Matches</h3>
+                </div>
+                <button 
+                  className="w-6 h-6 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full flex items-center justify-center transition-colors duration-200 ml-4 flex-shrink-0"
+                  onClick={() => setNearDuplicates([])}
+                  title="Close notification"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <div className="p-3 max-h-[260px] overflow-auto">
-                {nearDuplicates.slice(0, 5).map((m: any, i: number) => (
-                  <div key={i} className="text-sm p-2 rounded border border-red-200 bg-white mb-2">
-                    <div className="font-medium">{m.title} ({m.type})</div>
-                    {m.canonical_citation && <div className="text-gray-600">{m.canonical_citation}</div>}
+              
+              {/* Matches list */}
+              <div className="p-4">
+                <ul className="space-y-3">
+                  {nearDuplicates.slice(0, 5).map((m: any, i: number) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="w-2 h-2 bg-red-400 rounded-full mt-2 flex-shrink-0"></span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 text-sm leading-tight">{m.title}</div>
+                        <div className="text-xs text-gray-500 mt-1">{m.type}</div>
+                        {m.canonical_citation && (
+                          <div className="text-xs text-blue-600 mt-1 font-mono bg-blue-50 px-2 py-1 rounded">
+                            {m.canonical_citation}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              {/* Action footer */}
+              <div className="px-4 pb-4">
+                <div className="bg-red-100 rounded-lg p-3 border border-red-200">
+                  <div className="text-xs text-red-700 leading-relaxed">
+                    <strong>Action required:</strong> Review these potential duplicates and close this notification to continue.
                   </div>
-                ))}
-              </div>
-              <div className="px-3 pb-3">
-                <p className="text-xs text-red-700 bg-red-100 p-2 rounded">
-                  ⚠️ Please review possible matches before proceeding. Close this notification to continue.
-                </p>
+                </div>
               </div>
             </div>
           </div>
