@@ -136,197 +136,298 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   const renderTypeSpecificFields = () => {
     if (!entry.type) return null;
 
+    // Helper function to render a field with proper alignment
+    const renderField = (label, value, type = 'text') => {
+      if (value === null || value === undefined || value === '') return null;
+      
+      let displayValue = value;
+      if (type === 'array' && Array.isArray(value)) {
+        displayValue = value.length > 0 ? value.join(', ') : null;
+      } else if (type === 'object' && typeof value === 'object') {
+        displayValue = JSON.stringify(value, null, 2);
+      } else if (type === 'date' && value) {
+        displayValue = formatDate(value);
+      }
+      
+      if (displayValue === null || displayValue === '') return null;
+      
+      return (
+        <div className="info-item" key={label}>
+          <span className="label">{label}:</span>
+          <span className="value">{displayValue}</span>
+        </div>
+      );
+    };
+
+    // Helper function to render array fields with proper structure
+    const renderArrayFieldStructured = (fieldName, items, label, itemRenderer = null) => {
+      if (!items || !Array.isArray(items) || items.length === 0) return null;
+      
+      return (
+        <div className="field-group" key={fieldName}>
+          <h4 className="field-group-title">{label}</h4>
+          <div className="field-group-content">
+            {itemRenderer ? (
+              items.map((item, index) => itemRenderer(item, index))
+            ) : (
+              <ul className="array-list">
+                {items.map((item, index) => (
+                  <li key={index} className="array-item">
+                    {typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // Helper function to render legal bases with proper structure
+    const renderLegalBasesStructured = (legalBases) => {
+      if (!legalBases || !Array.isArray(legalBases) || legalBases.length === 0) return null;
+      
+      return (
+        <div className="field-group">
+          <h4 className="field-group-title">Legal Bases</h4>
+          <div className="field-group-content">
+            <div className="legal-bases-list">
+              {legalBases.map((basis, index) => (
+                <div key={index} className="legal-basis-item">
+                  <div className="basis-header">
+                    <span className="basis-type">{basis.type}</span>
+                    {basis.topic && <span className="basis-topic">({basis.topic})</span>}
+                  </div>
+                  <div className="basis-content">
+                    {basis.type === 'internal' ? basis.entry_id : basis.citation}
+                  </div>
+                  {basis.note && <div className="basis-note">{basis.note}</div>}
+                  {basis.url && (
+                    <a href={basis.url} target="_blank" rel="noopener noreferrer" className="basis-url">
+                      {basis.url}
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Helper function to render fine schedule with proper table structure
+    const renderFineScheduleStructured = (fineSchedule) => {
+      if (!fineSchedule || !Array.isArray(fineSchedule) || fineSchedule.length === 0) return null;
+      
+      return (
+        <div className="field-group">
+          <h4 className="field-group-title">Fine Schedule</h4>
+          <div className="field-group-content">
+            <div className="fine-schedule">
+              <table className="fine-table">
+                <thead>
+                  <tr>
+                    <th>Offense #</th>
+                    <th>Amount</th>
+                    <th>Currency</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fineSchedule.map((fine, index) => (
+                    <tr key={index}>
+                      <td>{fine.offense_no || index + 1}</td>
+                      <td>{fine.amount}</td>
+                      <td>{fine.currency || 'PHP'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Helper function to render phases with proper structure
+    const renderPhasesStructured = (phases) => {
+      if (!phases || !Array.isArray(phases) || phases.length === 0) return null;
+      
+      return (
+        <div className="field-group">
+          <h4 className="field-group-title">Phases</h4>
+          <div className="field-group-content">
+            <div className="phases-list">
+              {phases.map((phase, phaseIndex) => (
+                <div key={phaseIndex} className="phase-item">
+                  <h5 className="phase-name">{phase.name}</h5>
+                  {phase.steps && Array.isArray(phase.steps) && phase.steps.length > 0 && (
+                    <ol className="steps-list">
+                      {phase.steps.map((step, stepIndex) => (
+                        <li key={stepIndex} className="step-item">
+                          <div className="step-text">{step.text}</div>
+                          {step.condition && <div className="step-condition">Condition: {step.condition}</div>}
+                          {step.deadline && <div className="step-deadline">Deadline: {step.deadline}</div>}
+                          {step.evidence_required && Array.isArray(step.evidence_required) && step.evidence_required.length > 0 && (
+                            <div className="step-evidence">Evidence: {step.evidence_required.join(', ')}</div>
+                          )}
+                          {step.failure_state && <div className="step-failure">Failure: {step.failure_state}</div>}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     switch (entry.type) {
       case 'statute_section':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Prescriptive Period:</span>
-                <span className="value">{entry.prescriptive_period ? JSON.stringify(entry.prescriptive_period) : 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Standard of Proof:</span>
-                <span className="value">{entry.standard_of_proof || 'Empty'}</span>
-              </div>
+              {renderField('Prescriptive Period', entry.prescriptive_period, 'object')}
+              {renderField('Standard of Proof', entry.standard_of_proof)}
             </div>
-            {renderArrayField('elements', entry.elements, 'Elements')}
-            {renderArrayField('penalties', entry.penalties, 'Penalties')}
-            {renderArrayField('defenses', entry.defenses, 'Defenses')}
-            {renderLegalBases(entry.legal_bases)}
-            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
-          </>
+            {renderArrayFieldStructured('elements', entry.elements, 'Elements')}
+            {renderArrayFieldStructured('penalties', entry.penalties, 'Penalties')}
+            {renderArrayFieldStructured('defenses', entry.defenses, 'Defenses')}
+            {renderLegalBasesStructured(entry.legal_bases)}
+            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
+          </div>
         );
 
       case 'city_ordinance_section':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Elements:</span>
-                <span className="value">{entry.elements && entry.elements.length > 0 ? entry.elements.join(', ') : 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Penalties:</span>
-                <span className="value">{entry.penalties && entry.penalties.length > 0 ? entry.penalties.join(', ') : 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Defenses:</span>
-                <span className="value">{entry.defenses && entry.defenses.length > 0 ? entry.defenses.join(', ') : 'Empty'}</span>
-              </div>
+              {renderField('Elements', entry.elements, 'array')}
+              {renderField('Penalties', entry.penalties, 'array')}
+              {renderField('Defenses', entry.defenses, 'array')}
             </div>
-            {renderLegalBases(entry.legal_bases)}
-            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
-          </>
+            {renderLegalBasesStructured(entry.legal_bases)}
+            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
+          </div>
         );
 
       case 'rule_of_court':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Rule Number:</span>
-                <span className="value">{entry.rule_no || 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Section Number:</span>
-                <span className="value">{entry.section_no || 'Empty'}</span>
-              </div>
+              {renderField('Rule Number', entry.rule_no)}
+              {renderField('Section Number', entry.section_no)}
             </div>
-            {renderArrayField('triggers', entry.triggers, 'Triggers')}
-            {renderArrayField('time_limits', entry.time_limits, 'Time Limits')}
-            {renderArrayField('required_forms', entry.required_forms, 'Required Forms')}
-            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
-          </>
+            {renderArrayFieldStructured('triggers', entry.triggers, 'Triggers')}
+            {renderArrayFieldStructured('time_limits', entry.time_limits, 'Time Limits')}
+            {renderArrayFieldStructured('required_forms', entry.required_forms, 'Required Forms')}
+            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
+          </div>
         );
 
       case 'agency_circular':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Circular Number:</span>
-                <span className="value">{entry.circular_no || 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Section Number:</span>
-                <span className="value">{entry.section_no || 'Empty'}</span>
-              </div>
+              {renderField('Circular Number', entry.circular_no)}
+              {renderField('Section Number', entry.section_no)}
             </div>
-            {renderArrayField('applicability', entry.applicability, 'Applicability')}
-            {renderLegalBases(entry.legal_bases)}
-            {renderArrayField('supersedes', entry.supersedes, 'Supersedes')}
-          </>
+            {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
+            {renderLegalBasesStructured(entry.legal_bases)}
+            {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
+          </div>
         );
 
       case 'doj_issuance':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Issuance Number:</span>
-                <span className="value">{entry.issuance_no || 'Empty'}</span>
-              </div>
+              {renderField('Issuance Number', entry.issuance_no)}
             </div>
-            {renderArrayField('applicability', entry.applicability, 'Applicability')}
-            {renderArrayField('supersedes', entry.supersedes, 'Supersedes')}
-            {renderLegalBases(entry.legal_bases)}
-          </>
+            {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
+            {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
+            {renderLegalBasesStructured(entry.legal_bases)}
+          </div>
         );
 
       case 'executive_issuance':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Instrument Number:</span>
-                <span className="value">{entry.instrument_no || 'Empty'}</span>
-              </div>
+              {renderField('Instrument Number', entry.instrument_no)}
             </div>
-            {renderArrayField('applicability', entry.applicability, 'Applicability')}
-            {renderArrayField('supersedes', entry.supersedes, 'Supersedes')}
-            {renderLegalBases(entry.legal_bases)}
-          </>
+            {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
+            {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
+            {renderLegalBasesStructured(entry.legal_bases)}
+          </div>
         );
 
       case 'pnp_sop':
         return (
-          <>
-            {renderArrayField('steps_brief', entry.steps_brief, 'Steps Brief')}
-            {renderLegalBases(entry.legal_bases)}
-            {renderArrayField('forms_required', entry.forms_required, 'Forms Required')}
-            {renderArrayField('failure_states', entry.failure_states, 'Failure States')}
-          </>
+          <div className="type-specific-fields">
+            {renderArrayFieldStructured('steps_brief', entry.steps_brief, 'Steps Brief')}
+            {renderLegalBasesStructured(entry.legal_bases)}
+            {renderArrayFieldStructured('forms_required', entry.forms_required, 'Forms Required')}
+            {renderArrayFieldStructured('failure_states', entry.failure_states, 'Failure States')}
+          </div>
         );
 
       case 'traffic_rule':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Violation Code:</span>
-                <span className="value">{entry.violation_code || 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Violation Name:</span>
-                <span className="value">{entry.violation_name || 'Empty'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">License Action:</span>
-                <span className="value">{entry.license_action || 'Empty'}</span>
-              </div>
+              {renderField('Violation Code', entry.violation_code)}
+              {renderField('Violation Name', entry.violation_name)}
+              {renderField('License Action', entry.license_action)}
             </div>
-            {renderFineSchedule(entry.fine_schedule)}
-            {renderArrayField('apprehension_flow', entry.apprehension_flow, 'Apprehension Flow')}
-            {renderLegalBases(entry.legal_bases)}
-          </>
+            {renderFineScheduleStructured(entry.fine_schedule)}
+            {renderArrayFieldStructured('apprehension_flow', entry.apprehension_flow, 'Apprehension Flow')}
+            {renderLegalBasesStructured(entry.legal_bases)}
+          </div>
         );
 
       case 'incident_checklist':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Incident:</span>
-                <span className="value">{entry.incident || 'Empty'}</span>
-              </div>
+              {renderField('Incident', entry.incident)}
             </div>
-            {renderPhases(entry.phases)}
-            {renderArrayField('forms', entry.forms, 'Forms')}
-            {renderArrayField('handoff', entry.handoff, 'Handoff')}
-            {renderArrayField('rights_callouts', entry.rights_callouts, 'Rights Callouts')}
-          </>
+            {renderPhasesStructured(entry.phases)}
+            {renderArrayFieldStructured('forms', entry.forms, 'Forms')}
+            {renderArrayFieldStructured('handoff', entry.handoff, 'Handoff')}
+            {renderArrayFieldStructured('rights_callouts', entry.rights_callouts, 'Rights Callouts')}
+          </div>
         );
 
       case 'rights_advisory':
         return (
-          <>
+          <div className="type-specific-fields">
             <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Rights Scope:</span>
-                <span className="value">{entry.rights_scope || 'Empty'}</span>
-              </div>
+              {renderField('Rights Scope', entry.rights_scope)}
             </div>
-            {renderArrayField('advice_points', entry.advice_points, 'Advice Points')}
-            {renderLegalBases(entry.legal_bases)}
-            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
-          </>
+            {renderArrayFieldStructured('advice_points', entry.advice_points, 'Advice Points')}
+            {renderLegalBasesStructured(entry.legal_bases)}
+            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
+          </div>
         );
 
       case 'constitution_provision':
         return (
-          <>
-            {renderArrayField('topics', entry.topics, 'Topics')}
-            {renderArrayField('jurisprudence', entry.jurisprudence, 'Jurisprudence')}
-            {renderArrayField('related_sections', entry.related_sections, 'Related Sections')}
-          </>
+          <div className="type-specific-fields">
+            {renderArrayFieldStructured('topics', entry.topics, 'Topics')}
+            {renderArrayFieldStructured('jurisprudence', entry.jurisprudence, 'Jurisprudence')}
+            {renderArrayFieldStructured('related_sections', entry.related_sections, 'Related Sections')}
+          </div>
         );
 
       default:
         return (
-          <div className="info-item">
-            <span className="label">Entry Type:</span>
-            <span className="value">{entry.type}</span>
+          <div className="type-specific-fields">
+            <div className="info-item">
+              <span className="label">Entry Type:</span>
+              <span className="value">{entry.type}</span>
+            </div>
           </div>
         );
     }

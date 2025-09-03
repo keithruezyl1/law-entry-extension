@@ -39,6 +39,7 @@ export function StepBasics() {
   ];
 
   const statusOptions = [
+    { value: '', label: '----' },
     { value: 'active', label: 'Active' },
     { value: 'amended', label: 'Amended' },
     { value: 'repealed', label: 'Repealed' }

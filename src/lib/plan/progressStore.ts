@@ -86,4 +86,29 @@ export function clearDate(dateISO: string) {
   } catch {}
 }
 
+// Function to automatically update progress when an entry is created
+export function updateProgressForEntry(dateISO: string, personId: string, entryType: string) {
+  try {
+    // Get current count for this person and entry type
+    const currentCount = getCount(dateISO, personId, entryType);
+    
+    // Increment the count
+    const newCount = currentCount + 1;
+    setCount(dateISO, personId, entryType, newCount);
+    
+    console.log(`Updated progress for ${personId} on ${dateISO}: ${entryType} = ${newCount}`);
+    
+    return newCount;
+  } catch (error) {
+    console.error('Failed to update progress for entry:', error);
+    return 0;
+  }
+}
+
+// Function to get progress for a specific person and entry type
+export function getProgressForPerson(personId: string, entryType: string, dateISO?: string) {
+  const targetDate = dateISO || new Date().toISOString().split('T')[0];
+  return getCumulativeCount(targetDate, personId, entryType);
+}
+
 

@@ -18,6 +18,7 @@ import { generateEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 import { semanticSearch } from '../../services/vectorApi';
 import { useAuth } from '../../contexts/AuthContext';
+import { updateProgressForEntry } from '../../lib/plan/progressStore';
 
 type EntryFormProps = {
   entry?: Partial<Entry> | null;
@@ -283,7 +284,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         law_family: entry.law_family || '',
         section_id: entry.section_id || '',
         canonical_citation: entry.canonical_citation || '',
-        status: entry.status || 'active',
+        status: entry.status || '',
         effective_date: entry.effective_date || new Date().toISOString().slice(0, 10),
         amendment_date: entry.amendment_date || null,
         summary: entry.summary || '',
@@ -510,6 +511,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       team_member_id: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
       created_by_name: user?.name || user?.username,
     } as any;
+    
+    // Automatically update progress for the user
+    if (user?.personId && sanitized.type) {
+      const today = new Date().toISOString().split('T')[0];
+      updateProgressForEntry(today, user.personId, sanitized.type);
+    }
+    
     onSave(withMember);
     navigate('/dashboard');
   };

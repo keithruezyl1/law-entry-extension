@@ -8,7 +8,7 @@ const router = Router();
 router.get('/entries', async (req, res) => {
   try {
     const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
+      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_by_name, created_at, updated_at
        from kb_entries
        order by updated_at desc`,
       []
@@ -26,11 +26,11 @@ router.get('/entries/:entryId', async (req, res) => {
     const entryId = String(req.params.entryId || '').trim();
     if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
     const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
+      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_by_name, created_at, updated_at
        from kb_entries where entry_id = $1`,
       [entryId]
     );
-    if (!result.rows.length) return res.status(404).json({ success: false, error: 'not found' });
+    if (!result.rows.length) return res.status(404).json({ status: 404, error: 'not found' });
     res.json({ success: true, entry: result.rows[0] });
   } catch (e) {
     console.error(e);
@@ -90,6 +90,7 @@ const UpsertSchema = z.object({
   jurisprudence: z.array(z.string()).optional(),
   legal_bases: z.array(z.string()).optional(),
   related_sections: z.array(z.string()).optional(),
+  created_by_name: z.string().optional(),
 });
 
 router.post('/entries', async (req, res) => {
@@ -115,13 +116,14 @@ router.post('/entries', async (req, res) => {
     }
 
     const createdBy = req.user?.userId || null;
+    const createdByName = req.user?.name || null;
 
     // 1) Ensure row exists with required non-null columns
     await query(
-      `insert into kb_entries (entry_id, type, title, created_by)
-       values ($1, $2, $3, $4)
-       on conflict (entry_id) do update set type=excluded.type, title=excluded.title, created_by=excluded.created_by`,
-      [parsed.entry_id, parsed.type, parsed.title, createdBy]
+      `insert into kb_entries (entry_id, type, title, created_by, created_by_name)
+       values ($1, $2, $3, $4, $5)
+       on conflict (entry_id) do update set type=excluded.type, title=excluded.title, created_by=excluded.created_by, created_by_name=excluded.created_by_name`,
+      [parsed.entry_id, parsed.type, parsed.title, createdBy, createdByName]
     );
 
     // 2) Update all fields (single authoritative update)
