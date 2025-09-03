@@ -196,10 +196,10 @@ router.post('/entries', async (req, res) => {
          legal_bases=$47,
          related_sections=$48,
          created_by_name=$49,
-         verified=COALESCE($50, kb_entries.verified),
-         verified_by=COALESCE($51, kb_entries.verified_by),
-         verified_at=COALESCE($52::timestamptz, kb_entries.verified_at),
-         embedding=COALESCE($53::vector, kb_entries.embedding),
+         verified=NULL,
+         verified_by=NULL,
+         verified_at=NULL,
+         embedding=COALESCE($50::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
@@ -252,9 +252,7 @@ router.post('/entries', async (req, res) => {
         JSON.stringify(parsed.legal_bases || []),
         JSON.stringify(parsed.related_sections || []),
         createdByName,
-        parsed.verified ?? null,
-        parsed.verified_by || null,
-        parsed.verified_at || null,
+
         embeddingLiteral,
       ]
     );
@@ -369,10 +367,10 @@ router.put('/entries/:entryId', async (req, res) => {
          jurisprudence=$48,
          legal_bases=$49,
          related_sections=$50,
-         verified=COALESCE($51, kb_entries.verified),
-         verified_by=COALESCE($52, kb_entries.verified_by),
-         verified_at=COALESCE($53::timestamptz, kb_entries.verified_at),
-         embedding=COALESCE($54::vector, kb_entries.embedding),
+         verified=NULL,
+         verified_by=NULL,
+         verified_at=NULL,
+         embedding=COALESCE($51::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
@@ -426,9 +424,7 @@ router.put('/entries/:entryId', async (req, res) => {
         JSON.stringify(parsed.jurisprudence || []),
         JSON.stringify(parsed.legal_bases || []),
         JSON.stringify(parsed.related_sections || []),
-        parsed.verified ?? null,
-        parsed.verified_by || null,
-        parsed.verified_at || null,
+
         embeddingLiteral,
       ]
     );
@@ -450,6 +446,99 @@ router.delete('/entries', async (req, res) => {
     }
     await query('delete from kb_entries', []);
     res.json({ success: true, scope: 'all' });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ success: false, error: String(e.message || e) });
+  }
+});
+
+// Verify entry
+router.post('/entries/:entryId/verify', async (req, res) => {
+  try {
+    const entryId = String(req.params.entryId || '').trim();
+    if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
+    
+    // Get user info from JWT token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, error: 'Authorization token required' });
+    }
+    
+    const token = authHeader.substring(7);
+    const jwt = await import('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+    
+    // Get user details
+    const userResult = await query(
+      'SELECT name, person_id FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    
+    if (!userResult.rows.length) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Update entry verification status
+    await query(
+      `UPDATE kb_entries SET 
+         verified = true,
+         verified_by = $2,
+         verified_at = now(),
+         last_reviewed = now()::date
+       WHERE entry_id = $1`,
+      [entryId, user.name]
+    );
+    
+    // Get updated entry
+    const result = await query(
+      'SELECT * FROM kb_entries WHERE entry_id = $1',
+      [entryId]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, error: 'Entry not found' });
+    }
+    
+    res.json({ success: true, entry: result.rows[0] });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ success: false, error: String(e.message || e) });
+  }
+});
+
+// Re-verify entry (reset verification status)
+router.post('/entries/:entryId/reverify', async (req, res) => {
+  try {
+    const entryId = String(req.params.entryId || '').trim();
+    if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
+    
+    // Update entry verification status to null
+    await query(
+      `UPDATE kb_entries SET 
+         verified = NULL,
+         verified_by = NULL,
+         verified_at = NULL
+       WHERE entry_id = $1`,
+      [entryId]
+    );
+    
+    // Get updated entry
+    const result = await query(
+      'SELECT * FROM kb_entries WHERE entry_id = $1',
+      [entryId]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, error: 'Entry not found' });
+    }
+    
+    res.json({ success: true, entry: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(400).json({ success: false, error: String(e.message || e) });

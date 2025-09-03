@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getEntryType } from '../../data/entryTypes';
 import { getJurisdiction } from '../../data/jurisdictions';
 // import { getTagByValue } from '../../data/tags';
 import './EntryView.css';
-import { fetchEntryById } from '../../services/kbApi';
+import { fetchEntryById, verifyEntry, reverifyEntry } from '../../services/kbApi';
+import { useAuth } from '../../contexts/AuthContext';
 
 const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   const navigate = useNavigate();
-  if (!entry) {
+  const { user } = useAuth();
+  const [currentEntry, setCurrentEntry] = useState(entry);
+  const [isVerifying, setIsVerifying] = useState(false);
+  
+  if (!currentEntry) {
     return (
       <div className="no-entry">
         <h3>Entry not found</h3>
@@ -20,8 +25,8 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
     );
   }
 
-  const entryType = getEntryType(entry.type);
-  const jurisdiction = getJurisdiction(entry.jurisdiction);
+  const entryType = getEntryType(currentEntry.type);
+  const jurisdiction = getJurisdiction(currentEntry.jurisdiction);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not specified';
@@ -31,6 +36,40 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return 'Not specified';
     return new Date(dateTimeString).toLocaleString();
+  };
+
+  const handleVerify = async () => {
+    if (!user) return;
+    
+    setIsVerifying(true);
+    try {
+      const updatedEntry = await verifyEntry(currentEntry.entry_id);
+      if (updatedEntry) {
+        setCurrentEntry(updatedEntry);
+      }
+    } catch (error) {
+      console.error('Failed to verify entry:', error);
+      alert('Failed to verify entry: ' + error.message);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleReverify = async () => {
+    if (!user) return;
+    
+    setIsVerifying(true);
+    try {
+      const updatedEntry = await reverifyEntry(currentEntry.entry_id);
+      if (updatedEntry) {
+        setCurrentEntry(updatedEntry);
+      }
+    } catch (error) {
+      console.error('Failed to re-verify entry:', error);
+      alert('Failed to re-verify entry: ' + error.message);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const renderArrayField = (fieldName, items, label) => {
@@ -151,7 +190,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   };
 
   const renderTypeSpecificFields = () => {
-    if (!entry.type) return null;
+    if (!currentEntry.type) return null;
 
     // Helper function to render a field with proper alignment
     const renderField = (label, value, type = 'text') => {
@@ -306,7 +345,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
     };
 
     const pp = (() => {
-      const v = entry.prescriptive_period;
+      const v = currentEntry.prescriptive_period;
       if (!v) return null;
       try {
         if (typeof v === 'string') {
@@ -320,17 +359,17 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
       return String(v);
     })();
 
-    switch (entry.type) {
+    switch (currentEntry.type) {
       case 'statute_section':
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
               {renderField('Prescriptive Period', pp || 'Empty')}
-              {renderField('Standard of Proof', entry.standard_of_proof)}
+              {renderField('Standard of Proof', currentEntry.standard_of_proof)}
             </div>
-            {renderArrayFieldStructured('elements', entry.elements, 'Elements')}
-            {renderArrayFieldStructured('penalties', entry.penalties, 'Penalties')}
-            {renderArrayFieldStructured('defenses', entry.defenses, 'Defenses')}
+            {renderArrayFieldStructured('elements', currentEntry.elements, 'Elements')}
+            {renderArrayFieldStructured('penalties', currentEntry.penalties, 'Penalties')}
+            {renderArrayFieldStructured('defenses', currentEntry.defenses, 'Defenses')}
           </div>
         );
 
@@ -338,9 +377,9 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Elements', entry.elements, 'array')}
-              {renderField('Penalties', entry.penalties, 'array')}
-              {renderField('Defenses', entry.defenses, 'array')}
+              {renderField('Elements', currentEntry.elements, 'array')}
+              {renderField('Penalties', currentEntry.penalties, 'array')}
+              {renderField('Defenses', currentEntry.defenses, 'array')}
             </div>
           </div>
         );
@@ -349,12 +388,12 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Rule Number', entry.rule_no)}
-              {renderField('Section Number', entry.section_no)}
+              {renderField('Rule Number', currentEntry.rule_no)}
+              {renderField('Section Number', currentEntry.section_no)}
             </div>
-            {renderArrayFieldStructured('triggers', entry.triggers, 'Triggers')}
-            {renderArrayFieldStructured('time_limits', entry.time_limits, 'Time Limits')}
-            {renderArrayFieldStructured('required_forms', entry.required_forms, 'Required Forms')}
+            {renderArrayFieldStructured('triggers', currentEntry.triggers, 'Triggers')}
+            {renderArrayFieldStructured('time_limits', currentEntry.time_limits, 'Time Limits')}
+            {renderArrayFieldStructured('required_forms', currentEntry.required_forms, 'Required Forms')}
           </div>
         );
 
@@ -362,11 +401,11 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Circular Number', entry.circular_no)}
-              {renderField('Section Number', entry.section_no)}
+              {renderField('Circular Number', currentEntry.circular_no)}
+              {renderField('Section Number', currentEntry.section_no)}
             </div>
-            {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
-            {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
+            {renderArrayFieldStructured('applicability', currentEntry.applicability, 'Applicability')}
+            {renderArrayFieldStructured('supersedes', currentEntry.supersedes, 'Supersedes')}
           </div>
         );
 
@@ -374,10 +413,10 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Issuance Number', entry.issuance_no)}
+              {renderField('Issuance Number', currentEntry.issuance_no)}
             </div>
-            {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
-            {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
+            {renderArrayFieldStructured('applicability', currentEntry.applicability, 'Applicability')}
+            {renderArrayFieldStructured('supersedes', currentEntry.supersedes, 'Supersedes')}
           </div>
         );
 
@@ -385,19 +424,19 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Instrument Number', entry.instrument_no)}
+              {renderField('Instrument Number', currentEntry.instrument_no)}
             </div>
-            {renderArrayFieldStructured('applicability', entry.applicability, 'Applicability')}
-            {renderArrayFieldStructured('supersedes', entry.supersedes, 'Supersedes')}
+            {renderArrayFieldStructured('applicability', currentEntry.applicability, 'Applicability')}
+            {renderArrayFieldStructured('supersedes', currentEntry.supersedes, 'Supersedes')}
           </div>
         );
 
       case 'pnp_sop':
         return (
           <div className="type-specific-fields">
-            {renderArrayFieldStructured('steps_brief', entry.steps_brief, 'Steps Brief')}
-            {renderArrayFieldStructured('forms_required', entry.forms_required, 'Forms Required')}
-            {renderArrayFieldStructured('failure_states', entry.failure_states, 'Failure States')}
+            {renderArrayFieldStructured('steps_brief', currentEntry.steps_brief, 'Steps Brief')}
+            {renderArrayFieldStructured('forms_required', currentEntry.forms_required, 'Forms Required')}
+            {renderArrayFieldStructured('failure_states', currentEntry.failure_states, 'Failure States')}
           </div>
         );
 
@@ -405,12 +444,12 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Violation Code', entry.violation_code)}
-              {renderField('Violation Name', entry.violation_name)}
-              {renderField('License Action', entry.license_action)}
+              {renderField('Violation Code', currentEntry.violation_code)}
+              {renderField('Violation Name', currentEntry.violation_name)}
+              {renderField('License Action', currentEntry.license_action)}
             </div>
-            {renderFineScheduleStructured(entry.fine_schedule)}
-            {renderArrayFieldStructured('apprehension_flow', entry.apprehension_flow, 'Apprehension Flow')}
+            {renderFineScheduleStructured(currentEntry.fine_schedule)}
+            {renderArrayFieldStructured('apprehension_flow', currentEntry.apprehension_flow, 'Apprehension Flow')}
           </div>
         );
 
@@ -418,12 +457,12 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Incident', entry.incident)}
+              {renderField('Incident', currentEntry.incident)}
             </div>
-            {renderPhasesStructured(entry.phases)}
-            {renderArrayFieldStructured('forms', entry.forms, 'Forms')}
-            {renderArrayFieldStructured('handoff', entry.handoff, 'Handoff')}
-            {renderArrayFieldStructured('rights_callouts', entry.rights_callouts, 'Rights Callouts')}
+            {renderPhasesStructured(currentEntry.phases)}
+            {renderArrayFieldStructured('forms', currentEntry.forms, 'Forms')}
+            {renderArrayFieldStructured('handoff', currentEntry.handoff, 'Handoff')}
+            {renderArrayFieldStructured('rights_callouts', currentEntry.rights_callouts, 'Rights Callouts')}
           </div>
         );
 
@@ -431,17 +470,17 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         return (
           <div className="type-specific-fields">
             <div className="info-grid">
-              {renderField('Rights Scope', entry.rights_scope)}
+              {renderField('Rights Scope', currentEntry.rights_scope)}
             </div>
-            {renderArrayFieldStructured('advice_points', entry.advice_points, 'Advice Points')}
+            {renderArrayFieldStructured('advice_points', currentEntry.advice_points, 'Advice Points')}
           </div>
         );
 
       case 'constitution_provision':
         return (
           <div className="type-specific-fields">
-            {renderArrayFieldStructured('topics', entry.topics, 'Topics')}
-            {renderArrayFieldStructured('jurisprudence', entry.jurisprudence, 'Jurisprudence')}
+            {renderArrayFieldStructured('topics', currentEntry.topics, 'Topics')}
+            {renderArrayFieldStructured('jurisprudence', currentEntry.jurisprudence, 'Jurisprudence')}
           </div>
         );
 
@@ -450,7 +489,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           <div className="type-specific-fields">
             <div className="info-item">
               <span className="label">Entry Type:</span>
-              <span className="value">{entry.type}</span>
+              <span className="value">{currentEntry.type}</span>
             </div>
           </div>
         );
@@ -458,7 +497,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   };
 
   const getTeamMemberName = (teamMemberId) => {
-    if (entry.created_by_name) return entry.created_by_name;
+    if (currentEntry.created_by_name) return currentEntry.created_by_name;
     return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId || 'undefined'}`;
   };
 
@@ -468,11 +507,11 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
         <div className="entry-header">
           <div className="entry-title-section">
             <div className="entry-title-row">
-              <h1>{entry.title}</h1>
-              <span className="entry-id-badge">{entry.entry_id}</span>
-              <span className="entry-type-badge">{entryType ? entryType.label : entry.type}</span>
+              <h1>{currentEntry.title}</h1>
+              <span className="entry-id-badge">{currentEntry.entry_id}</span>
+              <span className="entry-type-badge">{entryType ? entryType.label : currentEntry.type}</span>
             </div>
-            {entry.offline && entry.offline.pack_include && (
+            {currentEntry.offline && currentEntry.offline.pack_include && (
               <div className="offline-pack-indicator">
                 Included in Offline Pack
               </div>
@@ -504,13 +543,13 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Team Member:</span>
-                <span className="value">{getTeamMemberName(entry.team_member_id)}</span>
+                <span className="value">{getTeamMemberName(currentEntry.team_member_id)}</span>
               </div>
               <div className="info-item">
                 <span className="label">Visibility:</span>
                 <span className="value">
                   {(() => {
-                    const v = entry.visibility;
+                    const v = currentEntry.visibility;
                     if (!v) return 'GLI';
                     const gli = typeof v === 'object' ? v.gli !== false : true;
                     const cpa = typeof v === 'object' ? v.cpa === true : false;
@@ -522,27 +561,27 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
               </div>
               <div className="info-item">
                 <span className="label">Jurisdiction:</span>
-                <span className="value">{jurisdiction ? jurisdiction.label : entry.jurisdiction}</span>
+                <span className="value">{jurisdiction ? jurisdiction.label : currentEntry.jurisdiction}</span>
               </div>
               <div className="info-item">
                 <span className="label">Law Family:</span>
-                <span className="value">{entry.law_family}</span>
+                <span className="value">{currentEntry.law_family}</span>
               </div>
-              {entry.section_id && (
+              {currentEntry.section_id && (
                 <div className="info-item">
                   <span className="label">Section ID:</span>
-                  <span className="value">{entry.section_id}</span>
+                  <span className="value">{currentEntry.section_id}</span>
                 </div>
               )}
               <div className="info-item">
                 <span className="label">Canonical Citation:</span>
-                <span className="value">{entry.canonical_citation}</span>
+                <span className="value">{currentEntry.canonical_citation}</span>
               </div>
               <div className="info-item">
                 <span className="label">Status:</span>
                 <span className="value">
-                  <span className={`status-badge status-${entry.status}`}>
-                    {entry.status}
+                  <span className={`status-badge status-${currentEntry.status}`}>
+                    {currentEntry.status}
                   </span>
                 </span>
               </div>
@@ -555,38 +594,84 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Entry Created:</span>
-                <span className="value">{formatDateTime(entry.created_at)}</span>
+                <span className="value">{formatDateTime(currentEntry.created_at)}</span>
               </div>
               <div className="info-item">
                 <span className="label">Effective Date:</span>
-                <span className="value">{formatDate(entry.effective_date)}</span>
+                <span className="value">{formatDate(currentEntry.effective_date)}</span>
               </div>
-              {/* Last Reviewed hidden per requirement (auto-set on create) */}
-              {entry.verified && (
+              {currentEntry.verified && (
                 <div className="info-item">
                   <span className="label">Verified:</span>
-                  <span className="value">{`Yes (${entry.verified_by || '—'} on ${formatDate(entry.verified_at)})`}</span>
+                  <span className="value">{`Yes (${currentEntry.verified_by || '—'} on ${formatDate(currentEntry.verified_at)})`}</span>
                 </div>
               )}
-              {entry.amendment_date && (
+              {currentEntry.amendment_date && (
                 <div className="info-item">
                   <span className="label">Amendment Date:</span>
-                  <span className="value">{formatDate(entry.amendment_date)}</span>
+                  <span className="value">{formatDate(currentEntry.amendment_date)}</span>
                 </div>
               )}
               <div className="info-item">
                 <span className="label">Last Updated:</span>
-                <span className="value">{formatDateTime(entry.updated_at)}</span>
+                <span className="value">{formatDateTime(currentEntry.updated_at)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Last Reviewed Section */}
+          <div className="entry-section">
+            <h3>Last Reviewed</h3>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Last Reviewed Date:</span>
+                <span className="value">
+                  {currentEntry.last_reviewed ? formatDate(currentEntry.last_reviewed) : 'Not reviewed'}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="label">Verification Status:</span>
+                <span className="value">
+                  {currentEntry.verified ? (
+                    <span className="verified-badge">Verified</span>
+                  ) : (
+                    <span className="unverified-badge">Not Verified</span>
+                  )}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="label">Actions:</span>
+                <span className="value">
+                  {currentEntry.verified ? (
+                    <button
+                      onClick={handleReverify}
+                      disabled={isVerifying}
+                      className="btn-reverify"
+                      title="Reset verification status"
+                    >
+                      {isVerifying ? 'Processing...' : 'Re-verify'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleVerify}
+                      disabled={isVerifying}
+                      className="btn-verify"
+                      title="Mark entry as verified"
+                    >
+                      {isVerifying ? 'Processing...' : 'Verify'}
+                    </button>
+                  )}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Source URLs */}
-          {entry.source_urls && entry.source_urls.length > 0 && (
+          {currentEntry.source_urls && currentEntry.source_urls.length > 0 && (
             <div className="entry-section">
               <h3>Source URLs</h3>
               <div className="source-urls">
-                {entry.source_urls.map((url, index) => (
+                {currentEntry.source_urls.map((url, index) => (
                   <a
                     key={index}
                     href={url}
@@ -602,27 +687,27 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           )}
 
           {/* Summary */}
-          {entry.summary && (
+          {currentEntry.summary && (
             <div className="entry-section">
               <h3>Summary</h3>
-              <div className="summary-text">{entry.summary}</div>
+              <div className="summary-text">{currentEntry.summary}</div>
             </div>
           )}
 
           {/* Full Text Content */}
-          {entry.text && (
+          {currentEntry.text && (
             <div className="entry-section">
               <h3>Full Text Content</h3>
-              <div className="text-content">{entry.text}</div>
+              <div className="text-content">{currentEntry.text}</div>
             </div>
           )}
 
           {/* Tags */}
-          {entry.tags && entry.tags.length > 0 && (
+          {currentEntry.tags && currentEntry.tags.length > 0 && (
             <div className="entry-section">
               <h3>Tags</h3>
               <div className="tags-list">
-                {entry.tags.map(tag => (
+                {currentEntry.tags.map(tag => (
                   <span key={tag} className="tag">{tag}</span>
                 ))}
               </div>
@@ -638,14 +723,14 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           {/* Relations - always visible */}
           <div className="entry-section">
             <h3>Relations</h3>
-            {renderLegalBases(entry.legal_bases) || (
+            {renderLegalBases(currentEntry.legal_bases) || (
               <div className="field-group"><h4>Legal Bases</h4><div className="empty-field">Empty</div></div>
             )}
             <div className="field-group">
               <h4>Related Sections</h4>
-              {entry.related_sections && entry.related_sections.length > 0 ? (
+              {currentEntry.related_sections && currentEntry.related_sections.length > 0 ? (
                 <ul className="array-list">
-                  {entry.related_sections.map((rel, idx) => (
+                  {currentEntry.related_sections.map((rel, idx) => (
                     <li key={idx}>
                       {rel?.type === 'internal' && rel?.entry_id ? (
                         <button className="link-button" onClick={async () => {
@@ -669,18 +754,18 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           </div>
 
           {/* Raw Text */}
-          {entry.text_raw && (
+          {currentEntry.text_raw && (
             <div className="entry-section">
               <h3>Raw Text</h3>
-              <div className="text-content">{entry.text_raw}</div>
+              <div className="text-content">{currentEntry.text_raw}</div>
             </div>
           )}
 
           {/* Normalized Text */}
-          {entry.text_normalized && (
+          {currentEntry.text_normalized && (
             <div className="entry-section">
               <h3>Normalized Text</h3>
-              <div className="text-content">{entry.text_normalized}</div>
+              <div className="text-content">{currentEntry.text_normalized}</div>
             </div>
           )}
         </div>

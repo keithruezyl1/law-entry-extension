@@ -10,6 +10,7 @@ async function runMigration() {
     const files = [
       './sql/007_add_created_by_name.sql',
       './sql/008_add_verified.sql',
+      './sql/009_fix_verification_schema.sql',
     ];
     const migrationSQL = files.map((f) => readFileSync(f, 'utf8')).join('\n');
     

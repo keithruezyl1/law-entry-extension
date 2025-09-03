@@ -600,6 +600,45 @@
   background: #059669; /* emerald-600 */
 }
 
+.btn-reverify {
+  background: #f59e0b; /* amber-500 */
+  color: white;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  border-radius: 9999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-reverify:hover {
+  background: #d97706; /* amber-600 */
+}
+
+.btn-reverify:disabled,
+.btn-verify:disabled {
+  background: #9ca3af; /* gray-400 */
+  cursor: not-allowed;
+}
+
+.verified-badge {
+  background: #10b981; /* emerald-500 */
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.unverified-badge {
+  background: #6b7280; /* gray-500 */
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .btn-primary:hover {
   background: #ea580c; /* Orange-600 */
   transform: translateY(-1px);

@@ -213,4 +213,50 @@ export async function fetchEntryById(entryId: string): Promise<any | null> {
   }
 }
 
+// Verify entry
+export async function verifyEntry(entryId: string): Promise<any | null> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) throw new Error('No authentication token');
+    
+    const resp = await fetch(`${KB_BASE_URL}/entries/${encodeURIComponent(entryId)}/verify`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const json = await resp.json();
+    if (!json?.success) throw new Error(json.error || 'Verification failed');
+    return json.entry || null;
+  } catch (error) {
+    console.error('Failed to verify entry:', error);
+    throw error;
+  }
+}
+
+// Re-verify entry (reset verification status)
+export async function reverifyEntry(entryId: string): Promise<any | null> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) throw new Error('No authentication token');
+    
+    const resp = await fetch(`${KB_BASE_URL}/entries/${encodeURIComponent(entryId)}/reverify`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const json = await resp.json();
+    if (!json?.success) throw new Error(json.error || 'Re-verification failed');
+    return json.entry || null;
+  } catch (error) {
+    console.error('Failed to re-verify entry:', error);
+    throw error;
+  }
+}
+
 
