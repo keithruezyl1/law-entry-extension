@@ -269,6 +269,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [showDraftLoaded, setShowDraftLoaded] = useState<boolean>(false);
+  const [hasAmendment, setHasAmendment] = useState<boolean>(false);
 
   //
 
@@ -425,6 +426,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Jurisdiction UX: PH or Other -> inline input
   const jurisdiction = watch('jurisdiction');
   const isOtherJurisdiction = jurisdiction !== 'PH';
+
+  // Initialize/keep in sync the amendment toggle from form values
+  useEffect(() => {
+    try {
+      const statusVal = (watch('status') as unknown as string) || '';
+      const amendDate = watch('amendment_date') as unknown as string | null;
+      const shouldBeOn = statusVal === 'amended' || (!!amendDate && String(amendDate).trim().length > 0);
+      setHasAmendment(shouldBeOn);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, watch('amendment_date')]);
 
   // Step validators on next
   const scrollToCardTop = () => {
@@ -943,7 +955,29 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <label className="kb-form-label">Effective Date</label>
                               <Input className="kb-form-input" type="date" {...register('effective_date')} />
                             </div>
-                            {status === 'amended' && (
+                            {/* Amendment toggle */}
+                            <div className="kb-form-field">
+                              <label className="kb-form-label">Has Amendment?</label>
+                              <div className="flex items-center gap-3 mt-2">
+                                <input
+                                  type="checkbox"
+                                  checked={hasAmendment}
+                                  onChange={(e) => {
+                                    const on = e.target.checked;
+                                    setHasAmendment(on);
+                                    if (on) {
+                                      setValue('status', 'amended' as any, { shouldDirty: true } as any);
+                                    } else {
+                                      setValue('status', '' as any, { shouldDirty: true } as any);
+                                      setValue('amendment_date' as any, null as any, { shouldDirty: true } as any);
+                                    }
+                                  }}
+                                />
+                                <span className="text-sm text-gray-700">This entry has an amendment</span>
+                              </div>
+                            </div>
+
+                            {hasAmendment && (
                               <div className="kb-form-field">
                                 <label className="kb-form-label">Amendment Date</label>
                                 <Input className="kb-form-input" type="date" {...register('amendment_date' as any)} />
