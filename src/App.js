@@ -882,7 +882,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   </div>
                 </div>
                 <div className="member-breakdown">
-                  {Object.entries(currentDayReqs).map(([type, quota]) => (
+                  {Object.entries(currentDayReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
                     <span key={type} className="quota-item">
                       {type}: {teamProgress[progressKey]?.[type] || 0}/{quota}
                     </span>
