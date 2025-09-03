@@ -398,13 +398,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       
       console.log('Comprehensive reset data:', resetData);
       methods.reset(resetData as any);
-    } else {
-      // Try to load draft data for new entries
+      
+      // Set amendment state for edit mode
+      setHasAmendment(!!entry.amendment_date);
+    } else if (isCreateMode) {
+      // Only try to load draft data for new entries (CREATE MODE ONLY)
       try {
         const draftData = localStorage.getItem('kb_entry_draft');
         if (draftData) {
           const parsed = JSON.parse(draftData);
-          console.log('Loading draft data:', parsed);
+          console.log('Loading draft data for new entry:', parsed);
           
           // Merge draft data with defaults, preserving user input
           const mergedData = {
@@ -464,7 +467,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           console.log('Merged draft data with defaults:', mergedData);
           methods.reset(mergedData as any);
           
-          // Show notification that draft was loaded
+          // Show notification that draft was loaded (CREATE MODE ONLY)
           setShowDraftLoaded(true);
           setTimeout(() => setShowDraftLoaded(false), 3000);
         }
@@ -472,7 +475,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         console.error('Failed to load draft data:', e);
       }
     }
-  }, [entry, methods]);
+  }, [entry, methods, isCreateMode]);
 
   // Auto-generate entry_id based on type, law family, and section id
   useEffect(() => {
@@ -544,13 +547,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }
     
-    // In edit mode only: ensure form data is preserved by triggering a re-render
-    if (entry) {
-      // Force form to re-render with current values to ensure data persistence
-      // This is only needed in edit mode, not in create mode
-      const currentValues = getValues();
-      methods.reset(currentValues as any);
-    }
+    // Note: Form data persistence is handled by the main useEffect when entry prop changes
+    // No need to reset here as it could interfere with the loaded data
     
     setCurrentStep((s) => {
       const next = Math.min(steps[steps.length - 1].id, s + 1);
@@ -585,13 +583,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }
     
-    // In edit mode only: ensure form data is preserved by triggering a re-render
-    if (entry) {
-      // Force form to re-render with current values to ensure data persistence
-      // This is only needed in edit mode, not in create mode
-      const currentValues = getValues();
-      methods.reset(currentValues as any);
-    }
+    // Note: Form data persistence is handled by the main useEffect when entry prop changes
+    // No need to reset here as it could interfere with the loaded data
     
     setCurrentStep((s) => {
       const prev = Math.max(1, s - 1);
