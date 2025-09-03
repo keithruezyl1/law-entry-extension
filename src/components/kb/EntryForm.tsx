@@ -257,6 +257,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const sectionId = watch('section_id');
   const title = watch('title');
   const citation = watch('canonical_citation');
+  const entry_id = watch('entry_id');
+
+  // Auto-generate entry ID and set last_reviewed for new entries
+  useEffect(() => {
+    if (!entry && !entry_id) {
+      // Generate entry ID based on type, law family, and section ID
+      const generatedId = generateEntryId(type, lawFamily, sectionId);
+      setValue('entry_id', generatedId);
+      
+      // Set last_reviewed to current date for new entries
+      const today = new Date().toISOString().slice(0, 10);
+      setValue('last_reviewed', today);
+    }
+  }, [entry, entry_id, type, lawFamily, sectionId, setValue]);
 
   // Step 4 always has content (dynamic type-specific + relations)
   const hasTypeSpecific = true;
@@ -741,6 +755,30 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   return (
     <FormProvider {...methods}>
       <div className="kb-form mx-auto max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Toast for possible duplicates */}
+        {nearDuplicates && nearDuplicates.length > 0 && (
+          <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 1000 }}>
+            <div className="shadow-lg rounded-lg border border-red-200 bg-red-50 w-[360px]">
+              <div className="flex items-start justify-between p-3 border-b border-red-200">
+                <div className="font-semibold text-sm text-red-800">Possible matches</div>
+                <button className="text-xs text-red-600 hover:text-red-800" onClick={() => setNearDuplicates([])}>Close</button>
+              </div>
+              <div className="p-3 max-h-[260px] overflow-auto">
+                {nearDuplicates.slice(0, 5).map((m: any, i: number) => (
+                  <div key={i} className="text-sm p-2 rounded border border-red-200 bg-white mb-2">
+                    <div className="font-medium">{m.title} ({m.type})</div>
+                    {m.canonical_citation && <div className="text-gray-600">{m.canonical_citation}</div>}
+                  </div>
+                ))}
+              </div>
+              <div className="px-3 pb-3">
+                <p className="text-xs text-red-700 bg-red-100 p-2 rounded">
+                  ⚠️ Please review possible matches before proceeding. Close this notification to continue.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="kb-form-container">
           <header className="kb-form-header mb-6">
             <div>
@@ -830,28 +868,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                       </label>
                                       <Input className="kb-form-input" placeholder="Human-readable label" {...register('title')} />
                                     </div>
-                                    {nearDuplicates && nearDuplicates.length > 0 && (
-                                      <div className="kb-form-field">
-                                        <div className="flex items-center justify-between">
-                                          <label className="kb-form-label">Possible matches</label>
-                                          <button
-                                            type="button"
-                                            onClick={() => setNearDuplicates([])}
-                                            className="text-sm text-gray-500 hover:text-gray-700 underline"
-                                          >
-                                            Dismiss
-                                          </button>
-                                        </div>
-                                        <div className="space-y-2">
-                                          {nearDuplicates.slice(0, 3).map((m: any, i: number) => (
-                                            <div key={i} className="text-sm p-2 rounded border bg-white">
-                                              <div className="font-medium">{m.title} ({m.type})</div>
-                                              {m.canonical_citation && <div className="text-gray-600">{m.canonical_citation}</div>}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
+                                    {/* Inline list removed in favor of toast */}
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">
                                         Jurisdiction <span className="kb-required">*</span>
@@ -931,7 +948,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                     </div>
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">Auto-generated Entry ID</label>
-                                      <Input className="kb-form-input" placeholder="Auto-generated" {...register('entry_id')} />
+                                      <Input 
+                                        className="kb-form-input bg-gray-50" 
+                                        placeholder="Auto-generated" 
+                                        value={entry_id || ''} 
+                                        readOnly 
+                                      />
                                     </div>
                                   </div>
                                 </div>
@@ -959,7 +981,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 )}
                               </div>
                             )}
-                            <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
+                            <Button 
+                              type="button" 
+                              onClick={goNext} 
+                              disabled={nearDuplicates && nearDuplicates.length > 0}
+                              className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
+                                nearDuplicates && nearDuplicates.length > 0
+                                  ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                                  : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                              }`}
+                            >
                               Next
                               <ArrowRight className="h-4 w-4" />
                             </Button>
@@ -1013,10 +1044,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 <Input className="kb-form-input" type="date" {...register('amendment_date' as any)} />
                               </div>
                             )}
-                            <div className="kb-form-field">
-                              <label className="kb-form-label">Last Reviewed</label>
-                              <Input className="kb-form-input" type="date" {...register('last_reviewed')} />
-                            </div>
+                            {/* Last Reviewed field removed - auto-assigned on creation */}
                             <div>
                               <label className="kb-form-label">Source URLs</label>
                               <div className="mt-2">
@@ -1034,7 +1062,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               {!entry && (
                                 <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
-                              <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
+                              <Button 
+                                type="button" 
+                                onClick={goNext} 
+                                disabled={nearDuplicates && nearDuplicates.length > 0}
+                                className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
+                                  nearDuplicates && nearDuplicates.length > 0
+                                    ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                                    : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                                }`}
+                              >
                                 Next
                                 <ArrowRight className="h-4 w-4" />
                               </Button>
@@ -1082,7 +1119,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               {!entry && (
                                 <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
-                              <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
+                              <Button 
+                                type="button" 
+                                onClick={goNext} 
+                                disabled={nearDuplicates && nearDuplicates.length > 0}
+                                className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
+                                  nearDuplicates && nearDuplicates.length > 0
+                                    ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                                    : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                                }`}
+                              >
                                 Next
                                 <ArrowRight className="h-4 w-4" />
                               </Button>
@@ -1194,24 +1240,25 @@ function UrlArray({ control, register, watch, setValue }: any) {
     append(value);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === ' ' || e.key === 'Enter') {
-      e.preventDefault();
-      addFromDraft();
-    }
-  };
-
   const removeAt = (idx: number) => remove(idx);
 
   return (
     <div className="space-y-5">
-      <input
-        className="kb-input"
-        placeholder="https://official… (press ENTER to add)"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={handleKeyDown}
-      />
+      <div className="flex gap-2">
+        <input
+          className="kb-input flex-1"
+          placeholder="https://official..."
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={addFromDraft}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          Add Item
+        </button>
+      </div>
 
       {Array.isArray(urls) && urls.filter((u) => u && u.trim().length > 0).length > 0 && (
         <div className="flex flex-wrap gap-2 kb-chip-list">
