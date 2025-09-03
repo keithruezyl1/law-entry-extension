@@ -804,8 +804,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         </div>
         <div className="team-members-grid">
           {dbTeamMembers.map(member => {
-            const personKey = (member.username || member.name || member.id);
+            const personKey = (member.name || member.username || member.id);
             const personName = member.name || member.username || member.id; // display label
+            const nameToPlanCode = { 'Arda': 'P1', 'Delos Cientos': 'P2', 'Paden': 'P3', 'Sendrijas': 'P4', 'Tagarao': 'P5' };
+            const personPlanCode = nameToPlanCode[personName] || nameToPlanCode[personKey] || personKey;
             
             // Check if plan is imported
             const _hasPlan = !!day1Date && Array.isArray(planData) && planData.length > 0;
@@ -845,11 +847,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const today = new Date();
             const dayIndex = computeDayIndex(today, day1Date);
             const dayRows = rowsForDay(planRows, dayIndex);
-            // Try to match by multiple identifiers (username, name, id variants)
-            const personRow = dayRows.find((r) => {
-              const p = String(r.Person || '').trim();
-              return p === personKey || p === `P${personKey}` || p.toLowerCase() === personKey.toLowerCase();
-            });
+            // Match using plan codes P1..P5
+            const personRow = dayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
             
             if (personRow) {
               currentDayReqs = {
