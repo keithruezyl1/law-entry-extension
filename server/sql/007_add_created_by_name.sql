@@ -21,23 +21,3 @@ END $$;
 
 -- Create index for created_by_name column for better query performance
 CREATE INDEX IF NOT EXISTS kb_entries_created_by_name_idx ON kb_entries(created_by_name);
-
--- Create a trigger to automatically update created_by_name when created_by changes
-CREATE OR REPLACE FUNCTION update_created_by_name()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.created_by IS NOT NULL THEN
-        SELECT name INTO NEW.created_by_name
-        FROM users
-        WHERE id = NEW.created_by;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create trigger if it doesn't exist
-DROP TRIGGER IF EXISTS trigger_update_created_by_name ON kb_entries;
-CREATE TRIGGER trigger_update_created_by_name
-    BEFORE INSERT OR UPDATE ON kb_entries
-    FOR EACH ROW
-    EXECUTE FUNCTION update_created_by_name();

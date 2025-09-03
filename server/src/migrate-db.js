@@ -7,7 +7,7 @@ async function runMigration() {
     console.log('Running database migration...');
     
     // Read and execute the migration SQL
-    const migrationSQL = readFileSync('./sql/003_migrate_add_created_by.sql', 'utf8');
+    const migrationSQL = readFileSync('./sql/007_add_created_by_name.sql', 'utf8');
     
     // Split the SQL into individual statements and execute them
     const statements = migrationSQL.split(';').filter(stmt => stmt.trim());
