@@ -831,7 +831,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             }
             
             // Get current day's requirements if plan is loaded
-            let currentDayReqs = member?.dailyQuota || {};
+            let currentDayReqs = {
+              statute_section: 0,
+              rule_of_court: 0,
+              rights_advisory: 0,
+              constitution_provision: 0,
+              agency_circular: 0,
+              doj_issuance: 0,
+              executive_issuance: 0,
+              city_ordinance_section: 0,
+              ...(member?.dailyQuota || {}),
+            };
             const today = new Date();
             const dayIndex = computeDayIndex(today, day1Date);
             const dayRows = rowsForDay(planRows, dayIndex);
@@ -854,7 +864,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               };
             }
             
-            const totalReq = Object.values(currentDayReqs || {}).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
+            const totalReq = Object.values(currentDayReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
             const todayISO = new Date().toISOString().split('T')[0];
             const progressKey = `${personKey}_${todayISO}`;
             const totalDone = teamProgress[progressKey]?.total || 0;
@@ -872,7 +882,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   </div>
                 </div>
                 <div className="member-breakdown">
-                  {Object.entries(currentDayReqs || {}).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
+                  {Object.entries(currentDayReqs).map(([type, quota]) => (
                     <span key={type} className="quota-item">
                       {type}: {teamProgress[progressKey]?.[type] || 0}/{quota}
                     </span>
