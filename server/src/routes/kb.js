@@ -91,6 +91,8 @@ const UpsertSchema = z.object({
   legal_bases: z.array(z.string()).optional(),
   related_sections: z.array(z.string()).optional(),
   created_by_name: z.string().optional(),
+  verified: z.boolean().optional(),
+  verified_by: z.string().optional(),
 });
 
 router.post('/entries', async (req, res) => {
@@ -193,7 +195,9 @@ router.post('/entries', async (req, res) => {
          legal_bases=$47,
          related_sections=$48,
          created_by_name=$49,
-         embedding=COALESCE($50::vector, kb_entries.embedding),
+         verified=COALESCE($50, kb_entries.verified),
+         verified_by=COALESCE($51, kb_entries.verified_by),
+         embedding=COALESCE($52::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
@@ -246,6 +250,8 @@ router.post('/entries', async (req, res) => {
         JSON.stringify(parsed.legal_bases || []),
         JSON.stringify(parsed.related_sections || []),
         createdByName,
+        parsed.verified ?? null,
+        parsed.verified_by || null,
         embeddingLiteral,
       ]
     );
@@ -360,7 +366,9 @@ router.put('/entries/:entryId', async (req, res) => {
          jurisprudence=$48,
          legal_bases=$49,
          related_sections=$50,
-         embedding=COALESCE($51::vector, kb_entries.embedding),
+         verified=COALESCE($51, kb_entries.verified),
+         verified_by=COALESCE($52, kb_entries.verified_by),
+         embedding=COALESCE($53::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
@@ -414,6 +422,8 @@ router.put('/entries/:entryId', async (req, res) => {
         JSON.stringify(parsed.jurisprudence || []),
         JSON.stringify(parsed.legal_bases || []),
         JSON.stringify(parsed.related_sections || []),
+        parsed.verified ?? null,
+        parsed.verified_by || null,
         embeddingLiteral,
       ]
     );
