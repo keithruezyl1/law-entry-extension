@@ -55,7 +55,7 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
           className="w-full"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add URL
+          + Add More Links
         </Button>
       </div>
     </div>

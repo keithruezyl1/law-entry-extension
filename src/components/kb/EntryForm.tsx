@@ -205,7 +205,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       amendment_date: null,
       summary: '',
       text: '',
-      source_urls: [],
+      source_urls: [''],
       tags: [],
       last_reviewed: new Date().toISOString().slice(0, 10),
       visibility: { gli: true, cpa: false },
@@ -306,7 +306,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         amendment_date: entry.amendment_date || null,
         summary: entry.summary || '',
         text: entry.text || '',
-        source_urls: entry.source_urls || [],
+        source_urls: entry.source_urls && entry.source_urls.length > 0 ? entry.source_urls : [''],
         tags: entry.tags || [],
         last_reviewed: entry.last_reviewed || new Date().toISOString().slice(0, 10),
         visibility: entry.visibility || { gli: true, cpa: false },
@@ -371,7 +371,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             amendment_date: parsed.amendment_date || null,
             summary: parsed.summary || '',
             text: parsed.text || '',
-            source_urls: parsed.source_urls || [],
+            source_urls: parsed.source_urls && parsed.source_urls.length > 0 ? parsed.source_urls : [''],
             tags: parsed.tags || [],
             last_reviewed: parsed.last_reviewed || new Date().toISOString().slice(0, 10),
             visibility: parsed.visibility || { gli: true, cpa: false },
@@ -627,6 +627,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       source_urls: (data as any).source_urls?.filter((u: string) => !!u && u.trim().length > 0) || [],
       tags: (data as any).tags?.filter((t: string) => !!t && t.trim().length > 0) || [],
     } as any;
+
+    // Debug logging for source_urls
+    console.log('Raw form data source_urls:', (data as any).source_urls);
+    console.log('Sanitized source_urls:', sanitized.source_urls);
+    console.log('Sanitized source_urls type:', typeof sanitized.source_urls);
+    console.log('Sanitized source_urls length:', sanitized.source_urls?.length);
 
     // Remove deprecated keys
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1292,54 +1298,44 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 // ——— Reusable tiny field helpers ———
 function UrlArray({ control, register, watch, setValue }: any) {
-  const { append, remove } = useFieldArray({ name: 'source_urls', control });
-  const urls: string[] = (watch('source_urls') || []).filter((u: string) => u && u.trim().length > 0);
-  const [draft, setDraft] = React.useState('');
-
-  const addFromDraft = () => {
-    const value = draft.trim();
-    if (!value) return;
-    setDraft('');
-    append(value);
-  };
-
-  const removeAt = (idx: number) => remove(idx);
+  const { fields, append, remove } = useFieldArray({ name: 'source_urls', control });
+  
+  // Debug logging
+  console.log('UrlArray - fields:', fields);
+  console.log('UrlArray - fields length:', fields.length);
 
   return (
-    <div className="space-y-5">
-      <div className="flex gap-2">
-        <input
-          className="kb-input flex-1"
-          placeholder="https://official..."
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-        />
+    <div className="space-y-2">
+      <div className="space-y-2">
+        {fields.map((field, index) => (
+          <div key={field.id} className="flex gap-2">
+            <input
+              {...register(`source_urls.${index}` as const)}
+              placeholder="https://official..."
+              type="url"
+              className="kb-input flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => remove(index)}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              🗑️
+            </button>
+          </div>
+        ))}
+        
         <button
           type="button"
-          onClick={addFromDraft}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          onClick={() => {
+            console.log('Adding new URL field');
+            append('');
+          }}
+          className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors border-2 border-dashed border-gray-300"
         >
-          Add Item
+          + Add More Links
         </button>
       </div>
-
-      {Array.isArray(urls) && urls.filter((u) => u && u.trim().length > 0).length > 0 && (
-        <div className="flex flex-wrap gap-2 kb-chip-list">
-          {urls.map((u, i) => (
-            <div key={`${u}-${i}`} className="relative group">
-              <a href={u} target="_blank" rel="noreferrer" className="kb-chip kb-chip-preview pr-8">{u}</a>
-              <button
-                type="button"
-                className="kb-chip-remove"
-                aria-label={`Remove ${u}`}
-                onClick={() => removeAt(i)}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -474,7 +474,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                       onClick={() => addArrayItem('source_urls')}
                       className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors border-2 border-dashed border-gray-300"
                     >
-                      ➕ Add Source URL
+                      + Add More Links
                     </button>
                   </div>
                 </div>

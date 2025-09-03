@@ -1,6 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '../ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Props = {
   date: Date;
@@ -14,6 +15,8 @@ type Props = {
 };
 
 export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, onExportToday, onClearToday, onDateSelect, day1Date }: Props) {
+  const { user } = useAuth();
+  
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = new Date(e.target.value);
     onChangeDate(newDate);
@@ -44,8 +47,13 @@ export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, on
           onChange={handleDateChange}
           aria-label="Select date"
         />
-        <Button type="button" variant="outline" onClick={onImportPlan}>Import Plan</Button>
-        {onClearToday && <Button type="button" variant="destructive" onClick={onClearToday}>Clear Today</Button>}
+        {/* P5-only buttons */}
+        {user?.personId === 'P5' && (
+          <>
+            <Button type="button" variant="outline" onClick={onImportPlan}>Import Plan</Button>
+            {onClearToday && <Button type="button" variant="destructive" onClick={onClearToday}>Clear Today</Button>}
+          </>
+        )}
       </div>
     </div>
   );

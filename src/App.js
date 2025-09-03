@@ -612,6 +612,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleClearAll = () => {
+    // Security check: Only P5 can clear all entries
+    if (user?.personId !== 'P5') {
+      alert('Only P5 (Tagarao) can clear all entries.');
+      return;
+    }
     setShowClearModal(true);
     setClearModalStep(1);
     setClearOption(null);
@@ -666,6 +671,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleImportPlan = async (event) => {
+    // Security check: Only P5 can import plans
+    if (user?.personId !== 'P5') {
+      alert('Only P5 (Tagarao) can import plans.');
+      return;
+    }
+    
     const file = event.target.files[0];
     if (!file) return;
     
@@ -728,6 +739,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleRemovePlan = async () => {
+    // Security check: Only P5 can remove plans
+    if (user?.personId !== 'P5') {
+      alert('Only P5 (Tagarao) can remove plans.');
+      return;
+    }
+    
     if (!window.confirm('Remove the imported plan and Day 1 setting? This will not delete your saved entries.')) return;
     
     try {
@@ -924,23 +941,28 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               style={{ display: 'none' }}
             />
           </label>
-          <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-            {day1Date && planData ? 'Re-import Plan' : 'Import Plan'}
-            <input 
-              type="file" 
-              accept=".xlsx" 
-              onChange={handleImportPlan} 
-              style={{ display: 'none' }}
-            />
-          </label>
-          {day1Date && planData && (
-            <button onClick={handleRemovePlan} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-              Remove Plan
-            </button>
+          {/* P5-only buttons */}
+          {user?.personId === 'P5' && (
+            <>
+              <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                {day1Date && planData ? 'Re-import Plan' : 'Import Plan'}
+                <input 
+                  type="file" 
+                  accept=".xlsx" 
+                  onChange={handleImportPlan} 
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {day1Date && planData && (
+                <button onClick={handleRemovePlan} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                  Remove Plan
+                </button>
+              )}
+              <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
+                Clear All
+              </button>
+            </>
           )}
-          <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
-            Clear All
-          </button>
         </div>
       </nav>
       )}
