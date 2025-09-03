@@ -7,12 +7,29 @@ const router = Router();
 // List entries (basic projection)
 router.get('/entries', async (req, res) => {
   try {
-    const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_by_name, created_at, updated_at
-       from kb_entries
-       order by updated_at desc`,
-      []
-    );
+    // Try to select with created_by_name first
+    let result;
+    try {
+      result = await query(
+        `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_by_name, created_at, updated_at
+         from kb_entries
+         order by updated_at desc`,
+        []
+      );
+    } catch (error) {
+      // If created_by_name column doesn't exist, fall back to basic select
+      if (error.message.includes('created_by_name')) {
+        console.log('created_by_name column not found, using fallback select');
+        result = await query(
+          `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
+           from kb_entries
+           order by updated_at desc`,
+          []
+        );
+      } else {
+        throw error;
+      }
+    }
     res.json({ success: true, entries: result.rows });
   } catch (e) {
     console.error(e);
@@ -25,11 +42,29 @@ router.get('/entries/:entryId', async (req, res) => {
   try {
     const entryId = String(req.params.entryId || '').trim();
     if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
-    const result = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_by_name, created_at, updated_at
-       from kb_entries where entry_id = $1`,
-      [entryId]
-    );
+    
+    // Try to select with created_by_name first
+    let result;
+    try {
+      result = await query(
+        `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_by_name, created_at, updated_at
+         from kb_entries where entry_id = $1`,
+        [entryId]
+      );
+    } catch (error) {
+      // If created_by_name column doesn't exist, fall back to basic select
+      if (error.message.includes('created_by_name')) {
+        console.log('created_by_name column not found, using fallback select');
+        result = await query(
+          `select entry_id, type, title, canonical_citation, summary, text, tags, jurisdiction, law_family, created_at, updated_at
+           from kb_entries where entry_id = $1`,
+          [entryId]
+        );
+      } else {
+        throw error;
+      }
+    }
+    
     if (!result.rows.length) return res.status(404).json({ status: 404, error: 'not found' });
     res.json({ success: true, entry: result.rows[0] });
   } catch (e) {
@@ -119,12 +154,28 @@ router.post('/entries', async (req, res) => {
     const createdByName = req.user?.name || null;
 
     // 1) Ensure row exists with required non-null columns
-    await query(
-      `insert into kb_entries (entry_id, type, title, created_by, created_by_name)
-       values ($1, $2, $3, $4, $5)
-       on conflict (entry_id) do update set type=excluded.type, title=excluded.title, created_by=excluded.created_by, created_by_name=excluded.created_by_name`,
-      [parsed.entry_id, parsed.type, parsed.title, createdBy, createdByName]
-    );
+    try {
+      // Try to insert with created_by_name first
+      await query(
+        `insert into kb_entries (entry_id, type, title, created_by, created_by_name)
+         values ($1, $2, $3, $4, $5)
+         on conflict (entry_id) do update set type=excluded.type, title=excluded.title, created_by=excluded.created_by, created_by_name=excluded.created_by_name`,
+        [parsed.entry_id, parsed.type, parsed.title, createdBy, createdByName]
+      );
+    } catch (error) {
+      // If created_by_name column doesn't exist, fall back to basic insert
+      if (error.message.includes('created_by_name')) {
+        console.log('created_by_name column not found, using fallback insert');
+        await query(
+          `insert into kb_entries (entry_id, type, title, created_by)
+           values ($1, $2, $3, $4)
+           on conflict (entry_id) do update set type=excluded.type, title=excluded.title, created_by=excluded.created_by`,
+          [parsed.entry_id, parsed.type, parsed.title, createdBy]
+        );
+      } else {
+        throw error;
+      }
+    }
 
     // 2) Update all fields (single authoritative update)
     await query(

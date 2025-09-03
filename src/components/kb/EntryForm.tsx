@@ -529,6 +529,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       setNearDuplicates([]);
       return;
     }
+    
+    // Clear duplicates if title is too short (less than 3 characters)
+    if (title && title.length < 3) {
+      setNearDuplicates([]);
+      return;
+    }
+    
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
@@ -636,7 +643,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                     </div>
                                     {nearDuplicates && nearDuplicates.length > 0 && (
                                       <div className="kb-form-field">
-                                        <label className="kb-form-label">Possible matches</label>
+                                        <div className="flex items-center justify-between">
+                                          <label className="kb-form-label">Possible matches</label>
+                                          <button
+                                            type="button"
+                                            onClick={() => setNearDuplicates([])}
+                                            className="text-sm text-gray-500 hover:text-gray-700 underline"
+                                          >
+                                            Dismiss
+                                          </button>
+                                        </div>
                                         <div className="space-y-2">
                                           {nearDuplicates.slice(0, 3).map((m: any, i: number) => (
                                             <div key={i} className="text-sm p-2 rounded border bg-white">
@@ -715,6 +731,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                         Status <span className="kb-required">*</span>
                                       </label>
                                       <select className="kb-form-select" {...register('status')}>
+                                        <option value="">----</option>
                                         <option value="active">Active</option>
                                         <option value="amended">Amended</option>
                                         <option value="repealed">Repealed</option>
