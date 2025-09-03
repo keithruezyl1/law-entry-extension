@@ -87,7 +87,7 @@ const UpsertSchema = z.object({
   section_id: z.string().optional(),
   status: z.string().optional(),
   effective_date: z.string().optional(),
-  amendment_date: z.string().optional(),
+  amendment_date: z.string().nullable().optional(),
   last_reviewed: z.string().optional(),
   visibility: z.object({ gli: z.boolean(), cpa: z.boolean() }).optional(),
   source_urls: z.array(z.string()).optional(),
