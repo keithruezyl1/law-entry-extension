@@ -161,44 +161,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     }
   }, [currentView, hasPlan, navigate, planLoading]);
   
-
-
-  // On dashboard load, hydrate entries from DB
-  useEffect(() => {
-    const loadFromDb = async () => {
-      if (currentView !== 'list') return;
-      try {
-        const dbEntries = await fetchAllEntriesFromDb();
-        if (Array.isArray(dbEntries) && dbEntries.length > 0) {
-          // Map DB shape to app shape (add synthetic id if missing)
-          const mapped = dbEntries.map((e) => ({
-            ...e,
-            id: e.entry_id,
-            created_at: e.created_at || new Date().toISOString(),
-            updated_at: e.updated_at || new Date().toISOString(),
-          }));
-          // Merge: prefer local entries with same entry_id
-          const existingByEntryId = new Map(entries.map((x) => [x.entry_id, x]));
-          const merged = mapped.reduce((acc, m) => {
-            if (!existingByEntryId.has(m.entry_id)) acc.push(m);
-            return acc;
-          }, [...entries]);
-          if (merged.length !== entries.length) {
-            // naive set via importEntries pathway
-            try {
-              localStorage.setItem('law_entries', JSON.stringify(merged));
-            } catch {}
-          }
-        } else {
-          // If DB returns empty, ensure local storage is also in sync
-          try {
-            localStorage.setItem('law_entries', JSON.stringify([]));
-          } catch {}
-        }
-      } catch {}
-    };
-    loadFromDb();
-  }, [currentView]);
+  
 
   // Redirect to login if on root path (this is now handled by the router)
   // The login component will handle redirecting to dashboard after authentication
