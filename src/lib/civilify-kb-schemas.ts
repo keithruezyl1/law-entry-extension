@@ -78,7 +78,7 @@ export const StatuteSection = BaseEntry.extend({
   prescriptive_period: z
     .object({
       value: z.union([z.number().positive(), z.literal('NA')]),
-      unit: z.enum(["days", "months", "years"]).optional(),
+      unit: z.enum(["days", "months", "years", "NA"]).optional(),
     })
     .optional(),
   standard_of_proof: z.string().optional(),

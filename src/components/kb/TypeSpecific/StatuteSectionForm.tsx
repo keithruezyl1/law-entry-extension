@@ -91,10 +91,10 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
                 options={[
                   { value: 'days', label: 'Days' },
                   { value: 'months', label: 'Months' },
-                  { value: 'years', label: 'Years' }
+                  { value: 'years', label: 'Years' },
+                  { value: 'NA', label: 'NA' }
                 ]}
                 className="kb-form-select"
-                style={{ display: (typeof (field as any).value === 'string' && String((field as any).value).toUpperCase() === 'NA') ? 'none' : undefined }}
               />
             </FormControl>
             <FormMessage />
