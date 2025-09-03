@@ -261,9 +261,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
   // Auto-generate entry ID and set last_reviewed for new entries
   useEffect(() => {
-    if (!entry && !entry_id) {
+    if (!entry && !entry_id && type && lawFamily) {
       // Generate entry ID based on type, law family, and section ID
-      const generatedId = generateEntryId(type, lawFamily, sectionId);
+      const generatedId = generateEntryId(type, lawFamily, sectionId || '');
       setValue('entry_id', generatedId);
       
       // Set last_reviewed to current date for new entries
