@@ -191,9 +191,9 @@ export const useLocalStorage = () => {
         setEntries(mapped);
       }
 
-      if (entry.team_member_id) {
-        updateTeamProgress(entry.team_member_id, entry.type);
-      }
+      // Progress increments are keyed by username + date
+      const who = String(entry.created_by_username || entry.created_by_name || entry.team_member_id || '').trim();
+      if (who) updateTeamProgress(who, entry.type);
       return payload;
     } catch (err) {
       console.error('Error adding entry:', err);
