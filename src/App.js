@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import EntryForm from './components/kb/EntryForm.tsx'; // new TS + RHF + Zod wizard
@@ -22,17 +22,45 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/law-entry/:step" element={<ProtectedRoute><LawEntryForm /></ProtectedRoute>} />
+          <Route path="/law-entry/:step" element={<DashboardOnlyRoute><LawEntryForm /></DashboardOnlyRoute>} />
           <Route path="/entry/:entryId" element={<ProtectedRoute><EntryDetails /></ProtectedRoute>} />
-          <Route path="/entry/:entryId/edit" element={<ProtectedRoute><EntryEdit /></ProtectedRoute>} />
-          <Route path="*" element={<Login />} />
+          <Route path="/entry/:entryId/edit" element={<DashboardOnlyRoute><EntryEdit /></DashboardOnlyRoute>} />
+          <Route path="*" element={<RootRedirect />} />
         </Routes>
       </Router>
     </AuthProvider>
   );
+}
+
+// Root redirect component - redirects to dashboard if logged in, login if not
+function RootRedirect() {
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (user) {
+        navigate('/dashboard');
+      } else {
+        navigate('/login');
+      }
+    }
+  }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="App">
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
 // Protected route component
@@ -45,6 +73,41 @@ function ProtectedRoute({ children }) {
       navigate('/login');
     }
   }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="App">
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return user ? children : null;
+}
+
+// Dashboard-only route component - ensures users can only access forms from dashboard
+function DashboardOnlyRoute({ children }) {
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        navigate('/login');
+      } else {
+        // Check if user came from dashboard by checking session storage
+        const cameFromDashboard = sessionStorage.getItem('cameFromDashboard');
+        if (!cameFromDashboard) {
+          console.log('User did not come from dashboard, redirecting to dashboard');
+          navigate('/dashboard');
+        }
+      }
+    }
+  }, [user, isLoading, navigate, location]);
 
   if (isLoading) {
     return (
@@ -261,6 +324,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     dbTeamMembers.forEach(member => {
       names[member.id] = member.name;
     });
+    console.log('Team member names created:', names);
+    console.log('dbTeamMembers:', dbTeamMembers);
     return names;
   }, [dbTeamMembers]);
 

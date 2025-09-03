@@ -517,7 +517,10 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
 
   const getTeamMemberName = (teamMemberId) => {
     if (currentEntry.created_by_name) return currentEntry.created_by_name;
-    return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId || 'undefined'}`;
+    if (teamMemberNames && teamMemberNames[teamMemberId]) {
+      return teamMemberNames[teamMemberId];
+    }
+    return `Team Member ${teamMemberId || 'Unknown'}`;
   };
 
   return (

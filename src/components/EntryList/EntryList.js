@@ -35,11 +35,13 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
 
   const filteredEntries = useMemo(() => {
     console.log('EntryList filtering with:', { searchQuery, filters, teamMemberNames });
+    console.log('Team member names object:', teamMemberNames);
+    console.log('Team member names keys:', Object.keys(teamMemberNames));
     const filtered = searchEntries(searchQuery, filters);
     console.log('Filtered entries:', filtered);
     console.log('Filtered entries length:', filtered.length);
     return filtered;
-  }, [searchQuery, filters, searchEntries]);
+  }, [searchQuery, filters, searchEntries, teamMemberNames]);
 
   const handleFilterChange = (filterName, value) => {
     if (filterName === 'jurisdiction') {
@@ -175,7 +177,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
                 >
                   <option value="all">All Team Members</option>
                   {Object.entries(teamMemberNames).map(([id, name]) => (
-                    <option key={id} value={id}>
+                    <option key={id} value={Number(id)}>
                       {name}
                     </option>
                   ))}
@@ -281,6 +283,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
               onDeleteEntry(selectedEntry.id);
               setSelectedEntry(null);
             }}
+            teamMemberNames={teamMemberNames}
           />
           <button 
             onClick={() => setSelectedEntry(null)} 

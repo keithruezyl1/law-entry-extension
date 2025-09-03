@@ -906,14 +906,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         {/* Toast for possible duplicates */}
         {nearDuplicates && nearDuplicates.length > 0 && (
           <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
-            <div className="shadow-lg rounded-lg border-2 border-red-300 bg-red-50 min-w-[320px] max-w-[500px]">
+            <div className="shadow-lg rounded-lg border-2 border-red-300 bg-red-600 min-w-[320px] max-w-[500px]">
               {/* Header */}
-              <div className="flex items-start justify-between p-6 border-b border-red-200">
+              <div className="flex items-start justify-between p-4 border-b border-red-500">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-red-800 mb-2">Possible Matches</h3>
+                  <h3 className="text-lg font-semibold text-white mb-1">Possible Matches</h3>
                 </div>
                 <button 
-                  className="w-8 h-8 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full flex items-center justify-center transition-colors duration-200 ml-6 flex-shrink-0"
+                  className="w-8 h-8 text-white hover:text-red-100 hover:bg-red-700 rounded-full flex items-center justify-center transition-colors duration-200 ml-4 flex-shrink-0"
                   onClick={() => setNearDuplicates([])}
                   title="Close notification"
                 >
@@ -924,20 +924,25 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               </div>
               
               {/* Matches list */}
-              <div className="p-6">
-                <ul className="space-y-4">
+              <div className="p-4">
+                <ul className="space-y-6">
                   {nearDuplicates.slice(0, 5).map((m: any, i: number) => (
-                    <li key={i} className="flex items-start gap-4">
-                      <span className="w-3 h-3 bg-red-400 rounded-full mt-2 flex-shrink-0"></span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 text-sm leading-tight mb-2">{m.title}</div>
-                        <div className="text-xs text-gray-500 mb-2">{m.type}</div>
-                        {m.canonical_citation && (
-                          <div className="text-xs text-blue-600 font-mono bg-blue-50 px-3 py-2 rounded">
-                            {m.canonical_citation}
-                          </div>
-                        )}
+                    <li key={i} className="group">
+                      <div className="flex items-start gap-3">
+                        <span className="w-3 h-3 bg-white rounded-full mt-2 flex-shrink-0"></span>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="font-medium text-white text-sm leading-tight">{m.title}</div>
+                          <div className="text-xs text-red-100">{m.type}</div>
+                          {m.canonical_citation && (
+                            <div className="text-xs text-blue-200 font-mono bg-red-700 px-3 py-2 rounded">
+                              {m.canonical_citation}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      {i < nearDuplicates.slice(0, 5).length - 1 && (
+                        <div className="border-t border-red-500 mt-3 pt-3"></div>
+                      )}
                     </li>
                   ))}
                 </ul>
