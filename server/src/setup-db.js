@@ -30,6 +30,9 @@ async function setupDatabase() {
       join(__dirname, '../sql/004_shared_plans.sql'),
       join(__dirname, '../sql/005_simple_passwords.sql'),
       join(__dirname, '../sql/006_kb_entries_extend.sql'),
+      // Idempotent post-initial migrations
+      join(__dirname, '../sql/007_add_created_by_name.sql'),
+      join(__dirname, '../sql/008_add_verified.sql'),
     ];
 
     console.log('SQL files to execute:', sqlFiles);
