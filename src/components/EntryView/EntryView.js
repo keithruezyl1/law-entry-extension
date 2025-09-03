@@ -138,18 +138,19 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
 
     // Helper function to render a field with proper alignment
     const renderField = (label, value, type = 'text') => {
-      if (value === null || value === undefined || value === '') return null;
+      let displayValue = 'Empty';
       
-      let displayValue = value;
-      if (type === 'array' && Array.isArray(value)) {
-        displayValue = value.length > 0 ? value.join(', ') : null;
-      } else if (type === 'object' && typeof value === 'object') {
-        displayValue = JSON.stringify(value, null, 2);
-      } else if (type === 'date' && value) {
-        displayValue = formatDate(value);
+      if (value !== null && value !== undefined && value !== '') {
+        if (type === 'array' && Array.isArray(value)) {
+          displayValue = value.length > 0 ? value.join(', ') : 'Empty';
+        } else if (type === 'object' && typeof value === 'object') {
+          displayValue = JSON.stringify(value, null, 2);
+        } else if (type === 'date' && value) {
+          displayValue = formatDate(value);
+        } else {
+          displayValue = String(value);
+        }
       }
-      
-      if (displayValue === null || displayValue === '') return null;
       
       return (
         <div className="info-item" key={label}>
@@ -161,22 +162,24 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
 
     // Helper function to render array fields with proper structure
     const renderArrayFieldStructured = (fieldName, items, label, itemRenderer = null) => {
-      if (!items || !Array.isArray(items) || items.length === 0) return null;
-      
       return (
         <div className="field-group" key={fieldName}>
           <h4 className="field-group-title">{label}</h4>
           <div className="field-group-content">
-            {itemRenderer ? (
-              items.map((item, index) => itemRenderer(item, index))
+            {items && Array.isArray(items) && items.length > 0 ? (
+              itemRenderer ? (
+                items.map((item, index) => itemRenderer(item, index))
+              ) : (
+                <ul className="array-list">
+                  {items.map((item, index) => (
+                    <li key={index} className="array-item">
+                      {typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)}
+                    </li>
+                  ))}
+                </ul>
+              )
             ) : (
-              <ul className="array-list">
-                {items.map((item, index) => (
-                  <li key={index} className="array-item">
-                    {typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)}
-                  </li>
-                ))}
-              </ul>
+              <div className="empty-field">Empty</div>
             )}
           </div>
         </div>
@@ -185,31 +188,33 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
 
     // Helper function to render legal bases with proper structure
     const renderLegalBasesStructured = (legalBases) => {
-      if (!legalBases || !Array.isArray(legalBases) || legalBases.length === 0) return null;
-      
       return (
         <div className="field-group">
           <h4 className="field-group-title">Legal Bases</h4>
           <div className="field-group-content">
-            <div className="legal-bases-list">
-              {legalBases.map((basis, index) => (
-                <div key={index} className="legal-basis-item">
-                  <div className="basis-header">
-                    <span className="basis-type">{basis.type}</span>
-                    {basis.topic && <span className="basis-topic">({basis.topic})</span>}
+            {legalBases && Array.isArray(legalBases) && legalBases.length > 0 ? (
+              <div className="legal-bases-list">
+                {legalBases.map((basis, index) => (
+                  <div key={index} className="legal-basis-item">
+                    <div className="basis-header">
+                      <span className="basis-type">{basis.type}</span>
+                      {basis.topic && <span className="basis-topic">({basis.topic})</span>}
+                    </div>
+                    <div className="basis-content">
+                      {basis.type === 'internal' ? basis.entry_id : basis.citation}
+                    </div>
+                    {basis.note && <div className="basis-note">{basis.note}</div>}
+                    {basis.url && (
+                      <a href={basis.url} target="_blank" rel="noopener noreferrer" className="basis-url">
+                        {basis.url}
+                      </a>
+                    )}
                   </div>
-                  <div className="basis-content">
-                    {basis.type === 'internal' ? basis.entry_id : basis.citation}
-                  </div>
-                  {basis.note && <div className="basis-note">{basis.note}</div>}
-                  {basis.url && (
-                    <a href={basis.url} target="_blank" rel="noopener noreferrer" className="basis-url">
-                      {basis.url}
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-field">Empty</div>
+            )}
           </div>
         </div>
       );
@@ -513,19 +518,25 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             <h3>Dates</h3>
             <div className="info-grid">
               <div className="info-item">
+                <span className="label">Entry Created:</span>
+                <span className="value">{formatDateTime(entry.created_at)}</span>
+              </div>
+              <div className="info-item">
                 <span className="label">Effective Date:</span>
                 <span className="value">{formatDate(entry.effective_date)}</span>
               </div>
+              {entry.last_reviewed && (
+                <div className="info-item">
+                  <span className="label">Last Reviewed:</span>
+                  <span className="value">{formatDate(entry.last_reviewed)}</span>
+                </div>
+              )}
               {entry.amendment_date && (
                 <div className="info-item">
                   <span className="label">Amendment Date:</span>
                   <span className="value">{formatDate(entry.amendment_date)}</span>
                 </div>
               )}
-              <div className="info-item">
-                <span className="label">Created:</span>
-                <span className="value">{formatDateTime(entry.created_at)}</span>
-              </div>
               <div className="info-item">
                 <span className="label">Last Updated:</span>
                 <span className="value">{formatDateTime(entry.updated_at)}</span>

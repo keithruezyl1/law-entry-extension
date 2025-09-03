@@ -200,7 +200,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       law_family: '',
       section_id: '',
       canonical_citation: '',
-      status: 'active',
+      status: '',
       effective_date: new Date().toISOString().slice(0, 10),
       amendment_date: null,
       summary: '',

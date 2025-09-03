@@ -367,6 +367,16 @@
   word-break: break-word;
 }
 
+.empty-field {
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  color: #6c757d;
+  font-style: italic;
+  text-align: center;
+}
+
 .field-group h4 {
   color: #495057;
   margin-bottom: 0.5rem;
@@ -527,9 +537,9 @@
   white-space: pre-wrap;
   max-height: 300px;
   overflow-y: auto;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #333;
 }
 
 .no-entry {

@@ -227,7 +227,8 @@ router.post('/entries', async (req, res) => {
          jurisprudence=$46,
          legal_bases=$47,
          related_sections=$48,
-         embedding=COALESCE($49::vector, kb_entries.embedding),
+         created_by_name=$49,
+         embedding=COALESCE($50::vector, kb_entries.embedding),
          updated_at=now()
        where entry_id=$1`,
       [
@@ -279,6 +280,7 @@ router.post('/entries', async (req, res) => {
         JSON.stringify(parsed.jurisprudence || []),
         JSON.stringify(parsed.legal_bases || []),
         JSON.stringify(parsed.related_sections || []),
+        createdByName,
         embeddingLiteral,
       ]
     );
