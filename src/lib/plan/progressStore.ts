@@ -87,16 +87,16 @@ export function clearDate(dateISO: string) {
 }
 
 // Function to automatically update progress when an entry is created
-export function updateProgressForEntry(dateISO: string, personId: string, entryType: string) {
+export function updateProgressForEntry(dateISO: string, personIdOrUsername: string, entryType: string) {
   try {
-    // Get current count for this person and entry type
-    const currentCount = getCount(dateISO, personId, entryType);
+    const personKey = String(personIdOrUsername).trim();
+    const currentCount = getCount(dateISO, personKey, entryType);
     
     // Increment the count
     const newCount = currentCount + 1;
-    setCount(dateISO, personId, entryType, newCount);
+    setCount(dateISO, personKey, entryType, newCount);
     
-    console.log(`Updated progress for ${personId} on ${dateISO}: ${entryType} = ${newCount}`);
+    console.log(`Updated progress for ${personKey} on ${dateISO}: ${entryType} = ${newCount}`);
     
     return newCount;
   } catch (error) {

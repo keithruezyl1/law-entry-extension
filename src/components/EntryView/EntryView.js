@@ -507,6 +507,20 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 <span className="value">{getTeamMemberName(entry.team_member_id)}</span>
               </div>
               <div className="info-item">
+                <span className="label">Visibility:</span>
+                <span className="value">
+                  {(() => {
+                    const v = entry.visibility;
+                    if (!v) return 'GLI';
+                    const gli = typeof v === 'object' ? v.gli !== false : true;
+                    const cpa = typeof v === 'object' ? v.cpa === true : false;
+                    if (gli && cpa) return 'GLI & CPA';
+                    if (cpa) return 'CPA';
+                    return 'GLI';
+                  })()}
+                </span>
+              </div>
+              <div className="info-item">
                 <span className="label">Jurisdiction:</span>
                 <span className="value">{jurisdiction ? jurisdiction.label : entry.jurisdiction}</span>
               </div>

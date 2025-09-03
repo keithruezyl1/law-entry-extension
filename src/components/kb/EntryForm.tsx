@@ -655,6 +655,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       ...sanitized,
       team_member_id: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
       created_by_name: user?.name || user?.username,
+      created_by_username: user?.username,
     } as any;
     
     console.log('Form data being sent:', withMember);
