@@ -92,48 +92,48 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
     if (!legalBases || legalBases.length === 0) return null;
     
     return (
-      <div className="field-group">
-        <h4>Legal Bases</h4>
-        <div className="legal-bases-grid">
-          {legalBases.map((basis, index) => (
-            <div key={index} className="legal-basis-card">
-              <div className="basis-header">
-                <span className={`basis-type-pill ${basis.type}`}>
-                  {basis.type === 'internal' ? 'Internal' : 'External'}
-                </span>
-                {basis.topic && <span className="basis-topic-pill">{basis.topic}</span>}
-              </div>
-              <div className="basis-content">
-                {basis.type === 'internal' ? (
-                  <button
-                    className="link-button"
-                    onClick={async () => {
-                      const entryId = basis.entry_id;
-                      if (!entryId) return;
-                      const target = await fetchEntryById(entryId);
-                      if (target) {
-                        window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
-                      }
-                    }}
-                  >
-                    {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
-                  </button>
-                ) : (
-                  <span className="external-citation">{basis.citation}</span>
+              <div className="field-group">
+          <h4>Legal Bases</h4>
+          <div className="legal-bases-grid">
+            {legalBases.map((basis, index) => (
+              <div key={index} className="legal-basis-card">
+                <div className="basis-header">
+                  <span className={`basis-type-pill ${basis.type}`}>
+                    {basis.type === 'internal' ? 'Internal' : 'External'}
+                  </span>
+                  {basis.topic && <span className="basis-topic-pill">{basis.topic}</span>}
+                </div>
+                <div className="basis-content">
+                  {basis.type === 'internal' ? (
+                    <button
+                      className="link-button"
+                      onClick={async () => {
+                        const entryId = basis.entry_id;
+                        if (!entryId) return;
+                        const target = await fetchEntryById(entryId);
+                        if (target) {
+                          window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                        }
+                      }}
+                    >
+                      {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
+                    </button>
+                  ) : (
+                    <span className="external-citation">{basis.citation}</span>
+                  )}
+                </div>
+                {basis.note && <div className="basis-note">{basis.note}</div>}
+                {basis.url && (
+                  <div className="basis-url">
+                    <a href={basis.url} target="_blank" rel="noopener noreferrer" className="url-link">
+                      {basis.url}
+                    </a>
+                  </div>
                 )}
               </div>
-              {basis.note && <div className="basis-note">{basis.note}</div>}
-              {basis.url && (
-                <div className="basis-url">
-                  <a href={basis.url} target="_blank" rel="noopener noreferrer" className="url-link">
-                    {basis.url}
-                  </a>
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
     );
   };
 
@@ -217,6 +217,13 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           displayValue = formatDate(value);
         } else {
           displayValue = String(value);
+        }
+      }
+      
+      // Special handling for Prescriptive Period
+      if (label === 'Prescriptive Period') {
+        if (value === null || value === undefined || value === '' || value === 'NA' || value === 'na' || value === 'N/A' || value === 'Not Available' || value === 'Not available') {
+          displayValue = 'No prescriptive period';
         }
       }
       
@@ -522,6 +529,9 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
               <h1>{currentEntry.title}</h1>
               <span className="entry-id-badge">{currentEntry.entry_id}</span>
               <span className="entry-type-badge">{entryType ? entryType.label : currentEntry.type}</span>
+              <span className={`status-badge status-${currentEntry.status}`}>
+                {currentEntry.status}
+              </span>
             </div>
             {currentEntry.offline && currentEntry.offline.pack_include && (
               <div className="offline-pack-indicator">
@@ -589,14 +599,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 <span className="label">Canonical Citation:</span>
                 <span className="value">{currentEntry.canonical_citation}</span>
               </div>
-              <div className="info-item">
-                <span className="label">Status:</span>
-                <span className="value">
-                  <span className={`status-badge status-${currentEntry.status}`}>
-                    {currentEntry.status}
-                  </span>
-                </span>
-              </div>
+
             </div>
           </div>
 
@@ -740,42 +743,42 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             {renderLegalBases(currentEntry.legal_bases) || (
               <div className="field-group"><h4>Legal Bases</h4><div className="empty-field">Empty</div></div>
             )}
-            <div className="field-group">
-              <h4>Related Sections</h4>
-              {currentEntry.related_sections && currentEntry.related_sections.length > 0 ? (
-                <div className="related-sections-grid">
-                  {currentEntry.related_sections.map((rel, idx) => (
-                    <div key={idx} className="related-section-card">
-                      <div className="section-header">
-                        <span className={`section-type-pill ${rel?.type || 'unknown'}`}>
-                          {rel?.type === 'internal' ? 'Internal' : 'External'}
-                        </span>
-                      </div>
-                      <div className="section-content">
-                        {rel?.type === 'internal' && rel?.entry_id ? (
-                          <button className="link-button" onClick={async () => {
-                            const target = await fetchEntryById(rel.entry_id);
-                            if (target) {
-                              window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
-                            }
-                          }}>
-                            {rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}
-                          </button>
-                        ) : (
-                          <span className="external-citation">{String(rel?.citation || rel)}</span>
+                          <div className="field-group">
+                <h4>Related Sections</h4>
+                {currentEntry.related_sections && currentEntry.related_sections.length > 0 ? (
+                  <div className="related-sections-grid">
+                    {currentEntry.related_sections.map((rel, idx) => (
+                      <div key={idx} className="related-section-card">
+                        <div className="section-header">
+                          <span className={`section-type-pill ${rel?.type || 'unknown'}`}>
+                            {rel?.type === 'internal' ? 'Internal' : 'External'}
+                          </span>
+                        </div>
+                        <div className="section-content">
+                          {rel?.type === 'internal' && rel?.entry_id ? (
+                            <button className="link-button" onClick={async () => {
+                              const target = await fetchEntryById(rel.entry_id);
+                              if (target) {
+                                window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                              }
+                            }}>
+                              {rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}
+                            </button>
+                          ) : (
+                            <span className="external-citation">{String(rel?.citation || rel)}</span>
+                          )}
+                        </div>
+                        {rel?.note && <div className="section-note">{rel.note}</div>}
+                        {rel?.url && (
+                          <div className="section-url">
+                            <a href={rel.url} target="_blank" rel="noopener noreferrer" className="url-link">
+                              {rel.url}
+                            </a>
+                          </div>
                         )}
                       </div>
-                      {rel?.note && <div className="section-note">{rel.note}</div>}
-                      {rel?.url && (
-                        <div className="section-url">
-                          <a href={rel.url} target="_blank" rel="noopener noreferrer" className="url-link">
-                            {rel.url}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
               ) : (
                 <div className="empty-field">Empty</div>
               )}

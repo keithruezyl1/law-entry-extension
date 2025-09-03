@@ -363,11 +363,15 @@ export const useLocalStorage = () => {
 
     // Team member filter
     if (filters.team_member_id && filters.team_member_id !== 'all') {
+      console.log('Team member filter active:', filters.team_member_id);
+      console.log('Available entries with team members:', filteredEntries.map(e => ({ id: e.entry_id, team_member_id: e.team_member_id })));
       filteredEntries = filteredEntries.filter(entry => {
         const entryTeamMember = entry.team_member_id;
         const filterTeamMember = filters.team_member_id;
+        console.log('Comparing:', { entryTeamMember, filterTeamMember, matches: entryTeamMember === filterTeamMember });
         return entryTeamMember === filterTeamMember; // Use === for strict equality
       });
+      console.log('Filtered entries after team member filter:', filteredEntries.length);
     }
 
     // Tags filter

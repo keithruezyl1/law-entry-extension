@@ -353,12 +353,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       }
     } catch (_) {}
     setEditingEntry(null);
+    // Set session storage to indicate user came from dashboard
+    sessionStorage.setItem('cameFromDashboard', 'true');
     navigate('/law-entry/1');
   };
 
   const handleResumeYes = () => {
     setEditingEntry(resumeDraft || null);
     setShowResumeModal(false);
+    // Set session storage to indicate user came from dashboard
+    sessionStorage.setItem('cameFromDashboard', 'true');
     navigate('/law-entry/1');
   };
 
@@ -367,6 +371,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setResumeDraft(null);
     setShowResumeModal(false);
     setEditingEntry(null);
+    // Set session storage to indicate user came from dashboard
+    sessionStorage.setItem('cameFromDashboard', 'true');
     navigate('/law-entry/1');
   };
 
@@ -378,6 +384,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     const entryToEdit = entries.find(entry => entry.id === entryId || entry.entry_id === entryId);
     if (entryToEdit) {
       setEditingEntry(entryToEdit);
+      // Set session storage to indicate user came from dashboard
+      sessionStorage.setItem('cameFromDashboard', 'true');
       // Route to dedicated edit URL so edit mode is activated and drafts do not load
       navigate(`/entry/${entryId}/edit?step=1`);
     } else {

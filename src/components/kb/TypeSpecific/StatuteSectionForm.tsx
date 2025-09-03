@@ -78,29 +78,41 @@ export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
         )}
       />
       
-      <FormField
-        control={control}
-        name="prescriptive_period.unit"
-        render={({ field }) => (
-          <FormItem className="kb-field-spaced">
-            <FormLabel className="kb-form-label kb-label-spaced-sm">Prescriptive Period Unit</FormLabel>
-            <FormControl>
-              {/* Hide when value is NA */}
-              <Select
-                {...field}
-                options={[
-                  { value: 'days', label: 'Days' },
-                  { value: 'months', label: 'Months' },
-                  { value: 'years', label: 'Years' },
-                  { value: 'NA', label: 'NA' }
-                ]}
-                className="kb-form-select"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {/* Only show unit field when value is not NA */}
+      {(() => {
+        // Get the current value from the form context to check if it's NA
+        const currentValue = control._formValues?.prescriptive_period?.value;
+        const shouldHideUnit = currentValue === 'NA';
+        
+        if (shouldHideUnit) {
+          return null; // Don't render the field when value is NA
+        }
+        
+        return (
+          <FormField
+            control={control}
+            name="prescriptive_period.unit"
+            render={({ field }) => (
+              <FormItem className="kb-field-spaced">
+                <FormLabel className="kb-form-label kb-label-spaced-sm">Prescriptive Period Unit</FormLabel>
+                <FormControl>
+                  <Select
+                    {...field}
+                    options={[
+                      { value: 'days', label: 'Days' },
+                      { value: 'months', label: 'Months' },
+                      { value: 'years', label: 'Years' },
+                      { value: 'NA', label: 'NA' }
+                    ]}
+                    className="kb-form-select"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+      })()}
       
       <div className="md:col-span-2">
         <FormField

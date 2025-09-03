@@ -34,6 +34,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
   // const allTags = getAllTags();
 
   const filteredEntries = useMemo(() => {
+    console.log('EntryList filtering with:', { searchQuery, filters, teamMemberNames });
     const filtered = searchEntries(searchQuery, filters);
     console.log('Filtered entries:', filtered);
     console.log('Filtered entries length:', filtered.length);
@@ -222,16 +223,16 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
                       )}
                     </div>
                   </div>
-                  <div className="entry-subtitle-row">
-                    <div className="entry-subtitle">civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}</div>
-                    
-                    {entry.team_member_id && (
-                      <div className="entry-team-member">
-                        Team: {getTeamMemberName(entry.team_member_id)}
-                      </div>
-                    )}
-                    
-                    {entry.tags && entry.tags.length > 0 && (
+                                      <div className="entry-subtitle-row">
+                      <div className="entry-subtitle">civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}</div>
+                      
+                      {entry.team_member_id && (
+                        <div className="entry-team-member">
+                          Team: {getTeamMemberName(entry.team_member_id)}
+                        </div>
+                      )}
+                      
+                      {entry.tags && entry.tags.length > 0 && (
                       <div className="entry-tags-text">
                         {entry.tags.slice(0, 3).join(', ')}
                         {entry.tags.length > 3 && ` + ${entry.tags.length - 3} more`}
