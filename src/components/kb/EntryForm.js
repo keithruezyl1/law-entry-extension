@@ -456,7 +456,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                           type="url"
                           value={url}
                           onChange={(e) => handleArrayChange('source_urls', index, e.target.value)}
-                          placeholder="https://official-government-website.gov.ph"
+                          placeholder="e.g., https://official-government-website.gov.ph"
                           className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         />
                         <button
@@ -472,9 +472,9 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                     <button
                       type="button"
                       onClick={() => addArrayItem('source_urls')}
-                      className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors border-2 border-dashed border-gray-300"
+                      className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors"
                     >
-                      + Add More Links
+                      + Add Item
                     </button>
                   </div>
                 </div>

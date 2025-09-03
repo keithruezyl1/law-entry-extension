@@ -31,9 +31,9 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
           <div key={field.id} className="flex gap-2">
             <Input
               {...register(`${name}.${index}` as const)}
-              placeholder="https://example.com"
+              placeholder="e.g., https://official-government-website.gov.ph"
               type="url"
-              className="flex-1"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             />
             <Button
               type="button"
@@ -52,10 +52,10 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
           variant="outline"
           size="sm"
           onClick={() => append('')}
-          className="w-full"
+          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors"
         >
           <Plus className="h-4 w-4 mr-2" />
-          + Add More Links
+          + Add Item
         </Button>
       </div>
     </div>

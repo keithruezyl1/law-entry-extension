@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
 
@@ -459,23 +458,15 @@ router.post('/entries/:entryId/verify', async (req, res) => {
     const entryId = String(req.params.entryId || '').trim();
     if (!entryId) return res.status(400).json({ success: false, error: 'entryId is required' });
     
-    // Get user info from JWT token
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, error: 'Authorization token required' });
-    }
-    
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    
-    if (!decoded || !decoded.id) {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
+    // User info is already available from authenticateToken middleware
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ success: false, error: 'User not authenticated' });
     }
     
     // Get user details
     const userResult = await query(
       'SELECT name, person_id FROM users WHERE id = $1',
-      [decoded.id]
+      [req.user.userId]
     );
     
     if (!userResult.rows.length) {

@@ -1311,14 +1311,14 @@ function UrlArray({ control, register, watch, setValue }: any) {
           <div key={field.id} className="flex gap-2">
             <input
               {...register(`source_urls.${index}` as const)}
-              placeholder="https://official..."
+              placeholder="e.g., https://official-government-website.gov.ph"
               type="url"
-              className="kb-input flex-1"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             />
             <button
               type="button"
               onClick={() => remove(index)}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
             >
               🗑️
             </button>
@@ -1331,9 +1331,9 @@ function UrlArray({ control, register, watch, setValue }: any) {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors border-2 border-dashed border-gray-300"
+          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors"
         >
-          + Add More Links
+          + Add Item
         </button>
       </div>
     </div>
