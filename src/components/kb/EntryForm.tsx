@@ -267,10 +267,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
   const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
+  const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
+  const [showDraftLoaded, setShowDraftLoaded] = useState<boolean>(false);
 
   //
 
-  // Reset form when entry prop changes (for editing mode)
+  // Load draft data or reset form when entry prop changes
   useEffect(() => {
     if (entry) {
       console.log('Resetting form with entry data:', entry);
@@ -332,6 +334,79 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       
       console.log('Comprehensive reset data:', resetData);
       methods.reset(resetData as any);
+    } else {
+      // Try to load draft data for new entries
+      try {
+        const draftData = localStorage.getItem('kb_entry_draft');
+        if (draftData) {
+          const parsed = JSON.parse(draftData);
+          console.log('Loading draft data:', parsed);
+          
+          // Merge draft data with defaults, preserving user input
+          const mergedData = {
+            type: parsed.type || 'statute_section',
+            entry_id: parsed.entry_id || '',
+            title: parsed.title || '',
+            jurisdiction: parsed.jurisdiction || 'PH',
+            law_family: parsed.law_family || '',
+            section_id: parsed.section_id || '',
+            canonical_citation: parsed.canonical_citation || '',
+            status: parsed.status || '',
+            effective_date: parsed.effective_date || new Date().toISOString().slice(0, 10),
+            amendment_date: parsed.amendment_date || null,
+            summary: parsed.summary || '',
+            text: parsed.text || '',
+            source_urls: parsed.source_urls || [],
+            tags: parsed.tags || [],
+            last_reviewed: parsed.last_reviewed || new Date().toISOString().slice(0, 10),
+            visibility: parsed.visibility || { gli: true, cpa: false },
+            // Type-specific fields
+            elements: parsed.elements || [],
+            penalties: parsed.penalties || [],
+            defenses: parsed.defenses || [],
+            prescriptive_period: parsed.prescriptive_period || null,
+            standard_of_proof: parsed.standard_of_proof || '',
+            rule_no: parsed.rule_no || '',
+            section_no: parsed.section_no || '',
+            triggers: parsed.triggers || [],
+            time_limits: parsed.time_limits || [],
+            required_forms: parsed.required_forms || [],
+            circular_no: parsed.circular_no || '',
+            applicability: parsed.applicability || [],
+            issuance_no: parsed.issuance_no || '',
+            instrument_no: parsed.instrument_no || '',
+            supersedes: parsed.supersedes || [],
+            steps_brief: parsed.steps_brief || [],
+            forms_required: parsed.forms_required || [],
+            failure_states: parsed.failure_states || [],
+            violation_code: parsed.violation_code || '',
+            violation_name: parsed.violation_name || '',
+            license_action: parsed.license_action || '',
+            fine_schedule: parsed.fine_schedule || [],
+            apprehension_flow: parsed.apprehension_flow || [],
+            incident: parsed.incident || '',
+            phases: parsed.phases || [],
+            forms: parsed.forms || [],
+            handoff: parsed.handoff || [],
+            rights_callouts: parsed.rights_callouts || [],
+            rights_scope: parsed.rights_scope || '',
+            advice_points: parsed.advice_points || [],
+            topics: parsed.topics || [],
+            jurisprudence: parsed.jurisprudence || [],
+            legal_bases: parsed.legal_bases || [],
+            related_sections: parsed.related_sections || [],
+          };
+          
+          console.log('Merged draft data with defaults:', mergedData);
+          methods.reset(mergedData as any);
+          
+          // Show notification that draft was loaded
+          setShowDraftLoaded(true);
+          setTimeout(() => setShowDraftLoaded(false), 3000);
+        }
+      } catch (e) {
+        console.error('Failed to load draft data:', e);
+      }
     }
   }, [entry, methods]);
 
@@ -379,6 +454,21 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       alert("Amendment date is required when status is 'amended'.");
       return;
     }
+    
+    // Auto-save draft before moving to next step
+    if (!entry) {
+      try {
+        setIsAutoSaving(true);
+        const draft = getValues();
+        localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
+        console.log('Auto-saved draft before moving to next step');
+        setTimeout(() => setIsAutoSaving(false), 1000);
+      } catch (e) {
+        console.error('Failed to auto-save draft:', e);
+        setIsAutoSaving(false);
+      }
+    }
+    
     setCurrentStep((s) => {
       const next = Math.min(steps[steps.length - 1].id, s + 1);
       // Update URL - check if we're in edit mode
@@ -397,7 +487,21 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     });
   };
 
-  const goPrev = () =>
+  const goPrev = () => {
+    // Auto-save draft before moving to previous step
+    if (!entry) {
+      try {
+        setIsAutoSaving(true);
+        const draft = getValues();
+        localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
+        console.log('Auto-saved draft before moving to previous step');
+        setTimeout(() => setIsAutoSaving(false), 1000);
+      } catch (e) {
+        console.error('Failed to auto-save draft:', e);
+        setIsAutoSaving(false);
+      }
+    }
+    
     setCurrentStep((s) => {
       const prev = Math.max(1, s - 1);
       // Update URL - check if we're in edit mode
@@ -413,6 +517,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       setTimeout(scrollToCardTop, 0);
       return prev;
     });
+  };
 
   // Save draft: persist current form values to localStorage
   const saveDraft = () => {
@@ -435,18 +540,43 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   };
   const abortCancel = () => setShowCancelConfirm(false);
 
-  // Optional: Debounced autosave every 10s while editing (only for new entries)
+  // Enhanced autosave: save on form changes and every 5 seconds (only for new entries)
   useEffect(() => {
     if (entry) return; // Don't auto-save when editing existing entries
     
-    const interval = setInterval(() => {
+    // Save immediately when form values change
+    const subscription = watch((value) => {
       try {
+        setIsAutoSaving(true);
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-      } catch {}
+        console.log('Auto-saved draft on form change');
+        setTimeout(() => setIsAutoSaving(false), 1000);
+      } catch (e) {
+        console.error('Failed to auto-save draft on form change:', e);
+        setIsAutoSaving(false);
+      }
+    });
+    
+    // Also save every 5 seconds as backup
+    const interval = setInterval(() => {
+      try {
+        setIsAutoSaving(true);
+        const draft = getValues();
+        localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
+        console.log('Auto-saved draft on interval');
+        setTimeout(() => setIsAutoSaving(false), 1000);
+      } catch (e) {
+        console.error('Failed to auto-save draft on interval:', e);
+        setIsAutoSaving(false);
+      }
     }, 5000);
-    return () => clearInterval(interval);
-  }, [getValues, entry]);
+    
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(interval);
+    };
+  }, [watch, getValues, entry]);
 
   const onSubmit = (data: Entry) => {
     console.log('Form data being submitted:', data);
@@ -493,11 +623,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }
 
+    console.log('Validating business rules...');
     const errs = validateBusinessRules(sanitized);
     if (errs.length) {
+      console.log('Business rule validation errors:', errs);
       alert(errs.join('\n'));
       return;
     }
+    console.log('Business rules validation passed');
     
     // Clear draft
     try {
@@ -511,6 +644,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       team_member_id: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
       created_by_name: user?.name || user?.username,
     } as any;
+    
+    console.log('Form data being sent:', withMember);
+    console.log('Status field value:', withMember.status);
+    console.log('Effective date value:', withMember.effective_date);
     
     // Automatically update progress for the user
     if (user?.personId && sanitized.type) {
@@ -567,7 +704,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <div>
               <h1 className="kb-form-title">{entry ? 'Edit Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
               <p className="kb-form-subtitle">{entry ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
+              {!entry && (
+                <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
+              )}
             </div>
+            {/* Auto-saving indicator */}
+            {!entry && isAutoSaving && (
+              <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
+                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span>Auto-saving...</span>
+              </div>
+            )}
           </header>
 
           <div className="kb-form-layout grid grid-cols-12 gap-6 md:gap-8 items-stretch justify-center">
@@ -760,7 +907,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                           </Button>
                           <div className="flex gap-3">
                             {!entry && (
-                              <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                              <div className="flex items-center gap-2">
+                                <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                                {isAutoSaving && (
+                                  <div className="flex items-center gap-1 text-xs text-blue-600">
+                                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                    <span>Auto-saving</span>
+                                  </div>
+                                )}
+                              </div>
                             )}
                             <Button type="button" onClick={goNext} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200">
                               Next
@@ -942,6 +1097,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         <Modal isOpen={showDraftSaved} onClose={() => setShowDraftSaved(false)} title="Draft saved" subtitle={null}>
           <div className="text-center p-4">
             <p className="text-sm text-gray-600">Your draft has been saved locally.</p>
+          </div>
+        </Modal>
+        
+        {/* Draft Loaded Modal */}
+        <Modal isOpen={showDraftLoaded} onClose={() => setShowDraftLoaded(false)} title="Draft restored" subtitle={null}>
+          <div className="text-center p-4">
+            <p className="text-sm text-gray-600">Your previous draft has been restored. All your inputs have been preserved.</p>
           </div>
         </Modal>
         <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Are you sure you want to cancel?" subtitle="This will delete all your current inputs in the forms.">

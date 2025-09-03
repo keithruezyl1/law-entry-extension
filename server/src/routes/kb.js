@@ -151,7 +151,7 @@ router.post('/entries', async (req, res) => {
     }
 
     const createdBy = req.user?.userId || null;
-    const createdByName = req.user?.name || null;
+    const createdByName = parsed.created_by_name || req.user?.name || null;
 
     // 1) Ensure row exists with required non-null columns
     try {
