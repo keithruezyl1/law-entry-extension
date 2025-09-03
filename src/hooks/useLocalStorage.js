@@ -364,21 +364,39 @@ export const useLocalStorage = () => {
       // Team member filter
   if (filters.team_member_id && filters.team_member_id !== 'all') {
     console.log('Team member filter active:', filters.team_member_id);
-    console.log('Available entries with team members:', filteredEntries.map(e => ({ id: e.entry_id, team_member_id: e.team_member_id, team_member_type: typeof e.team_member_id })));
+    console.log('Available entries with team members:', filteredEntries.map(e => ({ 
+      id: e.entry_id, 
+      team_member_id: e.team_member_id, 
+      team_member_type: typeof e.team_member_id,
+      created_by_name: e.created_by_name,
+      created_by_username: e.created_by_username
+    })));
     console.log('Filter team member type:', typeof filters.team_member_id);
     filteredEntries = filteredEntries.filter(entry => {
+      // Check multiple fields for team member identification
       const entryTeamMember = entry.team_member_id;
+      const entryCreatedByName = entry.created_by_name;
+      const entryCreatedByUsername = entry.created_by_username;
       const filterTeamMember = filters.team_member_id;
+      
       console.log('Comparing:', { 
         entryTeamMember, 
+        entryCreatedByName,
+        entryCreatedByUsername,
         filterTeamMember, 
         entryType: typeof entryTeamMember, 
-        filterType: typeof filterTeamMember,
-        matches: entryTeamMember === filterTeamMember,
-        strictMatches: entryTeamMember === filterTeamMember
+        filterType: typeof filterTeamMember
       });
-      // Convert both to strings for comparison to handle type mismatches
-      return String(entryTeamMember) === String(filterTeamMember);
+      
+      // Try to match by team_member_id first, then by created_by_name
+      const matchesId = String(entryTeamMember) === String(filterTeamMember);
+      const matchesName = entryCreatedByName && String(entryCreatedByName).toLowerCase() === String(filterTeamMember).toLowerCase();
+      const matchesUsername = entryCreatedByUsername && String(entryCreatedByUsername).toLowerCase() === String(filterTeamMember).toLowerCase();
+      
+      const isMatch = matchesId || matchesName || matchesUsername;
+      console.log('Match results:', { matchesId, matchesName, matchesUsername, isMatch });
+      
+      return isMatch;
     });
     console.log('Filtered entries after team member filter:', filteredEntries.length);
   }
