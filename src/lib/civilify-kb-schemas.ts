@@ -77,7 +77,7 @@ export const StatuteSection = BaseEntry.extend({
   // Allow NA string for value, or a positive number; entire field optional
   prescriptive_period: z
     .object({
-      value: z.union([z.number().positive(), z.string().transform((v) => v.toUpperCase()).refine((v) => v === 'NA', { message: "Use a number or 'NA'" )]),
+      value: z.union([z.number().positive(), z.literal('NA')]),
       unit: z.enum(["days", "months", "years"]).optional(),
     })
     .optional(),
