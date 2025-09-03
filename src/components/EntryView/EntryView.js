@@ -547,12 +547,11 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 <span className="label">Effective Date:</span>
                 <span className="value">{formatDate(entry.effective_date)}</span>
               </div>
-              {entry.last_reviewed && (
-                <div className="info-item">
-                  <span className="label">{`Last Reviewed${entry?.verified_by ? ` (${entry.verified_by})` : ''}:`}</span>
-                  <span className="value">
-                    {formatDate(entry.last_reviewed)}
-                    {(() => {
+              <div className="info-item">
+                <span className="label">{`Last Reviewed${entry?.verified_by ? ` (${entry.verified_by})` : ''}:`}</span>
+                <span className="value">
+                  {formatDate(entry.last_reviewed)}
+                  {(() => {
                       try {
                         const token = localStorage.getItem('auth_token') || '';
                         const payload = JSON.parse(atob((token || '').split('.')[1] || 'e30='));
@@ -589,13 +588,12 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                         return null;
                       }
                     })()}
-                  </span>
-                </div>
-              )}
+                </span>
+              </div>
               {entry.verified && (
                 <div className="info-item">
                   <span className="label">Verified:</span>
-                  <span className="value">{`Yes${entry.verified_at ? ` (${formatDate(entry.verified_at)})` : ''}`}</span>
+                  <span className="value">{`Yes (${entry.verified_by || '—'} on ${formatDate(entry.verified_at)})`}</span>
                 </div>
               )}
               {entry.amendment_date && (
