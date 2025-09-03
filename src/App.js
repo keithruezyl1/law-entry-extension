@@ -131,21 +131,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     loadActivePlan();
   }, []);
 
-  // React to verification refresh or progress changes
+  // React to verification refresh or progress changes (trigger re-render)
   useEffect(() => {
-    const reload = async () => {
-      try {
-        const dbEntries = await fetchAllEntriesFromDb();
-        if (Array.isArray(dbEntries)) {
-          setEntries(dbEntries.map((e) => ({ ...e, id: e.entry_id })));
-        }
-      } catch {}
-    };
-    window.addEventListener('refresh-entries', reload);
-    window.addEventListener('refresh-progress', () => setHeaderOpacity((v) => v));
+    const forceRerender = () => setHeaderOpacity((v) => v);
+    window.addEventListener('refresh-entries', forceRerender);
+    window.addEventListener('refresh-progress', forceRerender);
     return () => {
-      window.removeEventListener('refresh-entries', reload);
-      window.removeEventListener('refresh-progress', () => setHeaderOpacity((v) => v));
+      window.removeEventListener('refresh-entries', forceRerender);
+      window.removeEventListener('refresh-progress', forceRerender);
     };
   }, []);
 
