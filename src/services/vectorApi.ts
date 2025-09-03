@@ -57,13 +57,15 @@ const BASE_URL = `${API_BASE}/api/kb`;
 export async function upsertEntry(payload: UpsertEntryPayload): Promise<{ success: boolean; entry_id?: string; error?: string }>{
   try {
     const token = localStorage.getItem('auth_token');
+    // Do not send verification fields on initial create to avoid DB column issues
+    const { verified, verified_by, verified_at, ...safePayload } = (payload as any) || {};
     const resp = await fetch(`${BASE_URL}/entries`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(safePayload),
     });
     const json = await resp.json();
     return json;
