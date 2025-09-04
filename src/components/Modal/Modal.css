@@ -105,6 +105,15 @@
   background: #e9ecef;
 }
 
+.modal-button.logout {
+  background: #ff6b35;
+  color: white;
+}
+
+.modal-button.logout:hover {
+  background: #e55a2b;
+}
+
 .modal-options {
   display: flex;
   gap: 1rem;

@@ -1216,7 +1216,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       >
         <div className="modal-buttons">
           <button
-            className="modal-button primary"
+            className="modal-button logout"
             onClick={handleLogoutConfirm}
           >
             Yes, Logout

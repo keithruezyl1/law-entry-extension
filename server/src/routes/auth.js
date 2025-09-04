@@ -39,7 +39,7 @@ router.post('/login', async (req, res) => {
       case 'P2': expectedPassword = 'CivilifyP2!'; break;
       case 'P3': expectedPassword = 'CivilifyP3!'; break;
       case 'P4': expectedPassword = 'CivilifyP4!'; break;
-      case 'P5': expectedPassword = 'CivilifyP5!'; break;
+      case 'P5': expectedPassword = 'Khemic0101!'; break;
       default: expectedPassword = 'CivilifyP1!'; // fallback
     }
     const isValidPassword = password === expectedPassword;
@@ -163,6 +163,32 @@ router.get('/team-members', async (req, res) => {
     res.json({
       success: true,
       team_members: result.rows
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ success: false, error: String(e.message || e) });
+  }
+});
+
+// Update password endpoint
+const UpdatePasswordSchema = z.object({
+  username: z.string().min(1),
+  newPassword: z.string().min(1),
+});
+
+router.post('/update-password', async (req, res) => {
+  try {
+    const { username, newPassword } = UpdatePasswordSchema.parse(req.body);
+    
+    // Update password in database
+    await query(
+      'UPDATE users SET password_hash = $1 WHERE username = $2',
+      [newPassword, username]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Password updated successfully'
     });
   } catch (e) {
     console.error(e);
