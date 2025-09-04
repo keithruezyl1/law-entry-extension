@@ -168,6 +168,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [day1Date, setDay1DateState] = useState(null);
   const [showChat, setShowChat] = useState(false);
   const [planLoading, setPlanLoading] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Load active plan from database on mount
   useEffect(() => {
@@ -697,10 +698,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      logout();
-      navigate('/login');
-    }
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    logout();
+    navigate('/login');
+    setShowLogoutModal(false);
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false);
   };
 
   const handleClearOptionSelect = (option) => {
@@ -1197,6 +1205,29 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             </button>
           </div>
         )}
+      </Modal>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        isOpen={showLogoutModal}
+        onClose={handleLogoutCancel}
+        title="Confirm Logout"
+        subtitle="Are you sure you want to logout?"
+      >
+        <div className="modal-buttons">
+          <button
+            className="modal-button primary"
+            onClick={handleLogoutConfirm}
+          >
+            Yes, Logout
+          </button>
+          <button
+            className="modal-button cancel"
+            onClick={handleLogoutCancel}
+          >
+            Cancel
+          </button>
+        </div>
       </Modal>
 
       {/* Chat Modal (RAG) */}
