@@ -96,7 +96,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           <h4>Legal Bases</h4>
           <div className="legal-bases-grid">
             {legalBases.map((basis, index) => (
-              <div key={index} className="legal-basis-card">
+              <div key={index} className="legal-basis-card clickable">
                 <div className="basis-header">
                   <span className={`basis-type-pill ${basis.type}`}>
                     {basis.type === 'internal' ? 'Internal' : 'External'}
@@ -105,7 +105,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 </div>
                 <div className="basis-content">
                   {basis.type === 'internal' ? (
-                    <button
+                    <span
                       className="link-button"
                       onClick={async () => {
                         const entryId = basis.entry_id;
@@ -117,7 +117,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                       }}
                     >
                       {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
-                    </button>
+                    </span>
                   ) : (
                     <span className="external-citation">{basis.citation}</span>
                   )}

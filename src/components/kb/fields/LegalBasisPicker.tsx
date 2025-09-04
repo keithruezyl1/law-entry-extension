@@ -170,7 +170,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 <button
                   type="button"
                   key={o.entry_id}
-                  className="w-full text-left p-4 hover:bg-muted/50 transition-colors border-b last:border-b-0"
+                  className="w-full text-left p-4 hover:bg-orange-50 active:bg-orange-100 transition-colors border-b last:border-b-0"
                   onClick={async () => {
                     try {
                       const full = await fetchEntryById(o.entry_id);
@@ -183,11 +183,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     setShowInternalSearch(false);
                   }}
                 >
-                  <div className="pl-2">
-                    <div className="font-medium text-sm mt-0.5 mb-1">{o.title}</div>
+                  <div className="pl-3">
+                    <div className="font-medium text-sm mb-0.5">{o.title}</div>
                     <div className="text-xs text-muted-foreground mb-0.5">{o.entry_id}</div>
                     {o.canonical_citation && (
-                      <div className="text-xs text-muted-foreground mb-1">{o.canonical_citation}</div>
+                      <div className="text-xs text-muted-foreground mb-0.5">{o.canonical_citation}</div>
                     )}
                   </div>
                 </button>
