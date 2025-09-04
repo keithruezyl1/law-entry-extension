@@ -676,12 +676,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 <span className="label">Effective Date:</span>
                 <span className="value">{formatDate(currentEntry.effective_date)}</span>
               </div>
-              {currentEntry.verified && (
-                <div className="info-item">
-                  <span className="label">Verified:</span>
-                  <span className="value">{`Yes (${currentEntry.verified_by || '—'} on ${formatDate(currentEntry.verified_at)})`}</span>
-                </div>
-              )}
+              {/* Hide verified row here; show status below */}
               {currentEntry.amendment_date && (
                 <div className="info-item">
                   <span className="label">Amendment Date:</span>
@@ -702,7 +697,9 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
               <div className="info-item">
                 <span className="label">Last Reviewed Date:</span>
                 <span className="value">
-                  {currentEntry.last_reviewed ? formatDate(currentEntry.last_reviewed) : 'Not reviewed'}
+                  {currentEntry.verified_at
+                    ? formatDate(currentEntry.verified_at)
+                    : (currentEntry.last_reviewed ? formatDate(currentEntry.last_reviewed) : 'Not reviewed')}
                 </span>
               </div>
               <div className="info-item">

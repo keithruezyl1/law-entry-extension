@@ -589,10 +589,13 @@
 .btn-verify {
   background: #10b981; /* emerald-500 */
   color: white;
-  padding: 0.35rem 0.6rem;
+  padding: 0.2rem 0.5rem;
+  min-height: 24px;
+  line-height: 1;
   border: none;
   border-radius: 9999px;
   font-weight: 600;
+  font-size: 0.75rem;
   cursor: pointer;
 }
 
@@ -603,10 +606,13 @@
 .btn-reverify {
   background: #f59e0b; /* amber-500 */
   color: white;
-  padding: 0.35rem 0.6rem;
+  padding: 0.2rem 0.5rem;
+  min-height: 24px;
+  line-height: 1;
   border: none;
   border-radius: 9999px;
   font-weight: 600;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
