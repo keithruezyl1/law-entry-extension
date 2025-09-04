@@ -22,9 +22,9 @@ const toastConfig = {
   },
   warning: {
     icon: AlertTriangle,
-    bgColor: 'bg-yellow-600',
-    iconColor: 'text-yellow-600',
-    borderColor: 'border-yellow-200',
+    bgColor: 'bg-amber-600',
+    iconColor: 'text-amber-600',
+    borderColor: 'border-amber-200',
   },
   success: {
     icon: CheckCircle,
@@ -130,9 +130,10 @@ export const Toast: React.FC<ToastProps> = ({
               <h3 className="text-lg font-semibold text-white">{title}</h3>
             </div>
             <button 
-              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200"
+              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30"
               onClick={onClose}
-              title="Close notification"
+              title="Dismiss notification"
+              aria-label="Dismiss notification"
             >
               <X className="w-5 h-5" />
             </button>
@@ -179,49 +180,67 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
   maxDisplay = 5,
   onViewAll,
 }) => {
+  const displayCount = Math.min(matches.length, maxDisplay);
+  const hasMore = matches.length > maxDisplay;
+  const titleText = matches.length === 1 ? "Possible match" : `Possible matches (${matches.length})`;
+
   return (
     <Toast
       isOpen={isOpen}
       onClose={onClose}
-      title="Possible Matches"
+      title={titleText}
       type="warning"
       position="top-right"
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         {matches.slice(0, maxDisplay).map((match, index) => (
-          <div key={`${match.entry_id || index}-${index}`} className="group">
-            {/* Title - Above everything */}
-            <div className="font-bold text-gray-900 text-base leading-tight mb-2">
+          <div 
+            key={`${match.entry_id || index}-${index}`} 
+            className="group p-3 rounded-lg hover:bg-amber-50 focus-within:bg-amber-50 focus-within:ring-2 focus-within:ring-amber-200 focus-within:ring-offset-1 transition-all duration-150 cursor-pointer"
+            tabIndex={0}
+            role="button"
+            aria-label={`View details for ${match.title}`}
+          >
+            {/* Primary line: Entry title */}
+            <div className="font-medium text-gray-900 text-sm leading-snug mb-1 line-clamp-2">
               {match.title}
             </div>
             
-            {/* Citation with yellow dot */}
+            {/* Secondary line: Citation */}
             {match.canonical_citation && (
-              <div className="flex items-start gap-2">
-                {/* Match indicator dot */}
-                <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                
-                {/* Citation */}
-                <div className="text-sm text-gray-700">
-                  {match.canonical_citation}
-                </div>
+              <div className="text-xs text-gray-600 leading-relaxed">
+                {match.canonical_citation}
               </div>
             )}
             
-            {/* Divider between items */}
-            {index < Math.min(matches.length, maxDisplay) - 1 && (
-              <div className="h-px bg-gray-200 my-3"></div>
-            )}
+            {/* Trailing chevron */}
+            <div className="flex justify-end mt-2">
+              <svg 
+                className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
           </div>
         ))}
       </div>
       
-      {/* Footer */}
-      <div className="mt-4 pt-3 border-t border-gray-200">
-        <div className="text-xs text-gray-600">
-          Found {matches.length} potential match{matches.length !== 1 ? 'es' : ''}
+      {/* Footer with CTA when there are more results */}
+      {hasMore && onViewAll && (
+        <div className="mt-4 pt-3 border-t border-amber-200">
+          <button
+            onClick={onViewAll}
+            className="w-full text-center text-sm font-medium text-amber-700 hover:text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-1 rounded-md py-2 transition-colors duration-150"
+            aria-label={`View all ${matches.length} matches`}
+          >
+            View all {matches.length} matches →
+          </button>
         </div>
-      </div>
+      )}
     </Toast>
   );
 };
