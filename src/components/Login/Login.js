@@ -68,8 +68,6 @@ const Login = () => {
       <div className="login-card">
         <div className="login-header">
           <h1>Civilify Law Entry</h1>
-          <p>Username: small letter sa last name, no space</p>
-          <p>Password: CivilifyP(1-5)!</p>
         </div>
         
         <form onSubmit={handleSubmit} className="login-form">

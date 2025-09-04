@@ -697,8 +697,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    if (window.confirm('Are you sure you want to logout?')) {
+      logout();
+      navigate('/login');
+    }
   };
 
   const handleClearOptionSelect = (option) => {

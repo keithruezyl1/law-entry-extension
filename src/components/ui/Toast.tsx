@@ -121,7 +121,7 @@ export const Toast: React.FC<ToastProps> = ({
     >
       <div className={`bg-white shadow-2xl rounded-xl border border-gray-200 min-w-[380px] max-w-[520px] overflow-hidden toast-container ${getAnimationClass()}`}>
         {/* Header with gradient background */}
-        <div className={`bg-gradient-to-r ${config.bgColor} to-purple-600 px-6 py-4 relative`}>
+        <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
@@ -187,55 +187,30 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div key={`${match.entry_id || index}-${index}`} className="group">
-            <div className="match-item bg-red-50 hover:bg-red-100 rounded-lg p-4 border border-red-100 hover:border-red-200">
-              <div className="flex items-start gap-4">
-                {/* Match indicator with pulse animation */}
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0 animate-pulse"></div>
-                
-                {/* Content */}
-                <div className="flex-1 min-w-0 space-y-3">
-                  {/* Title */}
-                  <div className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
-                    {match.title}
-                  </div>
-                  
-                  {/* Type and similarity */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="type-badge inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      {match.type}
-                    </div>
-                    {match.similarity && (
-                      <div className="type-badge inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                        {Math.round(match.similarity * 100)}% similar
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Citation */}
-                  {match.canonical_citation && (
-                    <div className="citation-box bg-red-25 border border-red-200 rounded-md px-3 py-2">
-                      <div className="text-xs text-gray-600 font-mono break-all line-clamp-2">
-                        {match.canonical_citation}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Entry ID */}
-                  {match.entry_id && (
-                    <div className="text-xs text-gray-500 font-mono bg-red-25 px-2 py-1 rounded border border-red-200">
-                      ID: {match.entry_id}
-                    </div>
-                  )}
+            {/* Title - Large and bold */}
+            <div className="font-bold text-gray-900 text-lg leading-tight mb-3">
+              {match.title}
+            </div>
+            
+            {/* Match details */}
+            <div className="flex items-start gap-3">
+              {/* Match indicator dot */}
+              <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+              
+              {/* Citation */}
+              {match.canonical_citation && (
+                <div className="text-sm text-gray-700">
+                  {match.canonical_citation}
                 </div>
-              </div>
+              )}
             </div>
             
             {/* Divider between items */}
             {index < Math.min(matches.length, maxDisplay) - 1 && (
-              <div className="h-px bg-red-200 mx-4 my-2"></div>
+              <div className="h-px bg-gray-200 my-4"></div>
             )}
           </div>
         ))}
@@ -243,19 +218,8 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       
       {/* Footer */}
       <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-gray-500">
-            Found {matches.length} potential match{matches.length !== 1 ? 'es' : ''}
-            {matches.length > maxDisplay && ` (showing first ${maxDisplay})`}
-          </div>
-          {matches.length > maxDisplay && onViewAll && (
-            <button
-              onClick={onViewAll}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
-            >
-              View All →
-            </button>
-          )}
+        <div className="text-sm text-gray-600">
+          Found {matches.length} potential match{matches.length !== 1 ? 'es' : ''}
         </div>
       </div>
     </Toast>
