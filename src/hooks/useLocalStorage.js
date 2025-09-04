@@ -381,37 +381,41 @@ export const useLocalStorage = () => {
       // Team member filter
   if (filters.team_member_id && filters.team_member_id !== 'all') {
     console.log('Team member filter active:', filters.team_member_id);
-    console.log('Available entries with team members:', filteredEntries.map(e => ({ 
+    console.log('Available entries with created_by:', filteredEntries.map(e => ({ 
       id: e.entry_id, 
-      team_member_id: e.team_member_id, 
-      team_member_type: typeof e.team_member_id,
+      created_by: e.created_by,
+      created_by_type: typeof e.created_by,
+      team_member_id: e.team_member_id,
       created_by_name: e.created_by_name,
       created_by_username: e.created_by_username
     })));
     console.log('Filter team member type:', typeof filters.team_member_id);
     filteredEntries = filteredEntries.filter(entry => {
-      // Check multiple fields for team member identification
-      const entryTeamMember = entry.team_member_id;
-      const entryCreatedByName = entry.created_by_name;
-      const entryCreatedByUsername = entry.created_by_username;
+      // Primary match: created_by field (1-5)
+      const entryCreatedBy = entry.created_by;
       const filterTeamMember = filters.team_member_id;
       
       console.log('Comparing:', { 
-        entryTeamMember, 
-        entryCreatedByName,
-        entryCreatedByUsername,
+        entryCreatedBy, 
         filterTeamMember, 
-        entryType: typeof entryTeamMember, 
+        entryType: typeof entryCreatedBy, 
         filterType: typeof filterTeamMember
       });
       
-      // Try to match by team_member_id first, then by created_by_name
+      // Match by created_by field (the main field in DB)
+      const matchesCreatedBy = String(entryCreatedBy) === String(filterTeamMember);
+      
+      // Fallback matches for other fields
+      const entryTeamMember = entry.team_member_id;
+      const entryCreatedByName = entry.created_by_name;
+      const entryCreatedByUsername = entry.created_by_username;
+      
       const matchesId = String(entryTeamMember) === String(filterTeamMember);
       const matchesName = entryCreatedByName && String(entryCreatedByName).toLowerCase() === String(filterTeamMember).toLowerCase();
       const matchesUsername = entryCreatedByUsername && String(entryCreatedByUsername).toLowerCase() === String(filterTeamMember).toLowerCase();
       
-      const isMatch = matchesId || matchesName || matchesUsername;
-      console.log('Match results:', { matchesId, matchesName, matchesUsername, isMatch });
+      const isMatch = matchesCreatedBy || matchesId || matchesName || matchesUsername;
+      console.log('Match results:', { matchesCreatedBy, matchesId, matchesName, matchesUsername, isMatch });
       
       return isMatch;
     });
