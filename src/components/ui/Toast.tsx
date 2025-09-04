@@ -179,7 +179,6 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
   onViewAll,
 }) => {
   console.log('🔄 DuplicateMatchesToast rendered with NEW design!', { matches: matches.length, isOpen });
-  console.log('🚨 TESTING: This should show a RED background if changes are working!');
   const displayCount = Math.min(matches.length, maxDisplay);
   const hasMore = matches.length > maxDisplay;
   const titleText = matches.length === 1 ? "Possible match" : `Possible matches (${matches.length})`;
@@ -192,7 +191,7 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="px-4 py-2 bg-red-100">
+      <div className="px-4 py-3">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
