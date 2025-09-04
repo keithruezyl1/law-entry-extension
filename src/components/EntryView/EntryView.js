@@ -118,10 +118,15 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                   {basis.type === 'internal' ? (
                     <span
                       className="link-button"
-                      onClick={() => {
+                      onClick={async () => {
                         const entryId = basis.entry_id;
                         if (!entryId) return;
-                        window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entryId } }));
+                        try {
+                          const target = await fetchEntryById(entryId);
+                          if (target) {
+                            window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id }, entryId } }));
+                          }
+                        } catch {}
                       }}
                     >
                       {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
@@ -797,11 +802,16 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                       <div
                         key={idx}
                         className={`legal-basis-card ${rel?.type === 'internal' ? 'clickable' : ''}`}
-                        onClick={() => {
+                        onClick={async () => {
                           if (rel?.type === 'internal' && (rel?.entry_id || rel?.title)) {
                             const entryId = rel.entry_id;
                             if (entryId) {
-                              window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entryId } }));
+                              try {
+                                const target = await fetchEntryById(entryId);
+                                if (target) {
+                                  window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id }, entryId } }));
+                                }
+                              } catch {}
                             }
                           }
                         }}
