@@ -81,7 +81,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     />
                   </div>
                   <div>
-                    <label className="kb-form-label">URL (optional)</label>
+                    <label className="kb-form-label">URL</label>
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
@@ -89,7 +89,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     />
                   </div>
                   <div>
-                    <label className="kb-form-label">Title (optional)</label>
+                    <label className="kb-form-label">Title</label>
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
@@ -160,7 +160,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
             </div>
           )}
           {showInternalSearch && (query || '').trim().length > 0 && (
-            <div className="rounded-xl max-h-48 overflow-auto bg-background">
+            <div className="rounded-xl max-h-56 overflow-auto bg-white shadow-sm border">
               {options.length === 0 && (
                 <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
                   No matches found
@@ -170,7 +170,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 <button
                   type="button"
                   key={o.entry_id}
-                  className="w-full text-left p-4 hover:bg-muted/50 transition-colors"
+                  className="w-full text-left p-4 hover:bg-muted/50 transition-colors border-b last:border-b-0"
                   onClick={async () => {
                     try {
                       const full = await fetchEntryById(o.entry_id);
@@ -183,11 +183,13 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     setShowInternalSearch(false);
                   }}
                 >
-                  <div className="font-medium text-sm">{o.title}</div>
-                  <div className="text-xs text-muted-foreground">{o.entry_id}</div>
-                  {o.canonical_citation && (
-                    <div className="text-xs text-muted-foreground">{o.canonical_citation}</div>
-                  )}
+                  <div className="space-y-1">
+                    <div className="font-medium text-sm">{o.title}</div>
+                    <div className="text-xs text-muted-foreground">{o.entry_id}</div>
+                    {o.canonical_citation && (
+                      <div className="text-xs text-muted-foreground">{o.canonical_citation}</div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -197,7 +199,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               type="button"
               variant="outline"
               onClick={() => { setShowInternalSearch(true); setQuery(''); }}
-              className="h-11 rounded-xl"
+              className="w-full h-11 rounded-xl mt-2"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add internal citation
@@ -211,7 +213,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               type="button"
               variant="outline"
               onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} }}
-              className="w-full h-11 rounded-xl mt-2"
+              className="w-full h-11 rounded-xl mt-1"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add external citation
