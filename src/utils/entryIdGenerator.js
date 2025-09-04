@@ -7,6 +7,7 @@ export const generateEntryId = (type, title, lawFamily, sectionId = null) => {
   }
 
   const timestamp = Date.now().toString().slice(-6); // Last 6 digits for uniqueness
+  const randomSuffix = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
   
   switch (type) {
     case 'constitution_provision':
@@ -94,7 +95,10 @@ export const validateEntryId = (entryId) => {
     /^TRAFFIC-[A-Za-z0-9]+-\d{6}$/,
     /^INC-[A-Za-z0-9]+-\d{6}$/,
     /^RIGHTS-[A-Za-z0-9]+-\d{6}$/,
-    /^ENTRY-[A-Za-z0-9]+-\d{6}$/
+    /^ENTRY-[A-Za-z0-9]+-\d{6}$/,
+    // Additional patterns for new format
+    /^[A-Z]+-[A-Z]+-\d{4}-\d{4}$/,
+    /^[A-Z]+-[A-Z]+-[A-Z]+-\d{6}$/
   ];
   
   return patterns.some(pattern => pattern.test(entryId));

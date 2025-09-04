@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { getEntryTypeOptions } from '../../data/entryTypes';
 import { getJurisdictionOptions } from '../../data/jurisdictions';
 import EntryView from '../EntryView/EntryView';
+import { PageNavigator } from '../ui/PageNavigator';
 // import { getAllTags } from '../../data/tags';
 import './EntryList.css';
 
@@ -28,6 +29,10 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
     status: 'all',
     team_member_id: 'all'
   });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const entryTypeOptions = getEntryTypeOptions();
   const jurisdictionOptions = getJurisdictionOptions();
@@ -42,6 +47,24 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
     console.log('Filtered entries length:', filtered.length);
     return filtered;
   }, [searchQuery, filters, searchEntries, teamMemberNames]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEntries = filteredEntries.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters]);
+
+  // Ensure current page is valid when total pages change
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   const handleFilterChange = (filterName, value) => {
     if (filterName === 'jurisdiction') {
@@ -199,6 +222,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
         <p>
           Showing {filteredEntries.length} of {entries.length} entries
           {searchQuery && ` matching "${searchQuery}"`}
+          {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
         </p>
       </div>
 
@@ -209,8 +233,9 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
           <p>Try adjusting your search terms or filters.</p>
         </div>
       ) : (
-        <div className="entry-list">
-          {filteredEntries.map(entry => (
+        <>
+          <div className="entry-list">
+            {paginatedEntries.map(entry => (
             <div key={entry.id} className="entry-card">
               <div className="entry-content">
                 <div className="entry-main">
@@ -270,7 +295,19 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
               </div>
             </div>
           ))}
-        </div>
+          </div>
+          
+          {/* Page Navigator */}
+          {totalPages > 1 && (
+            <PageNavigator
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredEntries.length}
+              itemsPerPage={itemsPerPage}
+            />
+          )}
+        </>
       )}
       
       {/* Entry Detail View */}

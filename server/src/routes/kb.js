@@ -115,6 +115,15 @@ router.post('/entries', async (req, res) => {
     if (!parsed.entry_id || parsed.entry_id.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'entry_id is required' });
     }
+
+    // Check if entry_id already exists (for new entries)
+    const existingEntry = await query('SELECT entry_id FROM kb_entries WHERE entry_id = $1', [parsed.entry_id]);
+    if (existingEntry.rows.length > 0) {
+      return res.status(409).json({ 
+        success: false, 
+        error: `Entry ID '${parsed.entry_id}' already exists. Please use a different entry ID or update the existing entry.` 
+      });
+    }
     const contentForEmbedding = [
       parsed.title,
       parsed.canonical_citation || '',

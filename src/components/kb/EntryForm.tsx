@@ -14,7 +14,7 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
-import { generateEntryId } from 'lib/kb/entryId';
+import { generateEntryId, generateUniqueEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 import { semanticSearch } from '../../services/vectorApi';
 import { useAuth } from '../../contexts/AuthContext';
@@ -296,15 +296,27 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   useEffect(() => {
     // Only run in create mode
     if (isCreateMode && !entry_id && type && lawFamily) {
-      // Generate entry ID based on type, law family, and section ID
-      const generatedId = generateEntryId(type, lawFamily, sectionId || '');
-      setValue('entry_id', generatedId);
+      // Generate unique entry ID based on type, law family, and section ID
+      const generateUniqueId = async () => {
+        try {
+          const existingIds = existingEntries.map(e => e.entry_id);
+          const generatedId = await generateUniqueEntryId(type, lawFamily, sectionId || '', existingIds);
+          setValue('entry_id', generatedId);
+        } catch (error) {
+          console.error('Error generating unique entry ID:', error);
+          // Fallback to regular generation
+          const generatedId = generateEntryId(type, lawFamily, sectionId || '');
+          setValue('entry_id', generatedId);
+        }
+      };
+      
+      generateUniqueId();
       
       // Set last_reviewed to current date for new entries
       const today = new Date().toISOString().slice(0, 10);
       setValue('last_reviewed', today);
     }
-  }, [isCreateMode, entry_id, type, lawFamily, sectionId, setValue]);
+  }, [isCreateMode, entry_id, type, lawFamily, sectionId, setValue, existingEntries]);
 
   // Step 4 always has content (dynamic type-specific + relations)
   const hasTypeSpecific = true;
@@ -906,46 +918,78 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         {/* Toast for possible duplicates */}
         {nearDuplicates && nearDuplicates.length > 0 && (
           <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
-            <div className="shadow-lg rounded-lg border-2 border-red-300 bg-red-400 min-w-[320px] max-w-[500px]">
-              {/* Header */}
-              <div className="flex items-start justify-between p-4 border-b border-red-500">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-1 ml-2 mt-2">Possible Matches</h3>
+            <div className="bg-white shadow-2xl rounded-xl border border-gray-200 min-w-[380px] max-w-[520px] overflow-hidden">
+              {/* Header with gradient background */}
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-white">Possible Matches</h3>
+                  </div>
+                  <button 
+                    className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200"
+                    onClick={() => setNearDuplicates([])}
+                    title="Close notification"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <button 
-                  className="w-8 h-8 text-white hover:text-red-100 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors duration-200 ml-4 flex-shrink-0"
-                  onClick={() => setNearDuplicates([])}
-                  title="Close notification"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
               
               {/* Matches list */}
-              <div className="p-4 pb-6">
-                <ul className="space-y-6">
+              <div className="p-6">
+                <div className="space-y-4">
                   {nearDuplicates.slice(0, 5).map((m: any, i: number) => (
-                    <li key={i} className="group">
-                      <div className="flex items-start gap-3">
-                        <span className="w-2 h-2 bg-white rounded-full mt-2 ml-2 flex-shrink-0"></span>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="font-medium text-white text-sm leading-tight">{m.title}</div>
-                          <div className="text-xs text-red-100">{m.type}</div>
-                          {m.canonical_citation && (
-                            <div className="text-xs text-blue-800 font-mono px-3 py-2 rounded">
-                              {m.canonical_citation}
+                    <div key={i} className="group">
+                      <div className="bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-all duration-200 border border-gray-100 hover:border-gray-200">
+                        <div className="flex items-start gap-4">
+                          {/* Bullet point with better styling */}
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                          
+                          {/* Content */}
+                          <div className="flex-1 min-w-0 space-y-2">
+                            {/* Title */}
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">
+                              {m.title}
                             </div>
-                          )}
+                            
+                            {/* Type badge */}
+                            <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {m.type}
+                            </div>
+                            
+                            {/* Citation */}
+                            {m.canonical_citation && (
+                              <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
+                                <div className="text-xs text-gray-600 font-mono break-all">
+                                  {m.canonical_citation}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      
+                      {/* Divider between items */}
                       {i < nearDuplicates.slice(0, 5).length - 1 && (
-                        <div className="border-t border-red-500 mt-3 pt-3"></div>
+                        <div className="h-px bg-gray-200 mx-4"></div>
                       )}
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
+                
+                {/* Footer */}
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="text-xs text-gray-500 text-center">
+                    Found {nearDuplicates.length} potential match{nearDuplicates.length !== 1 ? 'es' : ''}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
