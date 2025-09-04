@@ -34,7 +34,7 @@ export default function EntryPreview({ data }: PreviewProps) {
 
       {/* Details */}
       <div className="p-4 pt-0">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground mt-2 mb-2">Details</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground mt-2 mb-1">Details</div>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <div className="text-gray-500">Type</div>
@@ -62,7 +62,7 @@ export default function EntryPreview({ data }: PreviewProps) {
       {/* Summary (optional) */}
       {hasSummary && (
         <div className="p-4 pt-0">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Summary</div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Summary</div>
           <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{summary}</div>
         </div>
       )}

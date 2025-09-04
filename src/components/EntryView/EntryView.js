@@ -222,8 +222,45 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
       
       // Special handling for Prescriptive Period
       if (label === 'Prescriptive Period') {
-        if (value === null || value === undefined || value === '' || value === 'NA' || value === 'na' || value === 'N/A' || value === 'Not Available' || value === 'Not available') {
-          displayValue = 'No prescriptive period';
+        try {
+          // Handle JSON string format
+          let parsedValue = value;
+          if (typeof value === 'string' && value.startsWith('{')) {
+            parsedValue = JSON.parse(value);
+          }
+          
+          // Check if it's an object with value and unit
+          if (parsedValue && typeof parsedValue === 'object' && parsedValue.value !== undefined && parsedValue.unit !== undefined) {
+            const periodValue = parsedValue.value;
+            const periodUnit = parsedValue.unit;
+            
+            // Check if value is a positive integer and unit is not NA
+            if (periodValue && 
+                !isNaN(periodValue) && 
+                Number.isInteger(Number(periodValue)) && 
+                Number(periodValue) > 0 && 
+                periodUnit && 
+                periodUnit !== 'NA' && 
+                periodUnit !== 'na' && 
+                periodUnit !== 'N/A' && 
+                periodUnit !== 'Not Available' && 
+                periodUnit !== 'Not available') {
+              displayValue = `${periodValue} ${periodUnit}`;
+            } else {
+              displayValue = 'No Prescriptive Period';
+            }
+          } else if (value === null || value === undefined || value === '' || value === 'NA' || value === 'na' || value === 'N/A' || value === 'Not Available' || value === 'Not available') {
+            displayValue = 'No Prescriptive Period';
+          } else {
+            displayValue = 'No Prescriptive Period';
+          }
+        } catch (error) {
+          // If parsing fails, check for simple NA values
+          if (value === null || value === undefined || value === '' || value === 'NA' || value === 'na' || value === 'N/A' || value === 'Not Available' || value === 'Not available') {
+            displayValue = 'No Prescriptive Period';
+          } else {
+            displayValue = 'No Prescriptive Period';
+          }
         }
       }
       
