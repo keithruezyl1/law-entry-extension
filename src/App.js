@@ -16,6 +16,7 @@ import { fetchAllEntriesFromDb } from './services/kbApi';
 import { getActivePlan, importPlan, removePlan } from './services/plansApi';
 import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { checkAdminAndAlert, isTagarao } from './utils/adminUtils';
 
 function App() {
   return (
@@ -686,9 +687,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleClearAll = () => {
-    // Security check: Only P5 can clear all entries
-    if (user?.personId !== 'P5') {
-      alert('Only P5 (Tagarao) can clear all entries.');
+    // Security check: Only Tagarao can clear all entries
+    if (!checkAdminAndAlert(user, 'clear all entries')) {
       return;
     }
     setShowClearModal(true);
@@ -745,9 +745,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleImportPlan = async (event) => {
-    // Security check: Only P5 can import plans
-    if (user?.personId !== 'P5') {
-      alert('Only P5 (Tagarao) can import plans.');
+    // Security check: Only Tagarao can import plans
+    if (!checkAdminAndAlert(user, 'import plans')) {
       return;
     }
     
@@ -813,9 +812,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleRemovePlan = async () => {
-    // Security check: Only P5 can remove plans
-    if (user?.personId !== 'P5') {
-      alert('Only P5 (Tagarao) can remove plans.');
+    // Security check: Only Tagarao can remove plans
+    if (!checkAdminAndAlert(user, 'remove plans')) {
       return;
     }
     
@@ -1015,8 +1013,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               style={{ display: 'none' }}
             />
           </label>
-          {/* P5-only buttons */}
-          {user?.personId === 'P5' && (
+          {/* Tagarao-only admin buttons */}
+          {isTagarao(user) && (
             <>
               <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
                 {day1Date && planData ? 'Re-import Plan' : 'Import Plan'}

@@ -2,6 +2,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
+import { isTagarao } from '../../utils/adminUtils';
 
 type Props = {
   date: Date;
@@ -47,8 +48,8 @@ export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, on
           onChange={handleDateChange}
           aria-label="Select date"
         />
-        {/* P5-only buttons */}
-        {user?.personId === 'P5' && (
+        {/* Tagarao-only admin buttons */}
+        {isTagarao(user) && (
           <>
             <Button type="button" variant="outline" onClick={onImportPlan}>Import Plan</Button>
             {onClearToday && <Button type="button" variant="destructive" onClick={onClearToday}>Clear Today</Button>}
