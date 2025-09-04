@@ -123,12 +123,12 @@ export const Toast: React.FC<ToastProps> = ({
         {/* Header with gradient background */}
         <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 ml-2">
+            <div className="flex items-center gap-2 ml-4">
               <Icon className="w-5 h-5 text-white" />
               <h3 className="text-lg font-semibold text-white">{title}</h3>
             </div>
             <button 
-              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-2"
+              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-3"
               onClick={onClose}
               title="Dismiss notification"
               aria-label="Dismiss notification"
@@ -179,6 +179,7 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
   onViewAll,
 }) => {
   console.log('🔄 DuplicateMatchesToast rendered with NEW design!', { matches: matches.length, isOpen });
+  console.log('🚨 TESTING: This should show a RED background if changes are working!');
   const displayCount = Math.min(matches.length, maxDisplay);
   const hasMore = matches.length > maxDisplay;
   const titleText = matches.length === 1 ? "Possible match" : `Possible matches (${matches.length})`;
@@ -191,20 +192,20 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className={matches.length === 1 ? "space-y-0" : "space-y-4"}>
+      <div className="px-4 py-2 bg-red-100">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
-            className="p-3 rounded-lg"
+            className="mb-3 last:mb-0"
           >
             {/* Primary line: Entry title with left margin */}
-            <div className="font-medium text-gray-900 text-sm leading-snug mb-1 ml-6 line-clamp-2">
+            <div className="font-medium text-gray-900 text-sm leading-tight mb-0.5 ml-8">
               {match.title}
             </div>
             
             {/* Secondary line: Citation with reduced margin bottom */}
             {match.canonical_citation && (
-              <div className="text-xs text-gray-600 leading-relaxed ml-6 mb-1">
+              <div className="text-xs text-gray-600 leading-tight ml-8">
                 {match.canonical_citation}
               </div>
             )}
