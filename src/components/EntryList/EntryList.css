@@ -161,7 +161,7 @@
 }
 
 .back-to-list-btn:hover {
-  background: #5a6268;
+  background: #ea580c; /* orange-600 */
   transform: translateY(-1px);
 }
 

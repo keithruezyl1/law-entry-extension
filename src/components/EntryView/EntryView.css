@@ -669,6 +669,24 @@
   transition: all 0.2s ease;
 }
 
+.related-section-card.clickable,
+.legal-basis-card.clickable {
+  cursor: pointer;
+}
+
+.related-section-card.clickable:hover,
+.legal-basis-card.clickable:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  background: #ffffff;
+}
+
+.related-section-card.clickable:active,
+.legal-basis-card.clickable:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+}
+
 .legal-basis-card:hover,
 .related-section-card:hover {
   border-color: #dee2e6;

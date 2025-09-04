@@ -1419,7 +1419,7 @@ function UrlArray({ control, register, watch, setValue }: any) {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors mt-4"
+          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors mt-6"
         >
           + Add Item
         </button>

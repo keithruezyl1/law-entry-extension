@@ -183,11 +183,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     setShowInternalSearch(false);
                   }}
                 >
-                  <div className="space-y-1">
-                    <div className="font-medium text-sm">{o.title}</div>
-                    <div className="text-xs text-muted-foreground">{o.entry_id}</div>
+                  <div className="pl-2">
+                    <div className="font-medium text-sm mt-0.5 mb-1">{o.title}</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">{o.entry_id}</div>
                     {o.canonical_citation && (
-                      <div className="text-xs text-muted-foreground">{o.canonical_citation}</div>
+                      <div className="text-xs text-muted-foreground mb-1">{o.canonical_citation}</div>
                     )}
                   </div>
                 </button>
@@ -199,7 +199,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               type="button"
               variant="outline"
               onClick={() => { setShowInternalSearch(true); setQuery(''); }}
-              className="w-full h-11 rounded-xl mt-2"
+              className="w-full h-11 rounded-xl mt-1"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add internal citation

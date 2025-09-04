@@ -786,7 +786,18 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                 {currentEntry.related_sections && currentEntry.related_sections.length > 0 ? (
                   <div className="related-sections-grid">
                     {currentEntry.related_sections.map((rel, idx) => (
-                      <div key={idx} className="related-section-card">
+                      <div
+                        key={idx}
+                        className={`related-section-card ${rel?.type === 'internal' ? 'clickable' : ''}`}
+                        onClick={async () => {
+                          if (rel?.type === 'internal' && rel?.entry_id) {
+                            const target = await fetchEntryById(rel.entry_id);
+                            if (target) {
+                              window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                            }
+                          }
+                        }}
+                      >
                         <div className="section-header">
                           <span className={`section-type-pill ${rel?.type || 'unknown'}`}>
                             {rel?.type === 'internal' ? 'Internal' : 'External'}
@@ -794,14 +805,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                         </div>
                         <div className="section-content">
                           {rel?.type === 'internal' && rel?.entry_id ? (
-                            <button className="link-button" onClick={async () => {
-                              const target = await fetchEntryById(rel.entry_id);
-                              if (target) {
-                                window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
-                              }
-                            }}>
-                              {rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}
-                            </button>
+                            <span className="link-button">{rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}</span>
                           ) : (
                             <span className="external-citation">{String(rel?.citation || rel)}</span>
                           )}
