@@ -1399,17 +1399,19 @@ function UrlArray({ control, register, watch, setValue }: any) {
               {...register(`source_urls.${index}` as const)}
               placeholder="e.g., https://official-government-website.gov.ph"
               type="url"
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors mb-2"
             />
-            <button
-              type="button"
-              onClick={() => remove(index)}
-              className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            {index > 0 && (
+              <button
+                type="button"
+                onClick={() => remove(index)}
+                className="px-6 py-3 w-16 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
         ))}
         

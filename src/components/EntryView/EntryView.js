@@ -96,7 +96,18 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           <h4>Legal Bases</h4>
           <div className="legal-bases-grid">
             {legalBases.map((basis, index) => (
-              <div key={index} className="legal-basis-card clickable">
+              <div
+                key={index}
+                className="legal-basis-card clickable"
+                onClick={async () => {
+                  if (basis?.type === 'internal' && basis?.entry_id) {
+                    const target = await fetchEntryById(basis.entry_id);
+                    if (target) {
+                      window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                    }
+                  }
+                }}
+              >
                 <div className="basis-header">
                   <span className={`basis-type-pill ${basis.type}`}>
                     {basis.type === 'internal' ? 'Internal' : 'External'}
