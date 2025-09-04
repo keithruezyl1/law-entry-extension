@@ -123,14 +123,12 @@ export const Toast: React.FC<ToastProps> = ({
         {/* Header with gradient background */}
         <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <Icon className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-center gap-2">
+              <Icon className="w-5 h-5 text-white" />
               <h3 className="text-lg font-semibold text-white">{title}</h3>
             </div>
             <button 
-              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30"
+              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-1"
               onClick={onClose}
               title="Dismiss notification"
               aria-label="Dismiss notification"
@@ -193,23 +191,23 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="space-y-3">
+      <div className="space-y-4">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
-            className="group p-3 rounded-lg hover:bg-amber-50 focus-within:bg-amber-50 focus-within:ring-2 focus-within:ring-amber-200 focus-within:ring-offset-1 transition-all duration-150 cursor-pointer"
+            className="group p-3 rounded-lg hover:shadow-md focus-within:shadow-md focus-within:ring-2 focus-within:ring-amber-200 focus-within:ring-offset-1 transition-all duration-150 cursor-pointer transform hover:-translate-y-0.5"
             tabIndex={0}
             role="button"
             aria-label={`View details for ${match.title}`}
           >
-            {/* Primary line: Entry title */}
-            <div className="font-medium text-gray-900 text-sm leading-snug mb-1 line-clamp-2">
+            {/* Primary line: Entry title with left margin */}
+            <div className="font-medium text-gray-900 text-sm leading-snug mb-2 ml-4 line-clamp-2">
               {match.title}
             </div>
             
-            {/* Secondary line: Citation */}
+            {/* Secondary line: Citation with small margin bottom */}
             {match.canonical_citation && (
-              <div className="text-xs text-gray-600 leading-relaxed">
+              <div className="text-xs text-gray-600 leading-relaxed ml-4 mb-2">
                 {match.canonical_citation}
               </div>
             )}
