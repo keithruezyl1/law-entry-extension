@@ -1,39 +1,40 @@
-import * as XLSX from "xlsx";
 import { differenceInCalendarDays, format } from "date-fns";
-import { KB_PROJECT_START, PLAN_FILENAME } from "./config";
+import { KB_PROJECT_START } from "./config";
 
-export async function loadPlanFromUrl(url: string = `/plans/${PLAN_FILENAME}`) {
+// Loads plan directly from a JSON file bundled with the app
+export async function loadPlanFromJson(url: string = "/Civilify_KB30_Schedule_CorePH.json") {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch plan: ${res.status}`);
-  const buf = await res.arrayBuffer();
-  return parseWorkbook(buf);
-}
-
-export function parseWorkbook(buf: ArrayBuffer) {
-  const wb = XLSX.read(buf, { type: "array" });
-  const sheet = wb.Sheets["Daily Plan"];
-  if (!sheet) throw new Error("Daily Plan sheet not found");
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: 0 });
+  if (!res.ok) throw new Error(`Failed to fetch plan JSON: ${res.status}`);
+  const rows = await res.json();
+  if (!Array.isArray(rows)) throw new Error("Invalid plan JSON format");
   return rows as any[];
 }
 
-export function computeDayIndex(date: Date, day1Date?: string | null) {
-  if (!day1Date) {
-    // If no Day 1 is set, use the hardcoded start date
-    return Math.max(1, Math.min(30, differenceInCalendarDays(date, KB_PROJECT_START) + 1));
+// Convert wall-clock time into the "plan date" that rolls over at 08:00 local time
+export function getPlanDate(date: Date = new Date()): Date {
+  const d = new Date(date);
+  const hours = d.getHours();
+  if (hours < 8) {
+    // Before 8 AM, still count as previous day
+    const prev = new Date(d);
+    prev.setDate(d.getDate() - 1);
+    return new Date(prev.getFullYear(), prev.getMonth(), prev.getDate());
   }
-  
-  // Calculate from user's Day 1 date
-  const day1 = new Date(day1Date);
-  return Math.max(1, Math.min(30, differenceInCalendarDays(date, day1) + 1));
-}
-
-export function rowsForDay(rows: any[], day: number) {
-  return rows.filter((r) => Number(r.Day) === Number(day));
+  // Same day (8 AM onwards)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 export function toISODate(date: Date) {
   return format(date, "yyyy-MM-dd");
 }
 
+export function computeDayIndex(now: Date, day1Date?: string | null) {
+  const planNow = getPlanDate(now);
+  const baseline = day1Date ? new Date(day1Date) : KB_PROJECT_START;
+  return Math.max(1, Math.min(30, differenceInCalendarDays(planNow, baseline) + 1));
+}
+
+export function rowsForDay(rows: any[], day: number) {
+  return rows.filter((r) => Number(r.Day) === Number(day));
+}
 

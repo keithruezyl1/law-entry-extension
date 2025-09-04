@@ -607,36 +607,36 @@ export const useLocalStorage = () => {
 
   // Check if a team member completed their daily quota
   const checkDailyCompletion = (teamMemberId, entryType) => {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `${teamMemberId}_${today}`;
+    // Compute plan day key using 8 AM rollover
+    const { getPlanDate, toISODate, computeDayIndex, rowsForDay } = require('../lib/plan/planLoader');
+    const planDateISO = toISODate(getPlanDate(new Date()));
+    const key = `${teamMemberId}_${planDateISO}`;
     const currentProgress = teamProgress[key] || { total: 0 };
-    
-    // Get team member quota from entryTypes
-    const teamMembers = {
-      1: { total: 10, quota: { statute_section: 7, city_ordinance_section: 3 } },
-      2: { total: 10, quota: { rule_of_court: 7, doj_issuance: 2, rights_advisory: 1 } },
-      3: { total: 10, quota: { pnp_sop: 5, incident_checklist: 3, agency_circular: 2 } },
-      4: { total: 10, quota: { statute_section: 8, agency_circular: 2 } },
-      5: { total: 10, quota: { rights_advisory: 4, constitution_provision: 3, doj_issuance: 2, executive_issuance: 1 } }
+
+    // Determine quotas for this member from the active plan JSON
+    const day1 = require('../lib/plan/config').KB_PROJECT_START;
+    const dayIndex = computeDayIndex(new Date(), planState?.day1Date || day1.toISOString().split('T')[0]);
+    const planRows = (window.__KB_PLAN__ && Array.isArray(window.__KB_PLAN__)) ? window.__KB_PLAN__ : [];
+    const rows = rowsForDay(planRows, dayIndex);
+    const personCode = `P${teamMemberId}`;
+    const row = rows.find(r => String(r.Person).trim().toUpperCase() === personCode);
+    if (!row) return false;
+    const quotas = {
+      statute_section: Number(row.statute_section || 0),
+      rule_of_court: Number(row.rule_of_court || 0),
+      rights_advisory: Number(row.rights_advisory || 0),
+      constitution_provision: Number(row.constitution_provision || 0),
+      agency_circular: Number(row.agency_circular || 0),
+      doj_issuance: Number(row.doj_issuance || 0),
+      executive_issuance: Number(row.executive_issuance || 0),
+      city_ordinance_section: Number(row.city_ordinance_section || 0)
     };
-    
-    const memberQuota = teamMembers[teamMemberId];
-    if (!memberQuota) return false;
-    
-    // Check if this entry type will complete the daily quota
-    const newTotal = currentProgress.total + 1;
+    const totalQuota = Object.values(quotas).reduce((s, n) => s + (Number(n) || 0), 0);
+
+    const newTotal = (currentProgress.total || 0) + 1;
     const newTypeCount = (currentProgress[entryType] || 0) + 1;
-    
-    // Check if this completes the daily quota
-    if (newTotal === memberQuota.total) {
-      return true;
-    }
-    
-    // Check if this completes a specific type quota
-    if (memberQuota.quota[entryType] && newTypeCount === memberQuota.quota[entryType]) {
-      return true;
-    }
-    
+    if (newTotal === totalQuota) return true;
+    if (quotas[entryType] && newTypeCount === quotas[entryType]) return true;
     return false;
   };
 

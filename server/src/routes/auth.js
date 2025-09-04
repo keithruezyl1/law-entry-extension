@@ -111,46 +111,8 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// Get user's daily quota validation
-router.get('/quota/:userId', async (req, res) => {
-  try {
-    const userId = parseInt(req.params.userId);
-    const targetDate = req.query.date || new Date().toISOString().split('T')[0];
-    
-    const result = await query(
-      'SELECT * FROM get_user_daily_quota($1, $2::date)',
-      [userId, targetDate]
-    );
-    
-    res.json({
-      success: true,
-      quota: result.rows
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(400).json({ success: false, error: String(e.message || e) });
-  }
-});
 
-// Get team progress for a date
-router.get('/team-progress', async (req, res) => {
-  try {
-    const targetDate = req.query.date || new Date().toISOString().split('T')[0];
-    
-    const result = await query(
-      'SELECT * FROM get_team_progress($1::date)',
-      [targetDate]
-    );
-    
-    res.json({
-      success: true,
-      progress: result.rows
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(400).json({ success: false, error: String(e.message || e) });
-  }
-});
+// Removed server-side quota and team-progress endpoints; client computes progress from plan
 
 // Get all team members
 router.get('/team-members', async (req, res) => {

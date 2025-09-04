@@ -32,3 +32,4 @@ WHERE related_sections IS NOT NULL;
 COMMIT;
 
 
+

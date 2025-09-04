@@ -1,3 +1,5 @@
+import { getPlanDate, toISODate } from './planLoader';
+
 const key = (date: string, person: string, type: string) => `kbprog:${date}:${person}:${type}`;
 const day1Key = 'kbprog:day1';
 
@@ -107,7 +109,7 @@ export function updateProgressForEntry(dateISO: string, personIdOrUsername: stri
 
 // Function to get progress for a specific person and entry type
 export function getProgressForPerson(personId: string, entryType: string, dateISO?: string) {
-  const targetDate = dateISO || new Date().toISOString().split('T')[0];
+  const targetDate = dateISO || toISODate(getPlanDate(new Date()));
   return getCumulativeCount(targetDate, personId, entryType);
 }
 

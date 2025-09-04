@@ -8,12 +8,12 @@ import EntryView from './components/EntryView/EntryView';
 import Login from './components/Login/Login';
 import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
-import { parseWorkbook, computeDayIndex, rowsForDay } from './lib/plan/planLoader';
+import { loadPlanFromJson, computeDayIndex, rowsForDay, getPlanDate, toISODate } from './lib/plan/planLoader';
 import { format } from 'date-fns';
 import { setDay1Date } from './lib/plan/progressStore';
 import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
 import { fetchAllEntriesFromDb } from './services/kbApi';
-import { getActivePlan, importPlan, removePlan } from './services/plansApi';
+// Plans API removed: we now load from bundled JSON
 import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { checkAdminAndAlert, isTagarao } from './utils/adminUtils';
@@ -169,31 +169,36 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showChat, setShowChat] = useState(false);
   const [planLoading, setPlanLoading] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [now, setNow] = useState(new Date());
 
-  // Load active plan from database on mount
+  // Load plan from bundled JSON on mount
   useEffect(() => {
-    const loadActivePlan = async () => {
+    const init = async () => {
       try {
         setPlanLoading(true);
-        const activePlan = await getActivePlan();
-        if (activePlan) {
-          setPlanData(activePlan.plan_data);
-          setDay1DateState(activePlan.day1_date);
-          setDay1Date(activePlan.day1_date);
-        } else {
-          setPlanData(null);
-          setDay1DateState(null);
-        }
+        const rows = await loadPlanFromJson('/Civilify_KB30_Schedule_CorePH.json');
+        setPlanData(rows);
+        // Day 1 fixed to 2025-09-04
+        const day1 = '2025-09-04';
+        setDay1Date(day1);
+        setDay1DateState(day1);
+        try { window.__KB_PLAN__ = rows; window.__KB_DAY1__ = day1; } catch (_) {}
       } catch (err) {
-        console.error('Failed to load active plan:', err);
-        setPlanData(null);
-        setDay1DateState(null);
+        console.error('Failed to load plan JSON:', err);
+        setPlanData([]);
+        setDay1DateState('2025-09-04');
+        try { window.__KB_PLAN__ = []; window.__KB_DAY1__ = '2025-09-04'; } catch (_) {}
       } finally {
         setPlanLoading(false);
       }
     };
+    init();
+  }, []);
 
-    loadActivePlan();
+  // Live clock (updates every second)
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   // React to verification refresh or progress changes (trigger re-render)
@@ -215,13 +220,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   })();
   const hasPlan = (!!day1Date) && planRows.length > 0;
 
-  // Guard: prevent opening the form route when no plan is imported
+  // Guard: prevent opening the form route when plan failed to load
   useEffect(() => {
     if (currentView !== 'form') return;
     // Wait until plan loading completes to avoid false negatives on first mount
     if (planLoading) return;
     if (!hasPlan) {
-      alert('Please import a plan first before creating entries.');
+      alert('Plan JSON failed to load.');
       navigate('/dashboard');
     }
   }, [currentView, hasPlan, navigate, planLoading]);
@@ -387,22 +392,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleCreateNew = async () => {
-    if (!hasPlan) {
-      try {
-        // Re-check with server before blocking
-        const activePlan = await getActivePlan();
-        if (activePlan) {
-          setPlanData(activePlan.plan_data);
-          setDay1DateState(activePlan.day1_date);
-        } else {
-          alert('Please import a plan first before creating entries. Use "Import Plan".');
-          return;
-        }
-      } catch (_) {
-        alert('Please import a plan first before creating entries. Use "Import Plan".');
-        return;
-      }
-    }
+    if (!hasPlan) return alert('Plan not loaded.');
     try {
       const raw = localStorage.getItem('kb_entry_draft');
       if (raw) {
@@ -892,7 +882,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       <div className="team-progress">
         <div className="team-progress-header">
           <h3>Today's Team Progress {day1Date && Array.isArray(planData) && planData.length > 0 && (
-            <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>{`Day ${computeDayIndex(new Date(), day1Date)}, ${format(new Date(), 'MMMM d yyyy')}`}</span>
+            <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>
+              {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d yyyy')} • ${format(now, 'HH:mm:ss')}`}
+            </span>
           )}</h3>
           <div className="yesterday-status">
             <div className="status-indicator">
@@ -963,9 +955,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             }
             
             const totalReq = Object.values(currentDayReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
-            const todayISO = new Date().toISOString().split('T')[0];
-            const progressKey = `${personKey}_${todayISO}`;
-            const totalDone = teamProgress[progressKey]?.total || 0;
+            const todayISO = toISODate(getPlanDate(new Date()));
+            // Compute progress dynamically from progressStore (8 AM rollover-aware)
+            const { getCount } = require('./lib/plan/progressStore');
+            const perTypeCounts = Object.fromEntries(Object.keys(currentDayReqs).map((t) => [t, getCount(todayISO, String(member.id), t)]));
+            const totalDone = Object.values(perTypeCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
             return (
               <div key={personKey} className="team-member-card">
@@ -982,7 +976,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 <div className="member-breakdown">
                   {Object.entries(currentDayReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
                     <span key={type} className="quota-item">
-                      {type}: {teamProgress[progressKey]?.[type] || 0}/{quota}
+                      {type}: {perTypeCounts[type] || 0}/{quota}
                     </span>
                   ))}
                 </div>
@@ -1026,20 +1020,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           {/* Tagarao-only admin buttons */}
           {isTagarao(user) && (
             <>
-              <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-                {day1Date && planData ? 'Re-import Plan' : 'Import Plan'}
-                <input 
-                  type="file" 
-                  accept=".xlsx" 
-                  onChange={handleImportPlan} 
-                  style={{ display: 'none' }}
-                />
-              </label>
-              {day1Date && planData && (
-                <button onClick={handleRemovePlan} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-                  Remove Plan
-                </button>
-              )}
               <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
                 Clear All
               </button>
@@ -1168,44 +1148,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         </div>
       </Modal>
 
-      {/* Plan Import Modal */}
-      <Modal
-        isOpen={showPlanModal}
-        onClose={handlePlanCancel}
-        title={planModalStep === 1 ? "Set Day 1 Date" : "Confirm Plan Import"}
-        subtitle={planModalStep === 1 ? "Select the date when your project starts:" : "Reimporting a new plan will reset all progress. Are you sure?"}
-      >
-        {planModalStep === 1 ? (
-          <div className="modal-content">
-            <div className="text-center mb-3" style={{ fontWeight: 600 }}>Set Day 1</div>
-            <input
-              type="date"
-              className="border rounded-lg px-3 py-2 w-full mb-4"
-              value={selectedDay1Date}
-              onChange={(e) => setSelectedDay1Date(e.target.value)}
-              onFocus={(e) => e.currentTarget.showPicker && e.currentTarget.showPicker()}
-              onClick={(e) => e.currentTarget.showPicker && e.currentTarget.showPicker()}
-            />
-            <div className="modal-buttons" style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-              <button disabled={!selectedDay1Date} className="modal-button" onClick={handleDay1Confirm}>
-                Continue
-              </button>
-              <button className="modal-button cancel" onClick={handlePlanCancel}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="modal-buttons">
-            <button className="modal-button" onClick={handlePlanFinalConfirm}>
-              Yes, Import Plan
-            </button>
-            <button className="modal-button cancel" onClick={handlePlanCancel}>
-              Cancel
-            </button>
-          </div>
-        )}
-      </Modal>
+      {/* Plan Import Modal removed */}
 
       {/* Logout Confirmation Modal */}
       <Modal

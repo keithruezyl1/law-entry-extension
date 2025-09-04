@@ -1,5 +1,5 @@
-export const KB_PROJECT_START = new Date("2025-08-22");
-export const PLAN_FILENAME = "Civilify_KB30_Schedule_CorePH.xlsx";
+// Day 1 is fixed to 2025-09-04 as requested
+export const KB_PROJECT_START = new Date("2025-09-04");
 
 export const GLI_CPA_TYPES = [
   "statute_section",
@@ -13,6 +13,7 @@ export const GLI_CPA_TYPES = [
 ] as const;
 
 export type PlanType = typeof GLI_CPA_TYPES[number];
+
 
 
 
