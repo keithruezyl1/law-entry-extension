@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { fetchEntryById } from '../../services/kbApi';
 import { getEntryTypeOptions } from '../../data/entryTypes';
 import { getJurisdictionOptions } from '../../data/jurisdictions';
 import EntryView from '../EntryView/EntryView';
@@ -11,12 +12,20 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
   const [entryStack, setEntryStack] = useState([]); // stack of previously opened entries
   // Listen for requests to open an entry detail (from EntryView link clicks)
   useEffect(() => {
-    const handler = (e) => {
+    const handler = async (e) => {
       const entry = e?.detail?.entry;
-      if (entry) {
+      const entryId = e?.detail?.entryId;
+      let target = entry || null;
+      if (!target && entryId) {
+        try {
+          const fetched = await fetchEntryById(entryId);
+          if (fetched) target = { ...fetched, id: fetched.entry_id };
+        } catch {}
+      }
+      if (target) {
         // Push current entry to stack if we are navigating from an open entry
         setEntryStack((prev) => (selectedEntry ? [...prev, selectedEntry] : prev));
-        setSelectedEntry(entry);
+        setSelectedEntry(target);
         // Ensure overlay scrolls to top after switching entries
         setTimeout(() => {
           try {

@@ -118,13 +118,10 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                   {basis.type === 'internal' ? (
                     <span
                       className="link-button"
-                      onClick={async () => {
+                      onClick={() => {
                         const entryId = basis.entry_id;
                         if (!entryId) return;
-                        const target = await fetchEntryById(entryId);
-                        if (target) {
-                          window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
-                        }
+                        window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entryId } }));
                       }}
                     >
                       {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
@@ -800,18 +797,11 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                       <div
                         key={idx}
                         className={`legal-basis-card ${rel?.type === 'internal' ? 'clickable' : ''}`}
-                        onClick={async () => {
+                        onClick={() => {
                           if (rel?.type === 'internal' && (rel?.entry_id || rel?.title)) {
                             const entryId = rel.entry_id;
-                            let target = null;
                             if (entryId) {
-                              target = await fetchEntryById(entryId);
-                            }
-                            if (!target && rel?.title) {
-                              // Fallback: try to match by title via search API if available in future
-                            }
-                            if (target) {
-                              window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
+                              window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entryId } }));
                             }
                           }
                         }}
