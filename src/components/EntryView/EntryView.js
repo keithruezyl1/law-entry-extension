@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getEntryType } from '../../data/entryTypes';
 import { getJurisdiction } from '../../data/jurisdictions';
@@ -11,6 +11,16 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentEntry, setCurrentEntry] = useState(entry);
+
+  // Sync internal state when parent-selected entry changes
+  useEffect(() => {
+    setCurrentEntry(entry);
+    // also ensure the inner container scrolls to top when changing
+    try {
+      const overlay = document.querySelector('.entry-detail-overlay .entry-view-container');
+      if (overlay) overlay.scrollTop = 0;
+    } catch {}
+  }, [entry]);
   const [isVerifying, setIsVerifying] = useState(false);
   
   if (!currentEntry) {
