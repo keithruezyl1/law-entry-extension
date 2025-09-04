@@ -6,7 +6,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
     ...entry,
     source_urls: entry.source_urls || [''],
     tags: entry.tags || [''],
-    visibility: entry.visibility || { gli: true, police: false, cpa: false },
+    visibility: entry.visibility || { gli: true, cpa: false },
     offline: entry.offline || { pack_include: false }
   } : {
     type: '',
@@ -25,7 +25,6 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
     last_reviewed: new Date().toISOString().split('T')[0],
     visibility: {
       gli: true,
-      police: false,
       cpa: false
     },
     offline: {
@@ -241,7 +240,6 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                         <option value="doj_issuance">🏛️ DOJ Issuance</option>
                         <option value="executive_issuance">📜 Executive Issuance</option>
                         <option value="pnp_sop">👮 PNP SOP</option>
-                        <option value="traffic_rule">🚦 Traffic Rule</option>
                         <option value="incident_checklist">📋 Incident Checklist</option>
                         <option value="rights_advisory">⚖️ Rights Advisory</option>
                       </select>
@@ -571,7 +569,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                         type="text"
                         value={tag}
                         onChange={(e) => handleArrayChange('tags', index, e.target.value)}
-                        placeholder="Enter tag (e.g., arrest, search, traffic, police-mode)"
+                        placeholder="Enter tag (e.g., arrest, search, traffic)"
                         className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                       <button
@@ -605,7 +603,6 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                       <li>• <strong>Summary:</strong> Be concise, neutral, and informative</li>
                       <li>• <strong>Legal Text:</strong> Include complete, normalized text without formatting artifacts</li>
                       <li>• <strong>Tags:</strong> Use relevant keywords that will help users find this entry</li>
-                      <li>• <strong>Tags:</strong> Include mode-specific tags like "police-mode" when applicable</li>
                     </ul>
                   </div>
                 </div>
@@ -696,23 +693,6 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                     <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <input
                         type="checkbox"
-                        id="visibility-police"
-                        checked={formData.visibility.police}
-                        onChange={(e) => handleInputChange('visibility', { ...formData.visibility, police: e.target.checked })}
-                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="visibility-police" className="ml-3 flex items-center">
-                        <span className="text-lg mr-2">👮</span>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">Police Mode</div>
-                          <div className="text-xs text-gray-500">Operational guidance, SOPs, and field procedures</div>
-                        </div>
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <input
-                        type="checkbox"
                         id="visibility-cpa"
                         checked={formData.visibility.cpa}
                         onChange={(e) => handleInputChange('visibility', { ...formData.visibility, cpa: e.target.checked })}
@@ -738,7 +718,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                   </h3>
                   
                   <p className="text-sm text-gray-600 mb-6">
-                    Configure offline pack inclusion for Police Mode:
+                    Configure offline pack inclusion:
                   </p>
                   
                   <div className="space-y-4">
@@ -754,7 +734,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                         <span className="text-lg mr-2">📦</span>
                         <div>
                           <div className="text-sm font-medium text-gray-900">Include in Offline Pack</div>
-                          <div className="text-xs text-gray-500">Make available for offline Police Mode use</div>
+                          <div className="text-xs text-gray-500">Make available for offline use</div>
                         </div>
                       </label>
                     </div>
@@ -775,7 +755,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                             <option value="rights">Rights</option>
                             <option value="roc">Rules of Court</option>
                           </select>
-                          <p className="text-xs text-gray-500 mt-1">Required when including in Police Offline Pack.</p>
+                          <p className="text-xs text-gray-500 mt-1">Required when including in offline pack.</p>
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-2">Pack Priority</label>
@@ -804,9 +784,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                       <h4 className="text-sm font-medium text-blue-900">Visibility Guidelines</h4>
                       <ul className="text-sm text-blue-800 mt-1 space-y-1">
                         <li>• <strong>GLI:</strong> General legal questions and broad inquiries</li>
-                        <li>• <strong>Police Mode:</strong> Operational guidance, SOPs, and field procedures</li>
                         <li>• <strong>CPA:</strong> Case analysis, elements, defenses, and probability assessment</li>
-                        <li>• <strong>Offline Pack:</strong> Only available for Police Mode entries with police visibility enabled</li>
                       </ul>
                     </div>
                   </div>
@@ -850,11 +828,6 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                   {formData.visibility?.gli && (
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
                       🔍 GLI
-                    </span>
-                  )}
-                  {formData.visibility?.police && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                      👮 Police
                     </span>
                   )}
                   {formData.visibility?.cpa && (

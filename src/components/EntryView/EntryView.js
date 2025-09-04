@@ -496,18 +496,6 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
           </div>
         );
 
-      case 'traffic_rule':
-        return (
-          <div className="type-specific-fields">
-            <div className="info-grid">
-              {renderField('Violation Code', currentEntry.violation_code)}
-              {renderField('Violation Name', currentEntry.violation_name)}
-              {renderField('License Action', currentEntry.license_action)}
-            </div>
-            {renderFineScheduleStructured(currentEntry.fine_schedule)}
-            {renderArrayFieldStructured('apprehension_flow', currentEntry.apprehension_flow, 'Apprehension Flow')}
-          </div>
-        );
 
       case 'incident_checklist':
         return (

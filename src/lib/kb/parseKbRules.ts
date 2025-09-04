@@ -100,20 +100,6 @@ const FALLBACK_TYPES: Record<string, KbType> = {
     ],
     crossRules: ["must have ≥1 legal_bases"]
   },
-  traffic_rule: {
-    label: "Traffic Rule",
-    fields: [
-      { name: "violation_code", kind: "string", required: true, help: "violation code" },
-      { name: "violation_name", kind: "string", required: true, help: "violation name" },
-      { name: "fine_schedule", kind: "object_array", required: true, help: "{ offense_no, amount, currency }" },
-      { name: "license_action", kind: "string", required: false, help: "suspension/points/disqualification notes" },
-      { name: "apprehension_flow", kind: "string_array", required: false, help: "on-scene steps for officers" },
-      { name: "lead_agency", kind: "select", required: true, options: ["PNP", "LTO", "LGU-traffic"], help: "lead agency" },
-      { name: "police_role", kind: "string", required: false, help: "e.g., 'secure scene & handoff', 'joint checkpoint'" },
-      { name: "legal_bases", kind: "string_array", required: true, help: "legal bases" }
-    ],
-    crossRules: ["must have ≥1 legal_bases"]
-  },
   incident_checklist: {
     label: "Incident Checklist",
     fields: [
@@ -138,7 +124,7 @@ const FALLBACK_TYPES: Record<string, KbType> = {
 
 const FALLBACK_CONFIG: KbConfig = {
   types: FALLBACK_TYPES,
-  visibility: ["gli", "police", "cpa"],
+  visibility: ["gli", "cpa"],
   offlineCategories: ["sop", "checklist", "traffic", "rights", "roc"]
 };
 

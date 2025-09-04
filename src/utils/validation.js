@@ -220,13 +220,6 @@ export const validateEntryType = (entry, existingEntries = []) => {
       }
       break;
 
-    case 'traffic_rule':
-      if (!entry.violation_code) errors.violation_code = VALIDATION_ERRORS.TYPE_SPECIFIC_REQUIRED('Violation Code');
-      if (!entry.violation_name) errors.violation_name = VALIDATION_ERRORS.TYPE_SPECIFIC_REQUIRED('Violation Name');
-      if (!entry.legal_bases || entry.legal_bases.length === 0) {
-        errors.legal_bases = VALIDATION_ERRORS.LEGAL_BASES_REQUIRED;
-      }
-      break;
 
     case 'incident_checklist':
       if (!entry.incident) errors.incident = VALIDATION_ERRORS.TYPE_SPECIFIC_REQUIRED('Incident');

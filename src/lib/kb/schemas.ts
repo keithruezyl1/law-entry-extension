@@ -20,7 +20,6 @@ const commonFields = {
   last_reviewed: z.string().min(1, "Last reviewed date is required"),
   visibility: z.object({
     gli: z.boolean(),
-    police: z.boolean(),
     cpa: z.boolean()
   }),
   offline: z.object({
@@ -97,20 +96,6 @@ const typeSpecificSchemas = {
     legal_bases: z.array(z.string()).min(1, "At least one legal basis is required")
   }),
   
-  traffic_rule: z.object({
-    violation_code: z.string().min(1, "Violation code is required"),
-    violation_name: z.string().min(1, "Violation name is required"),
-    fine_schedule: z.array(z.object({
-      offense_no: z.string(),
-      amount: z.number().positive(),
-      currency: z.string()
-    })).min(1, "At least one fine schedule entry is required"),
-    license_action: z.string().optional(),
-    apprehension_flow: z.array(z.string()).optional(),
-    lead_agency: z.enum(["PNP", "LTO", "LGU-traffic"]),
-    police_role: z.string().optional(),
-    legal_bases: z.array(z.string()).min(1, "At least one legal basis is required")
-  }),
   
   incident_checklist: z.object({
     incident: z.string().min(1, "Incident name is required"),
@@ -169,7 +154,6 @@ export function createKbEntrySchema() {
       z.object({ type: z.literal("doj_issuance") }).merge(typeSpecificSchemas.doj_issuance),
       z.object({ type: z.literal("executive_issuance") }).merge(typeSpecificSchemas.executive_issuance),
       z.object({ type: z.literal("pnp_sop") }).merge(typeSpecificSchemas.pnp_sop),
-      z.object({ type: z.literal("traffic_rule") }).merge(typeSpecificSchemas.traffic_rule),
       z.object({ type: z.literal("incident_checklist") }).merge(typeSpecificSchemas.incident_checklist),
       z.object({ type: z.literal("rights_advisory") }).merge(typeSpecificSchemas.rights_advisory)
     ])

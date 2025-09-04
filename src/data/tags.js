@@ -44,8 +44,6 @@ export const TAGS = [
   { value: 'assembly', label: 'Assembly', category: 'rights' },
   { value: 'religion', label: 'Religion', category: 'rights' },
 
-  // Police operations tags
-  { value: 'police-mode', label: 'Police Mode', category: 'operations' },
   { value: 'sop', label: 'SOP', category: 'operations' },
   { value: 'procedure', label: 'Procedure', category: 'operations' },
   { value: 'protocol', label: 'Protocol', category: 'operations' },

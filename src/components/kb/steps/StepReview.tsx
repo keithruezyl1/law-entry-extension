@@ -117,11 +117,6 @@ export function StepReview() {
                 GLI
               </span>
             )}
-            {formData.visibility?.police && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                Police
-              </span>
-            )}
             {formData.visibility?.cpa && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                 CPA

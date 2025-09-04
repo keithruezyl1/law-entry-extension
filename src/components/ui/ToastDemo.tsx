@@ -24,13 +24,6 @@ export const ToastDemo: React.FC = () => {
       entry_id: "RA4136-Sec2-789012",
       similarity: 0.87
     },
-    {
-      title: "Traffic Rules and Regulations",
-      type: "traffic_rule",
-      canonical_citation: "LTO Memorandum Circular 2024-001",
-      entry_id: "TRAFFIC-RULES-2024-3456",
-      similarity: 0.72
-    }
   ];
 
   return (

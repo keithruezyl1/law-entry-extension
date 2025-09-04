@@ -75,18 +75,6 @@ export const ENTRY_TYPES = {
       failure_states: { type: 'array', label: 'Failure States', required: false }
     }
   },
-  traffic_rule: {
-    label: 'Traffic Rule',
-    description: 'User-facing card (violation/licensing + fines)',
-    fields: {
-      violation_code: { type: 'string', label: 'Violation Code', required: true },
-      violation_name: { type: 'string', label: 'Violation Name', required: true },
-      fine_schedule: { type: 'array', label: 'Fine Schedule', required: false },
-      license_action: { type: 'string', label: 'License Action', required: false },
-      apprehension_flow: { type: 'array', label: 'Apprehension Flow', required: false },
-      legal_bases: { type: 'array', label: 'Legal Bases', required: true }
-    }
-  },
   incident_checklist: {
     label: 'Incident Checklist',
     description: 'Guided template (phases → steps)',
@@ -175,10 +163,9 @@ export const TEAM_MEMBER_ASSIGNMENTS = {
   },
   4: {
     name: 'Sendrijas',
-    description: 'Traffic/LTO lane',
+    description: 'Statute sections and agency circulars',
     dailyQuota: {
-      traffic_rule: 6,
-      statute_section: 2,
+      statute_section: 8,
       agency_circular: 2
     },
     fallback: null

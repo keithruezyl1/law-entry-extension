@@ -27,8 +27,8 @@ export function validateCrossFieldRules(data: Partial<KbEntry>): ValidationError
     });
   }
   
-  // Rule 3: pnp_sop, traffic_rule, rights_advisory must have ≥1 legal_bases
-  const typesRequiringLegalBases = ['pnp_sop', 'traffic_rule', 'rights_advisory'];
+  // Rule 3: pnp_sop, rights_advisory must have ≥1 legal_bases
+  const typesRequiringLegalBases = ['pnp_sop', 'rights_advisory'];
   if (typesRequiringLegalBases.includes(data.type || '') && (data as any).legal_bases && (data as any).legal_bases.length === 0) {
     errors.push({
       field: 'legal_bases',
@@ -72,7 +72,7 @@ export function validateCrossFieldRules(data: Partial<KbEntry>): ValidationError
   
   // Rule 6: At least one visibility flag must be true
   if (data.visibility) {
-    const hasVisibility = data.visibility.gli || data.visibility.police || data.visibility.cpa;
+    const hasVisibility = data.visibility.gli || data.visibility.cpa;
     if (!hasVisibility) {
       errors.push({
         field: 'visibility',
@@ -80,15 +80,6 @@ export function validateCrossFieldRules(data: Partial<KbEntry>): ValidationError
         type: 'error'
       });
     }
-  }
-  
-  // Rule 7: If police visibility is false, warn about offline pack inclusion
-  if (data.visibility?.police === false && data.offline?.pack_include) {
-    errors.push({
-      field: 'offline.pack_include',
-      message: 'Warning: Including in offline pack but police visibility is disabled',
-      type: 'warning'
-    });
   }
   
   return errors;
@@ -116,7 +107,6 @@ export function validateEntryIdFormat(entryId: string, type: string): Validation
     'agency_circular': /^[A-Z]+-Circular-\d{4}$/,
     'doj_issuance': /^DOJ-[A-Z]+-\d{4}$/,
     'executive_issuance': /^EO-[A-Z]+-\d{4}$/,
-    'traffic_rule': /^TRAFFIC-[A-Z]+-\d{4}$/,
     'rights_advisory': /^RIGHTS-[A-Z]+-\d{4}$/,
     'constitution_provision': /^CONST-[A-Z]+-Art\d+$/
   };
@@ -159,7 +149,6 @@ export function validateRequiredFields(data: Partial<KbEntry>, type: string): Va
     'doj_issuance': ['issuance_no', 'applicability'],
     'executive_issuance': ['instrument_no', 'applicability'],
     'pnp_sop': ['steps_brief', 'legal_bases'],
-    'traffic_rule': ['violation_code', 'violation_name', 'fine_schedule', 'lead_agency', 'legal_bases'],
     'incident_checklist': ['incident', 'phases'],
     'rights_advisory': ['rights_scope', 'advice_points', 'legal_bases']
   };

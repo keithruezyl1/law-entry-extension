@@ -78,7 +78,7 @@ begin
       when u.person_id = 'P1' then jsonb_build_object('statute_section', 7, 'city_ordinance_section', 3)
       when u.person_id = 'P2' then jsonb_build_object('rule_of_court', 7, 'doj_issuance', 2, 'rights_advisory', 1)
       when u.person_id = 'P3' then jsonb_build_object('pnp_sop', 5, 'incident_checklist', 3, 'agency_circular', 2)
-      when u.person_id = 'P4' then jsonb_build_object('traffic_rule', 6, 'statute_section', 2, 'agency_circular', 2)
+      when u.person_id = 'P4' then jsonb_build_object('statute_section', 8, 'agency_circular', 2)
       when u.person_id = 'P5' then jsonb_build_object('rights_advisory', 4, 'constitution_provision', 3, 'doj_issuance', 2, 'executive_issuance', 1)
       else '{}'::jsonb
     end as quota

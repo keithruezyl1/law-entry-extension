@@ -616,7 +616,7 @@ export const useLocalStorage = () => {
       1: { total: 10, quota: { statute_section: 7, city_ordinance_section: 3 } },
       2: { total: 10, quota: { rule_of_court: 7, doj_issuance: 2, rights_advisory: 1 } },
       3: { total: 10, quota: { pnp_sop: 5, incident_checklist: 3, agency_circular: 2 } },
-      4: { total: 10, quota: { traffic_rule: 6, statute_section: 2, agency_circular: 2 } },
+      4: { total: 10, quota: { statute_section: 8, agency_circular: 2 } },
       5: { total: 10, quota: { rights_advisory: 4, constitution_provision: 3, doj_issuance: 2, executive_issuance: 1 } }
     };
     

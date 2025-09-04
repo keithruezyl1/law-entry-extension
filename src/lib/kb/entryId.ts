@@ -51,9 +51,6 @@ export function generateEntryId(type: string, lawFamily: string, sectionId?: str
     case 'executive_issuance':
       return `EO-${lawFamily.replace(/\s+/g, '')}-${year}-${randomSuffix}`;
       
-    case 'traffic_rule':
-      return `TRAFFIC-${lawFamily.replace(/\s+/g, '')}-${year}-${randomSuffix}`;
-      
     case 'rights_advisory':
       return `RIGHTS-${lawFamily.replace(/\s+/g, '')}-${year}-${randomSuffix}`;
       
@@ -77,7 +74,6 @@ export function validateEntryId(entryId: string): boolean {
     /^[A-Z]+-Circular-\d{4}-\d{4}$/,
     /^DOJ-[A-Z]+-\d{4}-\d{4}$/,
     /^EO-[A-Z]+-\d{4}-\d{4}$/,
-    /^TRAFFIC-[A-Z]+-\d{4}-\d{4}$/,
     /^RIGHTS-[A-Z]+-\d{4}-\d{4}$/,
     /^CONST-[A-Z]+-Art\d+-\d{6}$/,
     // Fallback patterns for other types

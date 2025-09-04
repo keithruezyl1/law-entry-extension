@@ -242,14 +242,6 @@ export const useEntryValidation = (existingEntries = []) => {
         }
         break;
         
-      case 'traffic_rule':
-        if (!formData.violation_code) {
-          errors.violation_code = 'Violation code is required';
-        }
-        if (!formData.violation_name) {
-          errors.violation_name = 'Violation name is required';
-        }
-        break;
         
       case 'incident_checklist':
         if (!formData.incident) {

@@ -48,7 +48,7 @@ export function StepContent() {
             control={control}
             name="tags"
             label="Tags *"
-            help="Retrieval hints (e.g., ['arrest','search','traffic','police-mode'])"
+            help="Retrieval hints (e.g., ['arrest','search','traffic'])"
             placeholder="Enter tag"
           />
           {errors.tags && (
@@ -63,7 +63,6 @@ export function StepContent() {
           <li>• <strong>Summary:</strong> Be concise, neutral, and informative</li>
           <li>• <strong>Legal Text:</strong> Include complete, normalized text without formatting artifacts</li>
           <li>• <strong>Tags:</strong> Use relevant keywords that will help users find this entry</li>
-          <li>• <strong>Tags:</strong> Include mode-specific tags like "police-mode" when applicable</li>
         </ul>
       </div>
     </div>

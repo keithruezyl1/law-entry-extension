@@ -750,7 +750,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((sanitized as any).offline) delete (sanitized as any).offline;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((sanitized as any).visibility && 'police' in (sanitized as any).visibility) delete (sanitized as any).visibility.police;
 
     // Publish gating
     if (!sanitized.source_urls || sanitized.source_urls.length < 1) {

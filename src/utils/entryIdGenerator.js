@@ -56,11 +56,6 @@ export const generateEntryId = (type, title, lawFamily, sectionId = null) => {
       const sopName = title.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10);
       return `PNP-SOP-${sopName}-${timestamp}`;
     
-    case 'traffic_rule':
-      // Generate traffic rule ID based on violation code or name
-      const trafficCode = title.match(/[A-Z]{2,}/) ? title.match(/[A-Z]{2,}/)[0] : 'TRAFFIC';
-      return `TRAFFIC-${trafficCode}-${timestamp}`;
-    
     case 'incident_checklist':
       // Generate incident checklist ID based on incident type
       const incidentType = title.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10);
@@ -135,8 +130,6 @@ export const parseEntryId = (entryId) => {
       return { type: 'executive_issuance', executiveNumber: parts[1], timestamp };
     case 'PNP':
       return { type: 'pnp_sop', sopName: parts[2], timestamp };
-    case 'TRAFFIC':
-      return { type: 'traffic_rule', trafficCode: parts[1], timestamp };
     case 'INC':
       return { type: 'incident_checklist', incidentType: parts[1], timestamp };
     case 'RIGHTS':

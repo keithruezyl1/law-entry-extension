@@ -128,7 +128,7 @@ export const extractKeyPhrases = (text) => {
     'violation', 'penalty', 'fine', 'suspension', 'revocation',
     'checkpoint', 'sobriety', 'breath test', 'field test',
     'incident', 'report', 'blotter', 'evidence', 'witness',
-    'police', 'officer', 'law enforcement', 'public safety'
+    'officer', 'law enforcement', 'public safety'
   ];
 
   legalKeywords.forEach(keyword => {
@@ -137,11 +137,6 @@ export const extractKeyPhrases = (text) => {
     }
   });
 
-  // Add police-mode tag if police-related content is found
-  const policeTerms = ['police', 'officer', 'law enforcement', 'checkpoint', 'arrest', 'search'];
-  if (policeTerms.some(term => lowerText.includes(term))) {
-    phrases.push('police-mode');
-  }
 
   return [...new Set(phrases)]; // Remove duplicates
 };
