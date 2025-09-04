@@ -744,92 +744,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setClearOption(null);
   };
 
-  const handleImportPlan = async (event) => {
-    // Security check: Only Tagarao can import plans
-    if (!checkAdminAndAlert(user, 'import plans')) {
-      return;
-    }
-    
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    try {
-      const buf = await file.arrayBuffer();
-      const parsed = parseWorkbook(buf);
-      setPlanData(parsed);
-      setShowPlanModal(true);
-      setPlanModalStep(1);
-    } catch (e) {
-      alert('Failed to parse Excel file. Please check the file format.');
-    }
-  };
+  // Plan import removed
 
-  const handleDay1Confirm = () => {
-    if (!selectedDay1Date) {
-      alert('Please select a Day 1 date.');
-      return;
-    }
-    setPlanModalStep(2);
-  };
+  // Plan import removed
 
-  const handlePlanFinalConfirm = async () => {
-    if (day1Date && !window.confirm('Reimporting a new plan will reset all progress. Are you sure?')) {
-      return;
-    }
-    
-    try {
-      // Get plan name from filename
-      const planName = 'Imported Plan'; // You could make this configurable
-      
-      // Import plan to database
-      const planId = await importPlan(planName, selectedDay1Date, planData);
-      
-      if (planId) {
-        setDay1Date(selectedDay1Date);
-        setDay1DateState(selectedDay1Date);
-        setShowPlanModal(false);
-        setPlanModalStep(1);
-        setSelectedDay1Date('');
-        
-        // Ensure state is hydrated for gating without full reload
-        const active = await getActivePlan();
-        if (active) {
-          setPlanData(active.plan_data);
-          setDay1DateState(active.day1_date);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to import plan:', err);
-      alert(`Failed to import plan: ${err.message}`);
-    }
-  };
+  // Plan import removed
 
-  const handlePlanCancel = () => {
-    setShowPlanModal(false);
-    setPlanModalStep(1);
-    setSelectedDay1Date('');
-    setPlanData(null);
-  };
+  // Plan import removed
 
-  const handleRemovePlan = async () => {
-    // Security check: Only Tagarao can remove plans
-    if (!checkAdminAndAlert(user, 'remove plans')) {
-      return;
-    }
-    
-    if (!window.confirm('Remove the imported plan and Day 1 setting? This will not delete your saved entries.')) return;
-    
-    try {
-      await removePlan();
-      setPlanData(null);
-      setDay1DateState(null);
-      // Refresh the page to ensure all components get the updated state
-      window.location.reload();
-    } catch (err) {
-      console.error('Failed to remove plan:', err);
-      alert(`Failed to remove plan: ${err.message}`);
-    }
-  };
+  // Plan import removed
 
   const handleBackToList = () => {
     navigate('/dashboard');

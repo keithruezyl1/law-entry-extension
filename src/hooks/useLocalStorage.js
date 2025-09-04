@@ -614,8 +614,8 @@ export const useLocalStorage = () => {
     const currentProgress = teamProgress[key] || { total: 0 };
 
     // Determine quotas for this member from the active plan JSON
-    const day1 = require('../lib/plan/config').KB_PROJECT_START;
-    const dayIndex = computeDayIndex(new Date(), planState?.day1Date || day1.toISOString().split('T')[0]);
+    const day1FromWindow = (typeof window !== 'undefined' && window.__KB_DAY1__) ? window.__KB_DAY1__ : require('../lib/plan/config').KB_PROJECT_START.toISOString().split('T')[0];
+    const dayIndex = computeDayIndex(new Date(), day1FromWindow);
     const planRows = (window.__KB_PLAN__ && Array.isArray(window.__KB_PLAN__)) ? window.__KB_PLAN__ : [];
     const rows = rowsForDay(planRows, dayIndex);
     const personCode = `P${teamMemberId}`;
