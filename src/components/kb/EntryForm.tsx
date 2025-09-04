@@ -1405,10 +1405,14 @@ function UrlArray({ control, register, watch, setValue }: any) {
               <button
                 type="button"
                 onClick={() => remove(index)}
-                className="px-6 py-3 w-16 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center"
+                className="w-12 h-[48px] bg-red-600 text-white rounded-xl hover:bg-red-600 transition-colors flex items-center justify-center"
+                title="Remove URL"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3,6 5,6 21,6"/>
+                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/>
+                  <line x1="14" y1="11" x2="14" y2="17"/>
                 </svg>
               </button>
             )}
@@ -1421,7 +1425,7 @@ function UrlArray({ control, register, watch, setValue }: any) {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors mt-6"
+          className="w-full px-4 py-3.5 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-white transition-colors mt-6"
         >
           + Add Item
         </button>

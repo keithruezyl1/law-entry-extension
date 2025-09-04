@@ -17,6 +17,13 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
         // Push current entry to stack if we are navigating from an open entry
         setEntryStack((prev) => (selectedEntry ? [...prev, selectedEntry] : prev));
         setSelectedEntry(entry);
+        // Ensure overlay scrolls to top after switching entries
+        setTimeout(() => {
+          try {
+            const overlay = document.querySelector('.entry-detail-overlay .entry-view-container');
+            if (overlay) overlay.scrollTop = 0;
+          } catch {}
+        }, 0);
       }
     };
     window.addEventListener('open-entry-detail', handler);

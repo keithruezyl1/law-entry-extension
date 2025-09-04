@@ -799,31 +799,38 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                     {currentEntry.related_sections.map((rel, idx) => (
                       <div
                         key={idx}
-                        className={`related-section-card ${rel?.type === 'internal' ? 'clickable' : ''}`}
+                        className={`legal-basis-card ${rel?.type === 'internal' ? 'clickable' : ''}`}
                         onClick={async () => {
-                          if (rel?.type === 'internal' && rel?.entry_id) {
-                            const target = await fetchEntryById(rel.entry_id);
+                          if (rel?.type === 'internal' && (rel?.entry_id || rel?.title)) {
+                            const entryId = rel.entry_id;
+                            let target = null;
+                            if (entryId) {
+                              target = await fetchEntryById(entryId);
+                            }
+                            if (!target && rel?.title) {
+                              // Fallback: try to match by title via search API if available in future
+                            }
                             if (target) {
                               window.dispatchEvent(new CustomEvent('open-entry-detail', { detail: { entry: { ...target, id: target.entry_id } } }));
                             }
                           }
                         }}
                       >
-                        <div className="section-header">
-                          <span className={`section-type-pill ${rel?.type || 'unknown'}`}>
+                        <div className="basis-header">
+                          <span className={`basis-type-pill ${rel?.type || 'unknown'}`}>
                             {rel?.type === 'internal' ? 'Internal' : 'External'}
                           </span>
                         </div>
-                        <div className="section-content">
-                          {rel?.type === 'internal' && rel?.entry_id ? (
-                            <span className="link-button">{rel.title ? `${rel.title} (${rel.entry_id})` : rel.entry_id}</span>
+                        <div className="basis-content">
+                          {rel?.type === 'internal' && (rel?.entry_id || rel?.title) ? (
+                            <span className="link-button">{rel.title ? `${rel.title} (${rel.entry_id || ''})` : rel.entry_id}</span>
                           ) : (
                             <span className="external-citation">{String(rel?.citation || rel)}</span>
                           )}
                         </div>
-                        {rel?.note && <div className="section-note">{rel.note}</div>}
+                        {rel?.note && <div className="basis-note">{rel.note}</div>}
                         {rel?.url && (
-                          <div className="section-url">
+                          <div className="basis-url">
                             <a href={rel.url} target="_blank" rel="noopener noreferrer" className="url-link">
                               {rel.url}
                             </a>
