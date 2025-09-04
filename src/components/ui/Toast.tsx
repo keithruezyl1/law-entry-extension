@@ -180,6 +180,7 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
   maxDisplay = 5,
   onViewAll,
 }) => {
+  console.log('🔄 DuplicateMatchesToast rendered with NEW design!', { matches: matches.length, isOpen });
   const displayCount = Math.min(matches.length, maxDisplay);
   const hasMore = matches.length > maxDisplay;
   const titleText = matches.length === 1 ? "Possible match" : `Possible matches (${matches.length})`;
