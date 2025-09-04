@@ -1,5 +1,6 @@
 import { differenceInCalendarDays, format } from "date-fns";
 import { KB_PROJECT_START } from "./config";
+import { EMBEDDED_PLAN_ROWS } from "./embeddedPlan";
 
 // Loads plan directly from a JSON file bundled with the app
 export async function loadPlanFromJson(url: string = "/Civilify_KB30_Schedule_CorePH.json") {
@@ -9,11 +10,12 @@ export async function loadPlanFromJson(url: string = "/Civilify_KB30_Schedule_Co
     const res = await fetch(bust, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Failed to fetch plan JSON: ${res.status}`);
     const rows = await res.json();
-    if (!Array.isArray(rows)) throw new Error("Invalid plan JSON format");
-    return rows as any[];
+    if (Array.isArray(rows) && rows.length > 0) return rows as any[];
+    // Fallback to embedded rows if JSON is empty
+    return EMBEDDED_PLAN_ROWS;
   } catch (e) {
-    console.error('loadPlanFromJson failed; returning empty plan', e);
-    return [] as any[];
+    console.error('loadPlanFromJson failed; using embedded plan', e);
+    return EMBEDDED_PLAN_ROWS;
   }
 }
 
