@@ -801,9 +801,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       {currentView !== 'form' && (
       <div className="team-progress">
         <div className="team-progress-header">
-          <h3>Today's Team Progress {day1Date && Array.isArray(planData) && planData.length > 0 && (
+          <h3>Today's Team Progress {(
             <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>
-              {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d yyyy')} • ${format(now, 'HH:mm:ss')}`}
+              {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
             </span>
           )}</h3>
           <div className="yesterday-status">
@@ -903,7 +903,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 </div>
                 <div className="member-breakdown">
                   {Object.entries(currentDayReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
-                    <span key={type} className="quota-item">
+                    <span key={type} className="quota-item" style={{
+                      display: 'inline-block',
+                      background: '#eef2ff',
+                      color: '#3730a3',
+                      borderRadius: 9999,
+                      padding: '2px 8px',
+                      marginRight: 6,
+                      marginBottom: 6,
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}>
                       {type}: {perTypeCounts[type] || 0}/{quota}
                     </span>
                   ))}

@@ -3,14 +3,10 @@ import { KB_PROJECT_START } from "./config";
 
 // Loads plan directly from a JSON file bundled with the app
 export async function loadPlanFromJson(url: string = "/Civilify_KB30_Schedule_CorePH.json") {
-  // Try to fetch with cache disabled to avoid 304 without body
+  // Always append a cache-busting query param to ensure fresh body
+  const bust = url.includes('?') ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
   try {
-    let res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok || res.status === 304) {
-      // Retry with cache-busting query
-      const bust = url.includes('?') ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
-      res = await fetch(bust, { cache: 'reload' });
-    }
+    const res = await fetch(bust, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Failed to fetch plan JSON: ${res.status}`);
     const rows = await res.json();
     if (!Array.isArray(rows)) throw new Error("Invalid plan JSON format");
