@@ -34,9 +34,10 @@ interface StepTypeSpecificProps {
   onCancel: () => void;
   onSaveDraft?: () => void;
   isEditing?: boolean;
+  existingEntries?: Array<{ id?: string; entry_id: string; title: string; canonical_citation?: string; type?: string }>;
 }
 
-export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, isEditing }: StepTypeSpecificProps) {
+export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, isEditing, existingEntries = [] }: StepTypeSpecificProps) {
   const form = useFormContext<Entry>();
   const { control, register, formState: { errors, isValid }, trigger } = form;
   const type = useWatch({ name: 'type', control });
@@ -151,7 +152,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   name="legal_bases"
                   control={control}
                   register={register}
-                  existingEntries={[]}
+                  existingEntries={existingEntries}
                 />
               </div>
 
@@ -161,7 +162,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   name="related_sections"
                   control={control}
                   register={register}
-                  existingEntries={[]}
+                  existingEntries={existingEntries}
                 />
               </div>
             </div>

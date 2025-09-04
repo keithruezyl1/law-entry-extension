@@ -1305,6 +1305,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             onCancel={onCancel}
                             onSaveDraft={saveDraft}
                             isEditing={!!entry}
+                            existingEntries={existingEntries as any}
                           />
                         </div>
                       </div>

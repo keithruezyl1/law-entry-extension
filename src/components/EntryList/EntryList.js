@@ -8,15 +8,20 @@ import './EntryList.css';
 
 const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries, teamMemberNames = {} }) => {
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const [entryStack, setEntryStack] = useState([]); // stack of previously opened entries
   // Listen for requests to open an entry detail (from EntryView link clicks)
   useEffect(() => {
     const handler = (e) => {
       const entry = e?.detail?.entry;
-      if (entry) setSelectedEntry(entry);
+      if (entry) {
+        // Push current entry to stack if we are navigating from an open entry
+        setEntryStack((prev) => (selectedEntry ? [...prev, selectedEntry] : prev));
+        setSelectedEntry(entry);
+      }
     };
     window.addEventListener('open-entry-detail', handler);
     return () => window.removeEventListener('open-entry-detail', handler);
-  }, []);
+  }, [selectedEntry]);
   console.log('EntryList received entries:', entries);
   console.log('EntryList entries length:', entries.length);
   
@@ -254,7 +259,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
               <div className="entry-content">
                 <div className="entry-main">
                   <div className="entry-title-row">
-                    <h3 className="entry-title" onClick={() => setSelectedEntry(entry)}>{entry.title || 'Untitled Entry'}</h3>
+                    <h3 className="entry-title" onClick={() => { setEntryStack([]); setSelectedEntry(entry); }}>{entry.title || 'Untitled Entry'}</h3>
                     <div className="entry-badges">
                       <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
                       {entry.status && (
@@ -337,10 +342,18 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
             teamMemberNames={teamMemberNames}
           />
           <button 
-            onClick={() => setSelectedEntry(null)} 
+            onClick={() => {
+              if (entryStack.length > 0) {
+                const prev = entryStack[entryStack.length - 1];
+                setEntryStack(entryStack.slice(0, -1));
+                setSelectedEntry(prev);
+              } else {
+                setSelectedEntry(null);
+              }
+            }} 
             className="back-to-list-btn"
           >
-            ← Back to List
+            {entryStack.length > 0 ? '← Back to Previous Law' : '← Back to List'}
           </button>
         </div>
       )}
