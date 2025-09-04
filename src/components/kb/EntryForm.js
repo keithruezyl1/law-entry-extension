@@ -462,9 +462,11 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                         <button
                           type="button"
                           onClick={() => removeArrayItem('source_urls', index)}
-                          className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center"
                         >
-                          🗑️
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
                         </button>
                       </div>
                     ))}
@@ -472,7 +474,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
                     <button
                       type="button"
                       onClick={() => addArrayItem('source_urls')}
-                      className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors"
+                      className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors mt-4"
                     >
                       + Add Item
                     </button>

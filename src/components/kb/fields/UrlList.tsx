@@ -40,9 +40,11 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
               variant="outline"
               size="icon"
               onClick={() => remove(index)}
-              className="shrink-0 px-4 py-3 min-w-[60px]"
+              className="shrink-0 px-6 py-3 min-w-[80px] bg-red-500 text-white border-red-500 hover:bg-red-600 hover:border-red-600"
             >
-              <Trash2 className="h-4 w-4" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </Button>
           </div>
         ))}
@@ -52,7 +54,7 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
           variant="outline"
           size="sm"
           onClick={() => append('')}
-          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors"
+          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors mt-4"
         >
           <Plus className="h-4 w-4 mr-2" />
           + Add Item

@@ -12,6 +12,7 @@ import { StepTypeSpecific } from './steps/StepTypeSpecific';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
+import { DuplicateMatchesToast } from '../ui/Toast';
 import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
 import { generateEntryId, generateUniqueEntryId } from 'lib/kb/entryId';
@@ -916,84 +917,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     <FormProvider {...methods}>
       <div className="kb-form mx-auto max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Toast for possible duplicates */}
-        {nearDuplicates && nearDuplicates.length > 0 && (
-          <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
-            <div className="bg-white shadow-2xl rounded-xl border border-gray-200 min-w-[380px] max-w-[520px] overflow-hidden">
-              {/* Header with gradient background */}
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">Possible Matches</h3>
-                  </div>
-                  <button 
-                    className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200"
-                    onClick={() => setNearDuplicates([])}
-                    title="Close notification"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              
-              {/* Matches list */}
-              <div className="p-6">
-                <div className="space-y-4">
-                  {nearDuplicates.slice(0, 5).map((m: any, i: number) => (
-                    <div key={i} className="group">
-                      <div className="bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-all duration-200 border border-gray-100 hover:border-gray-200">
-                        <div className="flex items-start gap-4">
-                          {/* Bullet point with better styling */}
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                          
-                          {/* Content */}
-                          <div className="flex-1 min-w-0 space-y-2">
-                            {/* Title */}
-                            <div className="font-semibold text-gray-900 text-sm leading-tight">
-                              {m.title}
-                            </div>
-                            
-                            {/* Type badge */}
-                            <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {m.type}
-                            </div>
-                            
-                            {/* Citation */}
-                            {m.canonical_citation && (
-                              <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
-                                <div className="text-xs text-gray-600 font-mono break-all">
-                                  {m.canonical_citation}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Divider between items */}
-                      {i < nearDuplicates.slice(0, 5).length - 1 && (
-                        <div className="h-px bg-gray-200 mx-4"></div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Footer */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <div className="text-xs text-gray-500 text-center">
-                    Found {nearDuplicates.length} potential match{nearDuplicates.length !== 1 ? 'es' : ''}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <DuplicateMatchesToast
+          isOpen={nearDuplicates && nearDuplicates.length > 0}
+          onClose={() => setNearDuplicates([])}
+          matches={nearDuplicates || []}
+          maxDisplay={5}
+        />
         <div className="kb-form-container">
           <header className="kb-form-header mb-6">
             <div>
@@ -1470,9 +1399,11 @@ function UrlArray({ control, register, watch, setValue }: any) {
             <button
               type="button"
               onClick={() => remove(index)}
-              className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center"
             >
-              🗑️
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         ))}
@@ -1483,7 +1414,7 @@ function UrlArray({ control, register, watch, setValue }: any) {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors"
+          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors mt-4"
         >
           + Add Item
         </button>
