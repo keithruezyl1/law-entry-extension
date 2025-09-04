@@ -4,6 +4,7 @@ import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Trash2, Plus, Search } from 'lucide-react';
+import { fetchEntryById } from '../../../services/kbApi';
 
 type EntryLite = { id?: string; entry_id: string; title: string; type?: string; canonical_citation?: string };
 
@@ -21,6 +22,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
+  const [showInternalSearch, setShowInternalSearch] = useState(false);
 
   const options = useMemo(() => {
     const q = (query || '').trim().toLowerCase();
@@ -66,21 +68,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
             }
             return (
               <div key={f.id} className="space-y-3">
-                <div className="flex items-center gap-3">
-                  {itemType !== 'external' && (
-                    <Select
-                      className="kb-form-select w-40"
-                      options={[
-                        { value: 'internal', label: 'Internal' },
-                        { value: 'external', label: 'External' }
-                      ]}
-                      {...register(`${name}.${i}.type` as const)}
-                    />
-                  )}
-                  {itemType === 'external' && (
-                    <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
-                  )}
-                </div>
+                {/* Type is implicit via tab; keep hidden input to save */}
+                <input type="hidden" value={itemType || (tab === 'external' ? 'external' : 'internal')} {...register(`${name}.${i}.type` as const)} />
 
                 <div className="grid gap-3">
                   <div>
@@ -117,31 +106,40 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   </div>
                 </div>
 
-                {/* Bottom action row: Add + Delete on same line for external items */}
-                {itemType === 'external' && (
-                  <div className="flex items-center gap-3 mt-2">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => remove(i)}
-                      className={`h-11 rounded-xl flex items-center justify-center mb-2 ${i === fields.length - 1 ? 'w-11' : 'flex-1'}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    {/* Show "Add external citation" only if this is the last item */}
-                    {i === fields.length - 1 && (
+                {/* Action row: Add then Delete (delete on right) */}
+                <div className="flex items-center gap-3 mt-2">
+                  {i === fields.length - 1 && (
+                    tab === 'external' ? (
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} }}
+                        onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); }}
                         className="h-11 rounded-xl flex-1 mb-2"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add external citation
                       </Button>
-                    )}
-                  </div>
-                )}
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => { setShowInternalSearch(true); setQuery(''); }}
+                        className="h-11 rounded-xl flex-1 mb-2"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add internal citation
+                      </Button>
+                    )
+                  )}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => remove(i)}
+                    className={`h-11 rounded-xl w-11 mb-2`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             );
           })}
@@ -150,17 +148,18 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
       {tab === 'internal' ? (
         <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="kb-form-input kb-input-search"
-              placeholder="Search by entry_id or title…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-          
-          {(query || '').trim().length > 0 && (
+          {showInternalSearch && (
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="kb-form-input kb-input-search"
+                placeholder="Search by entry_id or title…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+          )}
+          {showInternalSearch && (query || '').trim().length > 0 && (
             <div className="rounded-xl max-h-48 overflow-auto bg-background">
               {options.length === 0 && (
                 <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
@@ -172,9 +171,16 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   type="button"
                   key={o.entry_id}
                   className="w-full text-left p-4 hover:bg-muted/50 transition-colors"
-                  onClick={() => {
-                    append({ type: 'internal', entry_id: o.entry_id });
+                  onClick={async () => {
+                    try {
+                      const full = await fetchEntryById(o.entry_id);
+                      const firstUrl = Array.isArray(full?.source_urls) && full.source_urls.length > 0 ? full.source_urls[0] : '';
+                      append({ type: 'internal', entry_id: o.entry_id, url: firstUrl || '', title: full?.title || o.title, note: '' });
+                    } catch {
+                      append({ type: 'internal', entry_id: o.entry_id, url: '', title: o.title, note: '' });
+                    }
                     setQuery('');
+                    setShowInternalSearch(false);
                   }}
                 >
                   <div className="font-medium text-sm">{o.title}</div>
@@ -185,6 +191,17 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 </button>
               ))}
             </div>
+          )}
+          {!showInternalSearch && fields.filter((_, idx) => (items?.[idx]?.type !== 'external')).length === 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setShowInternalSearch(true); setQuery(''); }}
+              className="h-11 rounded-xl"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add internal citation
+            </Button>
           )}
         </div>
       ) : (
