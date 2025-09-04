@@ -218,17 +218,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     if (planData && Array.isArray(planData.data)) return planData.data;
     return [];
   })();
-  const hasPlan = (!!day1Date) && planRows.length > 0;
+  const hasPlan = true; // Always treat plan as present since it's bundled
 
   // Guard: prevent opening the form route when plan failed to load
   useEffect(() => {
     if (currentView !== 'form') return;
     // Wait until plan loading completes to avoid false negatives on first mount
     if (planLoading) return;
-    if (!hasPlan) {
-      alert('Plan JSON failed to load.');
-      navigate('/dashboard');
-    }
+    // no-op; plan is always bundled
   }, [currentView, hasPlan, navigate, planLoading]);
   
   
@@ -823,8 +820,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const nameToPlanCode = { 'Arda': 'P1', 'Delos Cientos': 'P2', 'Paden': 'P3', 'Sendrijas': 'P4', 'Tagarao': 'P5' };
             const personPlanCode = nameToPlanCode[personName] || nameToPlanCode[personKey] || personKey;
             
-            // Check if plan is imported
-            const _hasPlan = !!day1Date && Array.isArray(planData) && planData.length > 0;
+            // Plan is bundled; always available
+            const _hasPlan = true;
             
             if (!_hasPlan) {
               // Show empty card when no plan is imported
