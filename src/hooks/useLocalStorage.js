@@ -361,6 +361,23 @@ export const useLocalStorage = () => {
       filteredEntries = filteredEntries.filter(entry => entry.status === filters.status);
     }
 
+      // Verified filter
+  if (filters.verified && filters.verified !== 'all') {
+    console.log('Verified filter active:', filters.verified);
+    filteredEntries = filteredEntries.filter(entry => {
+      const isVerified = entry.verified === true;
+      
+      if (filters.verified === 'yes') {
+        return isVerified;
+      } else if (filters.verified === 'not_verified') {
+        return !isVerified;
+      }
+      
+      return true;
+    });
+    console.log('Filtered entries after verified filter:', filteredEntries.length);
+  }
+
       // Team member filter
   if (filters.team_member_id && filters.team_member_id !== 'all') {
     console.log('Team member filter active:', filters.team_member_id);

@@ -191,11 +191,11 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="px-4 py-3">
+      <div className="px-4 py-2">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
-            className="mb-3 last:mb-0"
+            className="mb-2 last:mb-0"
           >
             {/* Primary line: Entry title with left margin */}
             <div className="font-medium text-gray-900 text-sm leading-tight mb-0.5 ml-8">

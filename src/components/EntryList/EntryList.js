@@ -27,6 +27,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
     type: 'all',
     jurisdiction: 'all',
     status: 'all',
+    verified: 'all',
     team_member_id: 'all'
   });
   
@@ -84,6 +85,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
       type: 'all',
       jurisdiction: 'all',
       status: 'all',
+      verified: 'all',
       team_member_id: 'all'
     });
     setSearchQuery('');
@@ -193,6 +195,18 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
               </div>
 
               <div className="filter-group">
+                <label>Verified</label>
+                <select
+                  value={filters.verified}
+                  onChange={(e) => handleFilterChange('verified', e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="yes">Yes</option>
+                  <option value="not_verified">Not Verified</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
                 <label>Team Member</label>
                 <select
                   value={filters.team_member_id}
@@ -208,7 +222,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
               </div>
 
               <div className="filter-group">
-                <button onClick={clearFilters} className="btn-secondary">
+                <button onClick={clearFilters} className="btn-secondary btn-sm">
                   Clear Filters
                 </button>
               </div>
