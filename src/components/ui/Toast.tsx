@@ -187,38 +187,38 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div key={`${match.entry_id || index}-${index}`} className="group">
-            {/* Title - Large and bold */}
-            <div className="font-bold text-gray-900 text-lg leading-tight mb-3">
+            {/* Title - Above everything */}
+            <div className="font-bold text-gray-900 text-base leading-tight mb-2">
               {match.title}
             </div>
             
-            {/* Match details */}
-            <div className="flex items-start gap-3">
-              {/* Match indicator dot */}
-              <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-              
-              {/* Citation */}
-              {match.canonical_citation && (
+            {/* Citation with yellow dot */}
+            {match.canonical_citation && (
+              <div className="flex items-start gap-2">
+                {/* Match indicator dot */}
+                <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                
+                {/* Citation */}
                 <div className="text-sm text-gray-700">
                   {match.canonical_citation}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             
             {/* Divider between items */}
             {index < Math.min(matches.length, maxDisplay) - 1 && (
-              <div className="h-px bg-gray-200 my-4"></div>
+              <div className="h-px bg-gray-200 my-3"></div>
             )}
           </div>
         ))}
       </div>
       
       {/* Footer */}
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="text-sm text-gray-600">
+      <div className="mt-4 pt-3 border-t border-gray-200">
+        <div className="text-xs text-gray-600">
           Found {matches.length} potential match{matches.length !== 1 ? 'es' : ''}
         </div>
       </div>
