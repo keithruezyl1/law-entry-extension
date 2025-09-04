@@ -310,10 +310,20 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                   <div key={index} className="legal-basis-item">
                     <div className="basis-header">
                       <span className="basis-type">{basis.type}</span>
-                      {basis.topic && <span className="basis-topic">({basis.topic})</span>}
+                      {(basis.title || basis.topic) && <span className="basis-topic">({basis.title || basis.topic})</span>}
                     </div>
                     <div className="basis-content">
-                      {basis.type === 'internal' ? basis.entry_id : basis.citation}
+                      {basis.type === 'internal' ? (
+                        <>
+                          {basis.entry_id}
+                          {(basis.title || basis.topic) && <span className="basis-title"> — {basis.title || basis.topic}</span>}
+                        </>
+                      ) : (
+                        <>
+                          {basis.citation}
+                          {(basis.title || basis.topic) && <span className="basis-title"> — {basis.title || basis.topic}</span>}
+                        </>
+                      )}
                     </div>
                     {basis.note && <div className="basis-note">{basis.note}</div>}
                     {basis.url && (

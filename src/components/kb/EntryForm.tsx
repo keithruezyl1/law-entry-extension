@@ -391,6 +391,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           if (it.type === 'external' && it.entry_id && !it.citation) {
             return { ...it, citation: it.entry_id, entry_id: undefined };
           }
+          // Legacy 'topic' -> new 'title'
+          if (it.topic && !it.title) {
+            const { topic, ...rest } = it;
+            return { ...rest, title: topic };
+          }
           return it;
         });
       };

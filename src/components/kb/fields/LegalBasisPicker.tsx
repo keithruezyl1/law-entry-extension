@@ -23,8 +23,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const items = (useWatch({ control, name }) as any[]) || [];
 
   const options = useMemo(() => {
-    if (!query) return existingEntries.slice(0, 8);
-    const q = query.toLowerCase();
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return [];
     return existingEntries.filter((e) => 
       (e.entry_id + ' ' + e.title + ' ' + (e.canonical_citation || '')).toLowerCase().includes(q)
     ).slice(0, 8);
@@ -100,11 +100,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     />
                   </div>
                   <div>
-                    <label className="kb-form-label">Topic (optional)</label>
+                    <label className="kb-form-label">Title (optional)</label>
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.topic` as const)}
+                      {...register(`${name}.${i}.title` as const)}
                     />
                   </div>
                   <div>
@@ -160,30 +160,32 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
             />
           </div>
           
-          <div className="rounded-xl max-h-48 overflow-auto bg-background">
-            {options.length === 0 && (
-              <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
-                No matches found
-              </div>
-            )}
-            {options.map((o) => (
-              <button
-                type="button"
-                key={o.entry_id}
-                className="w-full text-left p-4 hover:bg-muted/50 transition-colors"
-                onClick={() => {
-                  append({ type: 'internal', entry_id: o.entry_id });
-                  setQuery('');
-                }}
-              >
-                                  <div className="font-medium text-sm">{o.title}</div>
+          {(query || '').trim().length > 0 && (
+            <div className="rounded-xl max-h-48 overflow-auto bg-background">
+              {options.length === 0 && (
+                <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
+                  No matches found
+                </div>
+              )}
+              {options.map((o) => (
+                <button
+                  type="button"
+                  key={o.entry_id}
+                  className="w-full text-left p-4 hover:bg-muted/50 transition-colors"
+                  onClick={() => {
+                    append({ type: 'internal', entry_id: o.entry_id });
+                    setQuery('');
+                  }}
+                >
+                  <div className="font-medium text-sm">{o.title}</div>
                   <div className="text-xs text-muted-foreground">{o.entry_id}</div>
                   {o.canonical_citation && (
                     <div className="text-xs text-muted-foreground">{o.canonical_citation}</div>
                   )}
                 </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div>

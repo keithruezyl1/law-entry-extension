@@ -94,14 +94,15 @@ const UpsertSchema = z.object({
     citation: z.string().optional(),
     url: z.string().optional(),
     note: z.string().optional(),
-    topic: z.string().optional()
+    title: z.string().optional()
   })).optional(),
   related_sections: z.array(z.object({
     type: z.enum(['internal', 'external']),
     entry_id: z.string().optional(),
     citation: z.string().optional(),
     url: z.string().optional(),
-    note: z.string().optional()
+    note: z.string().optional(),
+    title: z.string().optional()
   })).optional(),
   created_by_name: z.string().optional(),
   verified: z.boolean().optional(),

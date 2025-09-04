@@ -31,8 +31,8 @@ export const EntryRef = z.discriminatedUnion("type", [
 export type EntryRefType = z.infer<typeof EntryRef>;
 
 export const LegalBasis = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("internal"), entry_id: z.string().min(1), note: z.string().optional(), topic: z.string().optional() }),
-  z.object({ type: z.literal("external"), citation: z.string().min(1), url: Url.optional(), note: z.string().optional(), topic: z.string().optional() }),
+  z.object({ type: z.literal("internal"), entry_id: z.string().min(1), note: z.string().optional(), title: z.string().optional() }),
+  z.object({ type: z.literal("external"), citation: z.string().min(1), url: Url.optional(), note: z.string().optional(), title: z.string().optional() }),
 ]);
 export type LegalBasisType = z.infer<typeof LegalBasis>;
 
