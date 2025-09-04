@@ -123,12 +123,12 @@ export const Toast: React.FC<ToastProps> = ({
         {/* Header with gradient background */}
         <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-2">
               <Icon className="w-5 h-5 text-white" />
               <h3 className="text-lg font-semibold text-white">{title}</h3>
             </div>
             <button 
-              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-1"
+              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-2"
               onClick={onClose}
               title="Dismiss notification"
               aria-label="Dismiss notification"
@@ -191,39 +191,23 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="space-y-4">
+      <div className={matches.length === 1 ? "space-y-0" : "space-y-4"}>
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
-            className="group p-3 rounded-lg hover:shadow-md focus-within:shadow-md focus-within:ring-2 focus-within:ring-amber-200 focus-within:ring-offset-1 transition-all duration-150 cursor-pointer transform hover:-translate-y-0.5"
-            tabIndex={0}
-            role="button"
-            aria-label={`View details for ${match.title}`}
+            className="p-3 rounded-lg"
           >
             {/* Primary line: Entry title with left margin */}
-            <div className="font-medium text-gray-900 text-sm leading-snug mb-2 ml-4 line-clamp-2">
+            <div className="font-medium text-gray-900 text-sm leading-snug mb-1 ml-6 line-clamp-2">
               {match.title}
             </div>
             
-            {/* Secondary line: Citation with small margin bottom */}
+            {/* Secondary line: Citation with reduced margin bottom */}
             {match.canonical_citation && (
-              <div className="text-xs text-gray-600 leading-relaxed ml-4 mb-2">
+              <div className="text-xs text-gray-600 leading-relaxed ml-6 mb-1">
                 {match.canonical_citation}
               </div>
             )}
-            
-            {/* Trailing chevron */}
-            <div className="flex justify-end mt-2">
-              <svg 
-                className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
           </div>
         ))}
       </div>
