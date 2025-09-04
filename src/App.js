@@ -878,10 +878,18 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             }
             
             const totalReq = Object.values(currentDayReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
-            const todayISO = toISODate(getPlanDate(new Date()));
-            // Compute progress dynamically from progressStore (8 AM rollover-aware)
-            const { getCount } = require('./lib/plan/progressStore');
-            const perTypeCounts = Object.fromEntries(Object.keys(currentDayReqs).map((t) => [t, getCount(todayISO, String(member.id), t)]));
+            // Compute progress from DB entries using 8 AM window
+            const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());
+            const perTypeCounts = Object.fromEntries(Object.keys(currentDayReqs).map((t) => [t, 0]));
+            (entries || []).forEach((e) => {
+              const created = e.created_at ? new Date(e.created_at) : null;
+              if (!created) return;
+              if (e.created_by && String(e.created_by) === String(member.id) && created >= start && created < end) {
+                if (perTypeCounts.hasOwnProperty(e.type)) {
+                  perTypeCounts[e.type] = (perTypeCounts[e.type] || 0) + 1;
+                }
+              }
+            });
             const totalDone = Object.values(perTypeCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
             return (

@@ -10,6 +10,9 @@ export async function loadPlanFromJson(url: string = "/Civilify_KB30_Schedule_Co
   return rows as any[];
 }
 
+// Prefer static plan bundled in codebase
+// If you need a code-bundled fallback, place JSON under src and import it here.
+
 // Convert wall-clock time into the "plan date" that rolls over at 08:00 local time
 export function getPlanDate(date: Date = new Date()): Date {
   const d = new Date(date);
@@ -36,5 +39,15 @@ export function computeDayIndex(now: Date, day1Date?: string | null) {
 
 export function rowsForDay(rows: any[], day: number) {
   return rows.filter((r) => Number(r.Day) === Number(day));
+}
+
+// Start/end bounds for the current plan day (8:00 to next day 8:00)
+export function getPlanWindowBounds(now: Date): { start: Date; end: Date } {
+  const planDate = getPlanDate(now);
+  const start = new Date(planDate);
+  start.setHours(8, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
 }
 
