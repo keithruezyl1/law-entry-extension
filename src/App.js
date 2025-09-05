@@ -1147,7 +1147,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Compute progress from DB entries using 8 AM window
             const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());
             const perTypeCounts = Object.fromEntries(Object.keys(cumulativeReqs).map((t) => [t, 0]));
-            // Count cumulative entries from all days up to today
+            // Count ALL entry types from all days up to today (flexible quota system)
+            const allEntryTypes = {};
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
@@ -1160,14 +1161,49 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
               );
               
-              // Count entries from all days up to today (not just today)
+              // Count ALL entry types from all days up to today
               if (matchesUser && created <= end) {
-                if (perTypeCounts.hasOwnProperty(e.type)) {
-                  perTypeCounts[e.type] = (perTypeCounts[e.type] || 0) + 1;
-                }
+                allEntryTypes[e.type] = (allEntryTypes[e.type] || 0) + 1;
               }
             });
-            const totalDone = Object.values(perTypeCounts).reduce((s, n) => s + (Number(n) || 0), 0);
+            
+            // Apply flexible quota allocation - distribute entries to meet cumulative requirements
+            const flexibleCounts = { ...perTypeCounts };
+            const totalEntriesCreated = Object.values(allEntryTypes).reduce((sum, count) => sum + count, 0);
+            
+            // First, allocate entries to their specific types if they exist in quota
+            Object.keys(cumulativeReqs).forEach(type => {
+              if (allEntryTypes[type]) {
+                flexibleCounts[type] = Math.min(allEntryTypes[type], cumulativeReqs[type]);
+              }
+            });
+            
+            // Then, allocate remaining entries to any quota type that's not yet filled
+            const remainingEntries = { ...allEntryTypes };
+            Object.keys(cumulativeReqs).forEach(type => {
+              if (flexibleCounts[type]) {
+                remainingEntries[type] = (remainingEntries[type] || 0) - flexibleCounts[type];
+              }
+            });
+            
+            // Distribute remaining entries to unfilled quotas
+            const unfilledQuotas = Object.keys(cumulativeReqs).filter(type => 
+              (flexibleCounts[type] || 0) < cumulativeReqs[type]
+            );
+            
+            let remainingTotal = Object.values(remainingEntries).reduce((sum, count) => sum + count, 0);
+            
+            for (const type of unfilledQuotas) {
+              if (remainingTotal <= 0) break;
+              
+              const needed = cumulativeReqs[type] - (flexibleCounts[type] || 0);
+              const allocated = Math.min(needed, remainingTotal);
+              
+              flexibleCounts[type] = (flexibleCounts[type] || 0) + allocated;
+              remainingTotal -= allocated;
+            }
+            
+            const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
             // Check if this user has incomplete entries from yesterday
             const userHasIncompleteEntries = incompleteEntries.some((incomplete) => 
@@ -1186,6 +1222,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                     fontWeight: '600'
                   }}>
                     ⚠️ All created entries will be credited to yesterday's quota first
+                  </div>
+                )}
+                {totalEntriesCreated > totalDone && (
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#059669', 
+                    marginBottom: '4px',
+                    fontWeight: '600'
+                  }}>
+                    ✅ Flexible quota: {totalEntriesCreated} total entries created
                   </div>
                 )}
                 <div className="member-progress">
@@ -1210,7 +1256,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                       fontSize: 12,
                       fontWeight: 600
                     }}>
-                      {type}: {perTypeCounts[type] || 0}/{quota}
+                      {type}: {flexibleCounts[type] || 0}/{quota}
                     </span>
                   ))}
                 </div>
