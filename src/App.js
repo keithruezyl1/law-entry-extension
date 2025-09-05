@@ -1079,6 +1079,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const { getCumulativeCount } = require('./lib/plan/progressStore');
             const todayISO = new Date().toISOString().split('T')[0];
             
+            // Get time window bounds first
+            const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());
+            
             // Start with today's requirements
             const cumulativeReqs = { ...currentDayReqs };
             
@@ -1134,7 +1137,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
             // Compute progress from DB entries using 8 AM window
-            const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());
             const perTypeCounts = Object.fromEntries(Object.keys(cumulativeReqs).map((t) => [t, 0]));
             // Count available entries (today's entries + unused entries from previous days)
             const allEntryTypes = {};
