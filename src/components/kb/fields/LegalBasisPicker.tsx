@@ -22,8 +22,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
-  const [showInternalSearch, setShowInternalSearch] = useState(true); // Always show search initially
+  const [showInternalSearch, setShowInternalSearch] = useState(true); // Show search initially when no citations
   const internalCount = useMemo(() => (items || []).filter((it: any) => it && it.type !== 'external').length, [items]);
+  const [showAddButton, setShowAddButton] = useState(false); // Show add button after search selection
+  const [showExternalAddButton, setShowExternalAddButton] = useState(false); // Show external add button after external citation
 
   const options = useMemo(() => {
     const q = (query || '').trim().toLowerCase();
@@ -111,20 +113,28 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 <div className="flex items-center gap-3 mt-2">
                   {i === fields.length - 1 && (
                     tab === 'external' ? (
+                      showExternalAddButton ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => { 
+                            append({ type: 'external', citation: '', url: '' }); 
+                            setShowExternalAddButton(false); // Hide add button
+                          }}
+                          className="h-11 rounded-xl flex-1 mb-2"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add external citation
+                        </Button>
+                      ) : null
+                    ) : showAddButton ? (
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); }}
-                        className="h-11 rounded-xl flex-1 mb-2"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add external citation
-                      </Button>
-                    ) : internalCount > 0 ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => { append({ type: 'internal', entry_id: '', url: '', title: '', note: '' }); }}
+                        onClick={() => { 
+                          setShowAddButton(false); // Hide add button
+                          setShowInternalSearch(true); // Show search for next citation
+                        }}
                         className="h-11 rounded-xl flex-1 mb-2"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -150,7 +160,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
       {tab === 'internal' ? (
         <div className="space-y-3">
-          {showInternalSearch && (
+          {/* Show search when no citations OR when add button was clicked */}
+          {(internalCount === 0 || showInternalSearch) && (
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -161,7 +172,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               />
             </div>
           )}
-          {showInternalSearch && (query || '').trim().length > 0 && (
+          {(internalCount === 0 || showInternalSearch) && (query || '').trim().length > 0 && (
             <div className="rounded-xl max-h-56 overflow-auto bg-white shadow-sm border">
               {options.length === 0 && (
                 <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
@@ -182,7 +193,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       append({ type: 'internal', entry_id: o.entry_id, url: '', title: o.title, note: '' });
                     }
                     setQuery('');
-                    // Keep search visible for adding more
+                    setShowInternalSearch(false); // Hide search after selection
+                    setShowAddButton(true); // Show add button after selection
                   }}
                 >
                   <div className="pl-3">
@@ -196,25 +208,19 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               ))}
             </div>
           )}
-          {internalCount > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => { append({ type: 'internal', entry_id: '', url: '', title: '', note: '' }); }}
-              className="w-full h-11 rounded-xl mt-1"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add internal citation
-            </Button>
-          )}
         </div>
       ) : (
         <div>
-          {fields.length === 0 && (
+          {/* Show Add external citation button when no external citations exist yet */}
+          {!items.some((item: any) => item && item.type === 'external') && (
             <Button
               type="button"
               variant="outline"
-              onClick={() => { append({ type: 'external', citation: '', url: '' }); setTab('external'); try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} }}
+              onClick={() => { 
+                append({ type: 'external', citation: '', url: '' }); 
+                setShowExternalAddButton(true); // Show add button after creating first external citation
+                try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} 
+              }}
               className="w-full h-11 rounded-xl mt-1"
             >
               <Plus className="h-4 w-4 mr-2" />
