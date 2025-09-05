@@ -1086,7 +1086,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Start with today's requirements
             const cumulativeReqs = { ...currentDayReqs };
             
-            // Count entries from all previous days to see what was completed
+            // Count entries from all previous plan days to see what was completed
             const allPreviousEntries = {};
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
@@ -1100,14 +1100,34 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
               );
               
-              // Count entries from all previous days (before today)
-              if (matchesUser && created < start) {
-                allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
+              if (matchesUser) {
+                // Determine which plan day this entry belongs to
+                const entryPlanDate = getPlanDate(created);
+                const entryDayIndex = computeDayIndex(created, day1Date);
+                
+                // Only count entries from previous plan days (before current day)
+                if (entryDayIndex < currentDayIndex) {
+                  allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
+                }
               }
             });
             
+            // Debug logging for Kent (P2)
+            if (String(member.id) === '2' || String(personName).toLowerCase().includes('delos')) {
+              console.log('🔍 Kent Debug Info:', {
+                currentDayIndex,
+                todayISO,
+                start: start.toISOString(),
+                end: end.toISOString(),
+                allPreviousEntries,
+                currentDayReqs,
+                personName,
+                memberId: member.id
+              });
+            }
+            
             // Add incomplete quotas from previous days
-            for (let prevDay = 0; prevDay < currentDayIndex; prevDay++) {
+            for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
               
@@ -1145,7 +1165,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // First, count how many entries were used to fulfill previous day quotas
             Object.keys(allPreviousEntries).forEach(type => {
-              for (let prevDay = 0; prevDay < currentDayIndex; prevDay++) {
+              for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
                 const prevDayRows = rowsForDay(planRows, prevDay);
                 const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
                 
@@ -1158,7 +1178,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Count today's entries
+            // Count today's entries (current plan day)
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
@@ -1171,9 +1191,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
               );
               
-              // Count today's entries
-              if (matchesUser && created >= start && created <= end) {
-                allEntryTypes[e.type] = (allEntryTypes[e.type] || 0) + 1;
+              if (matchesUser) {
+                // Determine which plan day this entry belongs to
+                const entryDayIndex = computeDayIndex(created, day1Date);
+                
+                // Count entries from current plan day
+                if (entryDayIndex === currentDayIndex) {
+                  allEntryTypes[e.type] = (allEntryTypes[e.type] || 0) + 1;
+                }
               }
             });
             
@@ -1247,7 +1272,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                         marginRight: 6,
                         marginBottom: 6,
                         fontSize: 12,
-                        fontWeight: 600
+                        fontWeight: 600,
+                        border: isCompleted ? '1px solid #16a34a' : '1px solid #3b82f6' // Green border if completed, blue border if not
                       }}>
                         {type}: {currentCount}/{quota}
                       </span>
