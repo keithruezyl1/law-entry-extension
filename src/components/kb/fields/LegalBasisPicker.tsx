@@ -218,7 +218,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     />
                   </div>
                   <div>
-                    <label className="kb-form-label">Note (optional)</label>
+                    <label className="kb-form-label">Note</label>
                     <Input
                       className="kb-form-input"
                       placeholder="short note or descriptor"
@@ -264,10 +264,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl mb-2 ${i === fields.length - 1 ? 'w-11' : 'flex-1'}`}
+                    className={`h-11 rounded-xl mb-2 ${i === fields.length - 1 ? 'flex-1' : 'w-11'}`}
                   >
                     <Trash2 className="h-4 w-4" />
-                    {i !== fields.length - 1 && <span className="ml-2">Delete</span>}
+                    {i === fields.length - 1 && <span className="ml-2">Delete</span>}
                   </Button>
                 </div>
               </div>
@@ -306,7 +306,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     try {
                       const full = await fetchEntryById(o.entry_id);
                       const firstUrl = Array.isArray(full?.source_urls) && full.source_urls.length > 0 ? full.source_urls[0] : '';
-                      append({ type: 'internal', entry_id: o.entry_id, url: firstUrl || '', title: full?.title || o.title, note: '' });
+                      append({ type: 'internal', entry_id: o.entry_id, url: firstUrl || '', title: full?.title || o.title, note: full?.summary || '' });
                     } catch {
                       append({ type: 'internal', entry_id: o.entry_id, url: '', title: o.title, note: '' });
                     }
@@ -326,25 +326,37 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               ))}
             </div>
           )}
+          
+          {/* Always show Add internal citation button at bottom */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => { 
+              setShowAddButton(false); // Hide add button
+              setShowInternalSearch(true); // Show search for next citation
+            }}
+            className="w-full h-11 rounded-xl mt-3"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add internal citation
+          </Button>
         </div>
       ) : (
         <div>
-          {/* Show Add external citation button when no external citations exist yet */}
-          {!items.some((item: any) => item && item.type === 'external') && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => { 
-                append({ type: 'external', citation: '', url: '' }); 
-                setShowExternalAddButton(true); // Show add button after creating first external citation
-                try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} 
-              }}
-              className="w-full h-11 rounded-xl mt-1"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add external citation
-            </Button>
-          )}
+          {/* Always show Add external citation button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => { 
+              append({ type: 'external', citation: '', url: '' }); 
+              setShowExternalAddButton(true); // Show add button after creating first external citation
+              try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} 
+            }}
+            className="w-full h-11 rounded-xl mt-1"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add external citation
+          </Button>
         </div>
       )}
     </div>

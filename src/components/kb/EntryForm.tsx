@@ -887,7 +887,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Disabled when editing existing entries to avoid confusion
   useEffect(() => {
     // Don't run duplicate detection when editing existing entries
+    console.log('🔍 Duplicate detection check:', { 
+      hasEntry: !!entry, 
+      entryId: entry?.entry_id || (entry as any)?.id,
+      isEditMode,
+      isCreateMode 
+    });
+    
     if (entry) {
+      console.log('✅ Disabling duplicate detection for existing entry');
       setNearDuplicates([]);
       return;
     }
@@ -1259,10 +1267,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                   onChange={(e) => {
                                     const on = e.target.checked;
                                     setHasAmendment(on);
-                                    if (on) {
-                                      setValue('status', 'amended' as any, { shouldDirty: true } as any);
-                                    } else {
-                                      setValue('status', '' as any, { shouldDirty: true } as any);
+                                    if (!on) {
+                                      // Only clear amendment_date when unchecking, don't change status
                                       setValue('amendment_date' as any, null as any, { shouldDirty: true } as any);
                                     }
                                   }}

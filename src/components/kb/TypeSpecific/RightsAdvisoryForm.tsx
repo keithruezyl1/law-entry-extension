@@ -19,7 +19,7 @@ export function RightsAdvisoryForm({ control }: RightsAdvisoryFormProps) {
           name="rights_scope"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Rights Scope</FormLabel>
+              <FormLabel className="text-red-500 mb-3">Rights Scope</FormLabel>
               <FormControl>
                 <>
                   <Select
