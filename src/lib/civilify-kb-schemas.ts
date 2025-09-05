@@ -90,7 +90,37 @@ export const RuleOfCourt = BaseEntry.extend({ type: z.literal("rule_of_court"), 
 export const AgencyCircular = BaseEntry.extend({ type: z.literal("agency_circular"), circular_no: z.string().optional(), section_no: z.string().optional(), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
 export const DojIssuance = BaseEntry.extend({ type: z.literal("doj_issuance"), issuance_no: z.string().optional(), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
 export const ExecutiveIssuance = BaseEntry.extend({ type: z.literal("executive_issuance"), instrument_no: z.string().optional(), applicability: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), supersedes: z.array(EntryRef).default([]) });
-export const RightsAdvisory = BaseEntry.extend({ type: z.literal("rights_advisory"), rights_scope: z.enum(["arrest", "search", "detention", "minors", "GBV", "counsel", "privacy"]).optional(), advice_points: z.array(z.string()).default([]), legal_bases: z.array(LegalBasis).default([]), related_sections: z.array(EntryRef).default([]) });
+export const RightsAdvisory = BaseEntry.extend({
+  type: z.literal("rights_advisory"),
+  rights_scope: z
+    .union([
+      z.enum([
+        "arrest",
+        "search",
+        "detention",
+        "counsel",
+        "GBV",
+        "minors",
+        "privacy",
+        "traffic stop",
+        "protective orders",
+        "fair trial",
+        "freedom of expression",
+        "legal aid access",
+        "complaint filing",
+        "labor rights",
+        "consumer rights",
+        "housing/land rights",
+        "health/education",
+      ]),
+      // Allow custom scopes when user selects Other and types their own
+      z.string().min(2).max(80),
+    ])
+    .optional(),
+  advice_points: z.array(z.string()).default([]),
+  legal_bases: z.array(LegalBasis).default([]),
+  related_sections: z.array(EntryRef).default([]),
+});
 
 export const EntrySchema = z.discriminatedUnion("type", [ConstitutionProvision, StatuteSection, CityOrdinanceSection, RuleOfCourt, AgencyCircular, DojIssuance, ExecutiveIssuance, RightsAdvisory]);
 export type Entry = z.infer<typeof EntrySchema>;

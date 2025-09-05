@@ -113,7 +113,26 @@ const FALLBACK_TYPES: Record<string, KbType> = {
   rights_advisory: {
     label: "Rights Advisory",
     fields: [
-      { name: "rights_scope", kind: "select", required: true, options: ["arrest", "search", "detention", "minors", "GBV", "counsel", "privacy"], help: "rights scope" },
+      { name: "rights_scope", kind: "select", required: true, options: [
+        "arrest",
+        "search",
+        "detention",
+        "counsel",
+        "GBV",
+        "minors",
+        "privacy",
+        "traffic stop",
+        "protective orders",
+        "fair trial",
+        "freedom of expression",
+        "legal aid access",
+        "complaint filing",
+        "labor rights",
+        "consumer rights",
+        "housing/land rights",
+        "health/education",
+        "Other"
+      ], help: "rights scope (choose 'Other' to type your own)" },
       { name: "advice_points", kind: "string_array", required: true, help: "short actionable lines" },
       { name: "legal_bases", kind: "string_array", required: true, help: "legal bases" },
       { name: "related_sections", kind: "string_array", required: false, help: "related sections" }

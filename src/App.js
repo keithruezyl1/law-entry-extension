@@ -17,6 +17,7 @@ import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/v
 import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { checkAdminAndAlert, isTagarao } from './utils/adminUtils';
+import { Toast } from './components/ui/Toast';
 
 function App() {
   return (
@@ -149,6 +150,7 @@ function EntryEdit() {
 
 function AppContent({ currentView: initialView = 'list', isEditing = false, formStep = 1, selectedEntryId: initialEntryId = null }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   
   const [currentView] = useState(initialView);
@@ -174,6 +176,19 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [pendingEntryForModal, setPendingEntryForModal] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [showCreationToast, setShowCreationToast] = useState(false);
+
+  // Show creation toast based on navigation state
+  useEffect(() => {
+    if (location && location.state && location.state.created) {
+      setShowCreationToast(true);
+      const timer = setTimeout(() => {
+        setShowCreationToast(false);
+      }, 2000);
+      navigate(location.pathname, { replace: true, state: {} });
+      return () => clearTimeout(timer);
+    }
+  }, [location, navigate]);
 
   // Load plan from bundled JSON on mount
   useEffect(() => {
@@ -947,6 +962,18 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   return (
     <div className="App">
+      {/* Creation success toast */}
+      <Toast
+        isOpen={showCreationToast}
+        onClose={() => setShowCreationToast(false)}
+        title="Entry Created"
+        type="success"
+        position="top-right"
+        duration={2000}
+      >
+        <div>Successfully created entry.</div>
+      </Toast>
+
       {currentView !== 'form' && (
       <header className="App-header" style={{ 
         background: `linear-gradient(135deg, rgba(255, 140, 66, ${headerOpacity}) 0%, rgba(255, 107, 53, ${headerOpacity}) 100%)`

@@ -733,7 +733,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const confirmCancel = () => {
     try { localStorage.removeItem('kb_entry_draft'); } catch {}
     setShowCancelConfirm(false);
-    navigate('/dashboard');
+    navigate('/dashboard', { state: { created: true } });
   };
   const abortCancel = () => setShowCancelConfirm(false);
 
