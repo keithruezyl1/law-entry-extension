@@ -1046,7 +1046,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
-              if (e.created_by && String(e.created_by) === String(member.id) && created >= start && created < end) {
+              
+              // Check multiple fields to match the user
+              const matchesUser = (
+                (e.created_by && String(e.created_by) === String(member.id)) ||
+                (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+              );
+              
+              if (matchesUser && created >= start && created < end) {
                 if (perTypeCounts.hasOwnProperty(e.type)) {
                   perTypeCounts[e.type] = (perTypeCounts[e.type] || 0) + 1;
                 }
