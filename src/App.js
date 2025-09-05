@@ -12,7 +12,7 @@ import { loadPlanFromJson, computeDayIndex, rowsForDay, getPlanDate, toISODate }
 import { format } from 'date-fns';
 import { setDay1Date } from './lib/plan/progressStore';
 import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
-import { fetchAllEntriesFromDb } from './services/kbApi';
+// import { fetchAllEntriesFromDb } from './services/kbApi';
 // Plans API removed: we now load from bundled JSON
 import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -165,9 +165,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [incompleteEntries, setIncompleteEntries] = useState([]);
   const [yesterdayMode, setYesterdayMode] = useState(false);
   const [headerOpacity, setHeaderOpacity] = useState(1);
-  const [showPlanModal, setShowPlanModal] = useState(false);
-  const [planModalStep, setPlanModalStep] = useState(1);
-  const [selectedDay1Date, setSelectedDay1Date] = useState('');
   const [planData, setPlanData] = useState(null);
   const [day1Date, setDay1DateState] = useState(null);
   const [showChat, setShowChat] = useState(false);
@@ -222,6 +219,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     if (planData && Array.isArray(planData.data)) return planData.data;
     return [];
   })();
+
+  // Get entries from useLocalStorage hook
+  const { entries, loading, error, addEntry, updateEntry, deleteEntry, getEntryById, getEntryByEntryId, searchEntries, exportEntries, importEntries, clearAllEntries, getStorageStats, getAllTeamProgress, getYesterdayTeamProgress, updateProgressForEntry, checkDailyCompletion } = useLocalStorage();
 
   // Function to check incomplete entries from yesterday
   const checkIncompleteEntries = useCallback(() => {
@@ -301,23 +301,23 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   // Redirect to login if on root path (this is now handled by the router)
   // The login component will handle redirecting to dashboard after authentication
   
-  const {
-    entries,
-    loading,
-    error,
-    addEntry,
-    updateEntry,
-    deleteEntry,
-    getEntryById,
-    searchEntries,
-    exportEntries,
-    importEntries,
-    clearAllEntries,
-    getStorageStats,
-    getAllTeamProgress,
-    getYesterdayTeamProgress,
-    checkDailyCompletion
-  } = useLocalStorage();
+  // const {
+  //   entries,
+  //   loading,
+  //   error,
+  //   addEntry,
+  //   updateEntry,
+  //   deleteEntry,
+  //   getEntryById,
+  //   searchEntries,
+  //   exportEntries,
+  //   importEntries,
+  //   clearAllEntries,
+  //   getStorageStats,
+  //   getAllTeamProgress,
+  //   getYesterdayTeamProgress,
+  //   checkDailyCompletion
+  // } = useLocalStorage();
 
   // Handle initial entry loading for view/edit
   useEffect(() => {
@@ -414,47 +414,47 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   }, []);
 
   // Check yesterday's completion status with carryover logic
-  const getYesterdayStatus = () => {
-    const incompleteMembers = [];
-    let allCompleted = true;
-    let someCompleted = false;
+  // const getYesterdayStatus = () => {
+  //   const incompleteMembers = [];
+  //   let allCompleted = true;
+  //   let someCompleted = false;
     
-    for (let i = 1; i <= 5; i++) {
-      const yesterdayTotal = yesterdayProgress[i]?.total || 0;
-      const todayTotal = teamProgress[i]?.total || 0;
+  //   for (let i = 1; i <= 5; i++) {
+  //     const yesterdayTotal = yesterdayProgress[i]?.total || 0;
+  //     const todayTotal = teamProgress[i]?.total || 0;
       
-      // Calculate total progress including today's carryover
-      const totalProgress = yesterdayTotal + todayTotal;
+  //     // Calculate total progress including today's carryover
+  //     const totalProgress = yesterdayTotal + todayTotal;
       
-      if (totalProgress < 10) {
-        allCompleted = false;
-        const memberName = dbTeamMembers.find(m => m.id === i)?.name || `P${i}`;
-        incompleteMembers.push(memberName);
-      } else {
-        someCompleted = true;
-      }
-    }
+  //     if (totalProgress < 10) {
+  //       allCompleted = false;
+  //       const memberName = dbTeamMembers.find(m => m.id === i)?.name || `P${i}`;
+  //       incompleteMembers.push(memberName);
+  //     } else {
+  //       someCompleted = true;
+  //     }
+  //   }
     
-    if (allCompleted) {
-      return { 
-        text: "ALL COMPLETED", 
-        completed: true, 
-        status: 'completed' // green
-      };
-    } else if (someCompleted) {
-      return { 
-        text: `INCOMPLETE ENTRIES: ${incompleteMembers.join(', ')}`, 
-        completed: false, 
-        status: 'partial' // orange
-      };
-    } else {
-      return { 
-        text: `INCOMPLETE ENTRIES: ${incompleteMembers.join(', ')}`, 
-        completed: false, 
-        status: 'incomplete' // red
-      };
-    }
-  };
+  //   if (allCompleted) {
+  //     return { 
+  //       text: "ALL COMPLETED", 
+  //       completed: true, 
+  //       status: 'completed' // green
+  //     };
+  //   } else if (someCompleted) {
+  //     return { 
+  //       text: `INCOMPLETE ENTRIES: ${incompleteMembers.join(', ')}`, 
+  //       completed: false, 
+  //       status: 'partial' // orange
+  //     };
+  //   } else {
+  //     return { 
+  //       text: `INCOMPLETE ENTRIES: ${incompleteMembers.join(', ')}`, 
+  //       completed: false, 
+  //       status: 'incomplete' // red
+  //     };
+  //   }
+  // };
 
   const handleCreateNew = async () => {
     if (!hasPlan) return alert('Plan not loaded.');
