@@ -216,6 +216,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     };
   }, []);
 
+  const planRows = (() => {
+    if (Array.isArray(planData)) return planData;
+    if (planData && Array.isArray(planData.rows)) return planData.rows;
+    if (planData && Array.isArray(planData.data)) return planData.data;
+    return [];
+  })();
+
   // Function to check incomplete entries from yesterday
   const checkIncompleteEntries = useCallback(() => {
     if (!planRows || !day1Date) return;
@@ -279,12 +286,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     checkIncompleteEntries();
   }, [checkIncompleteEntries]);
 
-  const planRows = (() => {
-    if (Array.isArray(planData)) return planData;
-    if (planData && Array.isArray(planData.rows)) return planData.rows;
-    if (planData && Array.isArray(planData.data)) return planData.data;
-    return [];
-  })();
   const hasPlan = true; // Always treat plan as present since it's bundled
 
   // Guard: prevent opening the form route when plan failed to load
