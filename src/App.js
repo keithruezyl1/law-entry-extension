@@ -1130,8 +1130,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Apply flexible quota allocation - distribute entries to meet cumulative requirements
+            // Apply accurate quota allocation - only count entries that match quota types
             const flexibleCounts = { ...perTypeCounts };
+            const carryoverEntries = {};
             const totalEntriesCreated = Object.values(allEntryTypes).reduce((sum, count) => sum + count, 0);
             
             // First, allocate entries to their specific types if they exist in quota
@@ -1141,30 +1142,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Then, allocate remaining entries to any quota type that's not yet filled
-            const remainingEntries = { ...allEntryTypes };
-            Object.keys(cumulativeReqs).forEach(type => {
-              if (flexibleCounts[type]) {
-                remainingEntries[type] = (remainingEntries[type] || 0) - flexibleCounts[type];
+            // Track carryover entries (entries that don't match any quota type)
+            Object.keys(allEntryTypes).forEach(type => {
+              if (!cumulativeReqs[type] || cumulativeReqs[type] === 0) {
+                // This entry type is not in the quota - it's a carryover
+                carryoverEntries[type] = allEntryTypes[type];
+              } else if (allEntryTypes[type] > cumulativeReqs[type]) {
+                // This entry type has more entries than needed - excess is carryover
+                carryoverEntries[type] = allEntryTypes[type] - cumulativeReqs[type];
               }
             });
-            
-            // Distribute remaining entries to unfilled quotas
-            const unfilledQuotas = Object.keys(cumulativeReqs).filter(type => 
-              (flexibleCounts[type] || 0) < cumulativeReqs[type]
-            );
-            
-            let remainingTotal = Object.values(remainingEntries).reduce((sum, count) => sum + count, 0);
-            
-            for (const type of unfilledQuotas) {
-              if (remainingTotal <= 0) break;
-              
-              const needed = cumulativeReqs[type] - (flexibleCounts[type] || 0);
-              const allocated = Math.min(needed, remainingTotal);
-              
-              flexibleCounts[type] = (flexibleCounts[type] || 0) + allocated;
-              remainingTotal -= allocated;
-            }
             
             const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
@@ -1197,6 +1184,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   </div>
                 </div>
                 <div className="member-breakdown">
+                  {/* Show quota types */}
                   {Object.entries(cumulativeReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
                     <span key={type} className="quota-item" style={{
                       display: 'inline-block',
@@ -1210,6 +1198,24 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                       fontWeight: 600
                     }}>
                       {type}: {flexibleCounts[type] || 0}/{quota}
+                    </span>
+                  ))}
+                  
+                  {/* Show carryover entries with yellow background */}
+                  {Object.entries(carryoverEntries).filter(([, count]) => count > 0).map(([type, count]) => (
+                    <span key={`carryover-${type}`} className="carryover-item" style={{
+                      display: 'inline-block',
+                      background: '#fef3c7', // Yellow background
+                      color: '#1e40af', // Blue text
+                      borderRadius: 9999,
+                      padding: '2px 8px',
+                      marginRight: 6,
+                      marginBottom: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      border: '1px solid #f59e0b' // Yellow border
+                    }}>
+                      {type}: {count}/-
                     </span>
                   ))}
                 </div>
