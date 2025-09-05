@@ -587,74 +587,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         // Clear editing state after successful update
         setEditingEntry(null);
         
-        // Fire-and-forget vector upsert to keep RAG index in sync
-        try {
-          if (!entryData.entry_id) {
-            console.warn('Skipping vector upsert: missing entry_id. Ensure Law Family/Section are set to generate ID.');
-          } else {
-            const payload = {
-              entry_id: entryData.entry_id,
-              type: entryData.type,
-              title: entryData.title,
-              canonical_citation: entryData.canonical_citation,
-              summary: entryData.summary,
-              text: entryData.text,
-              tags: entryData.tags,
-              jurisdiction: entryData.jurisdiction,
-              law_family: entryData.law_family,
-              section_id: entryData.section_id,
-              status: entryData.status,
-              effective_date: entryData.effective_date,
-              amendment_date: entryData.amendment_date,
-              last_reviewed: entryData.last_reviewed,
-              visibility: entryData.visibility,
-              source_urls: entryData.source_urls,
-              elements: entryData.elements,
-              penalties: entryData.penalties,
-              defenses: entryData.defenses,
-              prescriptive_period: entryData.prescriptive_period,
-              standard_of_proof: entryData.standard_of_proof,
-              rule_no: entryData.rule_no,
-              section_no: entryData.section_no,
-              triggers: entryData.triggers,
-              time_limits: entryData.time_limits,
-              required_forms: entryData.required_forms,
-              circular_no: entryData.circular_no,
-              applicability: entryData.applicability,
-              issuance_no: entryData.issuance_no,
-              instrument_no: entryData.instrument_no,
-              supersedes: entryData.supersedes,
-              steps_brief: entryData.steps_brief,
-              forms_required: entryData.forms_required,
-              failure_states: entryData.failure_states,
-              violation_code: entryData.violation_code,
-              violation_name: entryData.violation_name,
-              license_action: entryData.license_action,
-              fine_schedule: entryData.fine_schedule,
-              apprehension_flow: entryData.apprehension_flow,
-              incident: entryData.incident,
-              phases: entryData.phases,
-              forms: entryData.forms,
-              handoff: entryData.handoff,
-              rights_callouts: entryData.rights_callouts,
-              rights_scope: entryData.rights_scope,
-              advice_points: entryData.advice_points,
-              topics: entryData.topics,
-              jurisprudence: entryData.jurisprudence,
-              legal_bases: entryData.legal_bases,
-              related_sections: entryData.related_sections,
-              // Any update clears verification
-              verified: false,
-              verified_by: null,
-              verified_at: null,
-            };
-            upsertEntry(payload).then((resp) => {
-              if (!resp?.success) console.warn('Vector upsert failed:', resp?.error);
-            }).catch((e) => console.warn('Vector upsert error:', e));
-          }
-        } catch (e) {
-          console.warn('Vector upsert error:', e);
-        }
+        // Note: Vector embeddings are automatically updated by the backend PUT endpoint
+        // No need for additional upsertEntry call which was causing duplication
       } else {
         // Check if this entry will complete a daily quota
         if (entryData.team_member_id && entryData.type) {
@@ -667,9 +601,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         console.log('New entry created and saved to localStorage:', newEntry);
         console.log('Total entries in localStorage:', entries.length + 1);
         
-        // Show success modal for normal entry creation
-        setPendingEntryForModal(entryData);
-        setShowSuccessModal(true);
+        // Set session flag for success toast on dashboard (instead of showing modal)
+        try { sessionStorage.setItem('entryCreated', '1'); } catch {}
         
         // Clear all localStorage drafts/autosaves for create entry
         try {

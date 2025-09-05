@@ -591,17 +591,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
   }, [entry, methods, isCreateMode]);
 
-  // Auto-generate entry_id based on type, law family, and section id
+  // Auto-generate entry_id based on type, law family, and section id (CREATE MODE ONLY)
   useEffect(() => {
     try {
-      if (lawFamily && type) {
+      if (isCreateMode && lawFamily && type) {
         const eid = generateEntryId(String(type), String(lawFamily), String(sectionId || ''));
         setValue('entry_id', eid as any, { shouldDirty: true } as any);
       }
     } catch (e) {
       // ignore generation errors
     }
-  }, [type, lawFamily, sectionId, setValue]);
+  }, [isCreateMode, type, lawFamily, sectionId, setValue]);
 
   // Jurisdiction UX: PH or Other -> inline input
   const jurisdiction = watch('jurisdiction');
@@ -734,7 +734,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const confirmCancel = () => {
     try { localStorage.removeItem('kb_entry_draft'); } catch {}
     setShowCancelConfirm(false);
-    try { sessionStorage.setItem('entryCreated', '1'); } catch {}
     navigate('/dashboard');
   };
   const abortCancel = () => setShowCancelConfirm(false);
@@ -778,7 +777,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     };
   }, [watch, getValues, entry]);
 
-  const onSubmit = (data: Entry) => {
+  const onSubmit = async (data: Entry) => {
     console.log('Form data being submitted:', data);
     console.log('Form data type:', typeof data);
     console.log('Form data keys:', Object.keys(data));
@@ -874,7 +873,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Progress tracking is now handled in useLocalStorage.js addEntry function
     // based on the created_at timestamp set in handleSaveEntry
     
-    onSave(withMember);
+    await onSave(withMember);
     // After successful create, clear all draft keys from localStorage
     try {
       localStorage.removeItem('kb_entry_draft');
