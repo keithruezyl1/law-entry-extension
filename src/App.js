@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -26,7 +26,7 @@ function App() {
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/law-entry/:step" element={<DashboardOnlyRoute><LawEntryForm /></DashboardOnlyRoute>} />
+          <Route path="/law-entry/:step" element={<DashboardOnlyRoute><LawEntryForm yesterdayMode={yesterdayMode} /></DashboardOnlyRoute>} />
           <Route path="/entry/:entryId" element={<ProtectedRoute><EntryDetails /></ProtectedRoute>} />
           <Route path="/entry/:entryId/edit" element={<DashboardOnlyRoute><EntryEdit /></DashboardOnlyRoute>} />
           <Route path="*" element={<RootRedirect />} />
@@ -160,6 +160,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [clearOption, setClearOption] = useState(null);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [resumeDraft, setResumeDraft] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
+  const [incompleteEntries, setIncompleteEntries] = useState([]);
+  const [yesterdayMode, setYesterdayMode] = useState(false);
   const [headerOpacity, setHeaderOpacity] = useState(1);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalStep, setPlanModalStep] = useState(1);
@@ -211,6 +215,69 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       window.removeEventListener('refresh-progress', forceRerender);
     };
   }, []);
+
+  // Function to check incomplete entries from yesterday
+  const checkIncompleteEntries = useCallback(() => {
+    if (!planRows || !day1Date) return;
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayDayIndex = computeDayIndex(yesterday, day1Date);
+    const yesterdayRows = rowsForDay(planRows, yesterdayDayIndex);
+    
+    const incomplete = [];
+    const teamMemberNames = { 1: 'Arda', 2: 'Delos Cientos', 3: 'Paden', 4: 'Sendrijas', 5: 'Tagarao' };
+    
+    yesterdayRows.forEach(row => {
+      const personId = parseInt(row.Person.replace('P', ''));
+      const personName = teamMemberNames[personId];
+      if (!personName) return;
+      
+      // Get yesterday's entries for this person
+      const yesterdayISO = toISODate(getPlanDate(yesterday));
+      const personEntries = entries.filter(entry => 
+        entry.created_by === personId && 
+        toISODate(getPlanDate(new Date(entry.created_at))) === yesterdayISO
+      );
+      
+      // Count entries by type
+      const doneByType = {};
+      personEntries.forEach(entry => {
+        doneByType[entry.type] = (doneByType[entry.type] || 0) + 1;
+      });
+      
+      // Check if any quota is incomplete
+      const totalReq = row.Total || 0;
+      const totalDone = Object.values(doneByType).reduce((sum, count) => sum + count, 0);
+      
+      if (totalDone < totalReq) {
+        incomplete.push({
+          personId,
+          personName,
+          totalDone,
+          totalReq,
+          quotas: {
+            constitution_provision: row.constitution_provision || 0,
+            statute_section: row.statute_section || 0,
+            rule_of_court: row.rule_of_court || 0,
+            agency_circular: row.agency_circular || 0,
+            doj_issuance: row.doj_issuance || 0,
+            executive_issuance: row.executive_issuance || 0,
+            rights_advisory: row.rights_advisory || 0,
+            city_ordinance_section: row.city_ordinance_section || 0
+          },
+          doneByType
+        });
+      }
+    });
+    
+    setIncompleteEntries(incomplete);
+  }, [planRows, day1Date, entries, now]);
+
+  // Check incomplete entries when data changes
+  useEffect(() => {
+    checkIncompleteEntries();
+  }, [checkIncompleteEntries]);
 
   const planRows = (() => {
     if (Array.isArray(planData)) return planData;
@@ -390,6 +457,33 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   const handleCreateNew = async () => {
     if (!hasPlan) return alert('Plan not loaded.');
+    
+    // Check if current user has incomplete entries from yesterday
+    const currentUserIncomplete = incompleteEntries.find(incomplete => 
+      incomplete.personName === user?.name
+    );
+    
+    if (currentUserIncomplete) {
+      const shouldWorkOnYesterday = window.confirm(
+        `You have incomplete entries from yesterday (${currentUserIncomplete.totalDone}/${currentUserIncomplete.totalReq}). Would you like to work on yesterday's quotas first?`
+      );
+      
+      if (shouldWorkOnYesterday) {
+        setYesterdayMode(true);
+        // Store yesterday mode in session storage for the form to use
+        sessionStorage.setItem('yesterdayMode', 'true');
+        sessionStorage.setItem('yesterdayQuotas', JSON.stringify(currentUserIncomplete.quotas));
+      } else {
+        setYesterdayMode(false);
+        sessionStorage.removeItem('yesterdayMode');
+        sessionStorage.removeItem('yesterdayQuotas');
+      }
+    } else {
+      setYesterdayMode(false);
+      sessionStorage.removeItem('yesterdayMode');
+      sessionStorage.removeItem('yesterdayQuotas');
+    }
+    
     try {
       const raw = localStorage.getItem('kb_entry_draft');
       if (raw) {
@@ -454,6 +548,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   const handleSaveEntry = async (entryData) => {
     try {
+      // Check if we're in yesterday mode
+      const isYesterdayMode = sessionStorage.getItem('yesterdayMode') === 'true';
+      
+      if (isYesterdayMode) {
+        // Set created_at to yesterday's date for yesterday mode entries
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        entryData.created_at = yesterday.toISOString();
+        console.log('Yesterday mode: Setting created_at to', entryData.created_at);
+      }
+      
       if (editingEntry) {
         await updateEntry(editingEntry.id, entryData);
         console.log('Entry updated:', entryData);
@@ -630,22 +735,35 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleDeleteEntry = (entryId) => {
-    if (window.confirm('Are you sure you want to delete this entry?')) {
-      try {
-        deleteEntry(entryId);
-        if (currentView === 'view' && selectedEntryId === entryId) {
-          navigate('/dashboard');
-          setSelectedEntryId(null);
-        }
-        // Fire-and-forget vector delete
-        if (entryId) {
-          deleteEntryVector(entryId).catch((e) => console.warn('Vector delete error:', e));
-        }
-      } catch (err) {
-        console.error('Error deleting entry:', err);
-        alert('Failed to delete entry. Please try again.');
+    const entry = entries.find(e => e.id === entryId);
+    setEntryToDelete(entry);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!entryToDelete) return;
+    
+    try {
+      await deleteEntry(entryToDelete.id);
+      if (currentView === 'view' && selectedEntryId === entryToDelete.id) {
+        navigate('/dashboard');
+        setSelectedEntryId(null);
       }
+      // Fire-and-forget vector delete
+      if (entryToDelete.id) {
+        deleteEntryVector(entryToDelete.id).catch((e) => console.warn('Vector delete error:', e));
+      }
+      setShowDeleteModal(false);
+      setEntryToDelete(null);
+    } catch (err) {
+      console.error('Error deleting entry:', err);
+      alert('Failed to delete entry. Please try again.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setEntryToDelete(null);
   };
 
   const handleExport = () => {
@@ -806,12 +924,43 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
             </span>
           )}</h3>
-          <div className="yesterday-status">
-            <div className="status-indicator">
-              <div className={`status-circle ${getYesterdayStatus().status}`}></div>
-              <strong>Yesterday </strong> {getYesterdayStatus().text}
+          {incompleteEntries.length > 0 && (
+            <div className="yesterday-status">
+              <div className="status-indicator">
+                <div className="status-circle incomplete"></div>
+                <span>Yesterday INCOMPLETE ENTRIES: </span>
+                {incompleteEntries.map((incomplete, index) => (
+                  <span key={incomplete.personId}>
+                    <span 
+                      className="incomplete-person-name"
+                      title={`Yesterday's quotas: ${Object.entries(incomplete.quotas)
+                        .filter(([, quota]) => quota > 0)
+                        .map(([type, quota]) => `${type}: ${incomplete.doneByType[type] || 0}/${quota}`)
+                        .join(', ')}`}
+                      style={{ 
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        color: '#dc3545'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#ffe6e6';
+                        e.target.style.padding = '2px 4px';
+                        e.target.style.borderRadius = '3px';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = 'transparent';
+                        e.target.style.padding = '0';
+                        e.target.style.borderRadius = '0';
+                      }}
+                    >
+                      {incomplete.personName}
+                    </span>
+                    {index < incompleteEntries.length - 1 && ', '}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <div className="team-members-grid">
           {dbTeamMembers.map(member => {
@@ -1105,6 +1254,29 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <button
             className="modal-button cancel"
             onClick={handleLogoutCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {/* Delete Entry Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={handleDeleteCancel}
+        title="Delete Entry"
+        subtitle={entryToDelete ? `Are you sure you want to delete "${entryToDelete.title}"?` : "Are you sure you want to delete this entry?"}
+      >
+        <div className="modal-buttons">
+          <button
+            className="modal-button danger"
+            onClick={handleDeleteConfirm}
+          >
+            Yes, Delete
+          </button>
+          <button
+            className="modal-button cancel"
+            onClick={handleDeleteCancel}
           >
             Cancel
           </button>

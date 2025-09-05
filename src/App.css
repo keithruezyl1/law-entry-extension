@@ -116,8 +116,8 @@ body {
 }
 
 .team-member-card {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
+  background: #f5f5f5;
+  border: 1px solid #d0d0d0;
   border-radius: 8px;
   padding: 1rem;
   transition: all 0.2s ease;
