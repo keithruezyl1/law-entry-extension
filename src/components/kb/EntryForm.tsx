@@ -19,7 +19,6 @@ import { generateEntryId, generateUniqueEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 import { semanticSearch } from '../../services/vectorApi';
 import { useAuth } from '../../contexts/AuthContext';
-import { updateProgressForEntry } from '../../lib/plan/progressStore';
 
 type EntryFormProps = {
   entry?: Partial<Entry> | null;
@@ -292,6 +291,31 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const title = watch('title');
   const citation = watch('canonical_citation');
   const entry_id = watch('entry_id');
+
+  // Clear type-specific fields when entry type changes
+  const [previousType, setPreviousType] = useState<string | undefined>(type);
+  
+  useEffect(() => {
+    if (previousType && type && previousType !== type) {
+      console.log(`Entry type changed from ${previousType} to ${type}, clearing type-specific fields`);
+      
+      // Clear all type-specific fields when type changes
+      const fieldsToClear = [
+        'elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof',
+        'rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms',
+        'circular_no', 'applicability', 'issuance_no', 'instrument_no', 'supersedes',
+        'steps_brief', 'forms_required', 'failure_states', 'violation_code', 'violation_name',
+        'license_action', 'fine_schedule', 'apprehension_flow', 'incident', 'phases',
+        'forms', 'handoff', 'rights_callouts', 'rights_scope', 'advice_points',
+        'legal_bases', 'related_sections', 'topics', 'jurisprudence'
+      ];
+      
+      fieldsToClear.forEach(field => {
+        methods.setValue(field as any, field === 'prescriptive_period' ? null : []);
+      });
+    }
+    setPreviousType(type);
+  }, [type, previousType, methods]);
 
   // Auto-generate entry ID and set last_reviewed for new entries (CREATE MODE ONLY)
   useEffect(() => {
@@ -798,46 +822,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     console.log('Status field value:', withMember.status);
     console.log('Effective date value:', withMember.effective_date);
     
-    // Automatically update progress for the user
-    if ((user?.username || user?.personId) && sanitized.type) {
-      const who = String(user.username || user.personId).trim();
-      
-      // Check if user has incomplete entries from yesterday
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayDate = yesterday.toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Check if user is in the incomplete entries list
-      const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
-      const userPersonId = user?.personId ? Number(String(user.personId).replace('P', '')) : null;
-      const userHasIncompleteEntries = incompleteEntries.some((entry: any) => 
-        entry.personId === userPersonId || 
-        entry.personName === user?.name ||
-        entry.personName === user?.username
-      );
-      
-      console.log('Checking incomplete entries for user:', {
-        userPersonId,
-        userName: user?.name,
-        userUsername: user?.username,
-        incompleteEntries,
-        userHasIncompleteEntries
-      });
-      
-      // If user has incomplete entries, credit to yesterday first
-      if (userHasIncompleteEntries) {
-        updateProgressForEntry(yesterdayDate, who, sanitized.type);
-        console.log(`Credited entry to yesterday's progress for ${who}: ${sanitized.type}`);
-      } else {
-        updateProgressForEntry(today, who, sanitized.type);
-        console.log(`Credited entry to today's progress for ${who}: ${sanitized.type}`);
-      }
-      
-      window.dispatchEvent(new Event('refresh-progress'));
-    }
+    // Progress tracking is now handled in useLocalStorage.js addEntry function
+    // based on the created_at timestamp set in handleSaveEntry
     
     onSave(withMember);
+    
+    // Dispatch event to refresh progress display
+    window.dispatchEvent(new Event('refresh-progress'));
+    
     navigate('/dashboard');
   };
 

@@ -122,10 +122,34 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      };
+      
+      // Clear type-specific fields when entry type changes
+      if (field === 'type' && prev.type && prev.type !== value) {
+        console.log(`Entry type changed from ${prev.type} to ${value}, clearing type-specific fields`);
+        
+        // Clear all type-specific fields
+        const fieldsToClear = [
+          'elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof',
+          'rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms',
+          'circular_no', 'applicability', 'issuance_no', 'instrument_no', 'supersedes',
+          'steps_brief', 'forms_required', 'failure_states', 'violation_code', 'violation_name',
+          'license_action', 'fine_schedule', 'apprehension_flow', 'incident', 'phases',
+          'forms', 'handoff', 'rights_callouts', 'rights_scope', 'advice_points',
+          'legal_bases', 'related_sections', 'topics', 'jurisprudence'
+        ];
+        
+        fieldsToClear.forEach(fieldToClear => {
+          newData[fieldToClear] = fieldToClear === 'prescriptive_period' ? null : [];
+        });
+      }
+      
+      return newData;
+    });
   };
 
   const handleArrayChange = (field, index, value) => {
@@ -155,12 +179,32 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
     try {
       // Add created_at timestamp for new entries
       if (!entry) {
-        formData.created_at = new Date().toISOString();
+        // Check if user has incomplete entries from yesterday
+        const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
+        const userHasIncompleteEntries = incompleteEntries.some((incompleteEntry) => 
+          incompleteEntry.personName === formData.created_by_name ||
+          incompleteEntry.personName === formData.created_by_username
+        );
+        
+        if (userHasIncompleteEntries) {
+          // Set created_at to yesterday's date for incomplete entries
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          formData.created_at = yesterday.toISOString();
+          console.log('User has incomplete entries: Setting created_at to yesterday', formData.created_at);
+        } else {
+          formData.created_at = new Date().toISOString();
+          console.log('No incomplete entries: Setting created_at to today', formData.created_at);
+        }
+        
         formData.id = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
       
       // Call the onSave function passed from parent
       onSave(formData);
+      
+      // Dispatch event to refresh progress display
+      window.dispatchEvent(new Event('refresh-progress'));
     } catch (error) {
       console.error('Form submission error:', error);
     } finally {
