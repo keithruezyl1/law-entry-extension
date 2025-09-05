@@ -1075,14 +1075,34 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               };
             }
             
-            // Calculate cumulative quotas including missing entries from previous days
+            // Calculate cumulative quotas - only carry over incomplete quotas from previous days
             const { getCumulativeCount } = require('./lib/plan/progressStore');
             const todayISO = new Date().toISOString().split('T')[0];
             
-            // Calculate missing quotas from previous days
+            // Start with today's requirements
             const cumulativeReqs = { ...currentDayReqs };
             
-            // Add missing quotas from all previous days
+            // Count entries from all previous days to see what was completed
+            const allPreviousEntries = {};
+            (entries || []).forEach((e) => {
+              const created = e.created_at ? new Date(e.created_at) : null;
+              if (!created) return;
+              
+              // Check multiple fields to match the user
+              const matchesUser = (
+                (e.created_by && String(e.created_by) === String(member.id)) ||
+                (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+              );
+              
+              // Count entries from all previous days (before today)
+              if (matchesUser && created < start) {
+                allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
+              }
+            });
+            
+            // Add incomplete quotas from previous days
             for (let prevDay = 0; prevDay < currentDayIndex; prevDay++) {
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
@@ -1099,9 +1119,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                 };
                 
-                // Add previous day's quotas to cumulative requirements
-                Object.keys(cumulativeReqs).forEach(type => {
-                  cumulativeReqs[type] += prevDayReqs[type] || 0;
+                // Only add incomplete quotas from previous days
+                Object.keys(prevDayReqs).forEach(type => {
+                  const prevQuota = prevDayReqs[type] || 0;
+                  const prevCompleted = allPreviousEntries[type] || 0;
+                  const prevIncomplete = Math.max(0, prevQuota - prevCompleted);
+                  
+                  if (prevIncomplete > 0) {
+                    cumulativeReqs[type] = (cumulativeReqs[type] || 0) + prevIncomplete;
+                  }
                 });
               }
             }
@@ -1110,8 +1136,26 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Compute progress from DB entries using 8 AM window
             const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());
             const perTypeCounts = Object.fromEntries(Object.keys(cumulativeReqs).map((t) => [t, 0]));
-            // Count ALL entry types from all days up to today (flexible quota system)
+            // Count available entries (today's entries + unused entries from previous days)
             const allEntryTypes = {};
+            const usedPreviousEntries = {};
+            
+            // First, count how many entries were used to fulfill previous day quotas
+            Object.keys(allPreviousEntries).forEach(type => {
+              for (let prevDay = 0; prevDay < currentDayIndex; prevDay++) {
+                const prevDayRows = rowsForDay(planRows, prevDay);
+                const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+                
+                if (prevPersonRow) {
+                  const prevQuota = Number(prevPersonRow[type] || 0);
+                  if (prevQuota > 0) {
+                    usedPreviousEntries[type] = (usedPreviousEntries[type] || 0) + Math.min(prevQuota, allPreviousEntries[type] || 0);
+                  }
+                }
+              }
+            });
+            
+            // Count today's entries
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
@@ -1124,9 +1168,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
               );
               
-              // Count ALL entry types from all days up to today
-              if (matchesUser && created <= end) {
+              // Count today's entries
+              if (matchesUser && created >= start && created <= end) {
                 allEntryTypes[e.type] = (allEntryTypes[e.type] || 0) + 1;
+              }
+            });
+            
+            // Add unused entries from previous days
+            Object.keys(allPreviousEntries).forEach(type => {
+              const totalPrevious = allPreviousEntries[type] || 0;
+              const usedPrevious = usedPreviousEntries[type] || 0;
+              const unusedPrevious = Math.max(0, totalPrevious - usedPrevious);
+              
+              if (unusedPrevious > 0) {
+                allEntryTypes[type] = (allEntryTypes[type] || 0) + unusedPrevious;
               }
             });
             
@@ -1175,21 +1230,26 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 </div>
                 <div className="member-breakdown">
                   {/* Show quota types */}
-                  {Object.entries(cumulativeReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
-                    <span key={type} className="quota-item" style={{
-                      display: 'inline-block',
-                      background: '#eef2ff',
-                      color: '#3730a3',
-                      borderRadius: 9999,
-                      padding: '2px 8px',
-                      marginRight: 6,
-                      marginBottom: 6,
-                      fontSize: 12,
-                      fontWeight: 600
-                    }}>
-                      {type}: {flexibleCounts[type] || 0}/{quota}
-                    </span>
-                  ))}
+                  {Object.entries(cumulativeReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => {
+                    const currentCount = flexibleCounts[type] || 0;
+                    const isCompleted = currentCount >= quota;
+                    
+                    return (
+                      <span key={type} className="quota-item" style={{
+                        display: 'inline-block',
+                        background: isCompleted ? '#dcfce7' : '#eef2ff', // Light green if completed, light blue if not
+                        color: isCompleted ? '#166534' : '#3730a3', // Green text if completed, blue if not
+                        borderRadius: 9999,
+                        padding: '2px 8px',
+                        marginRight: 6,
+                        marginBottom: 6,
+                        fontSize: 12,
+                        fontWeight: 600
+                      }}>
+                        {type}: {currentCount}/{quota}
+                      </span>
+                    );
+                  })}
                   
                   {/* Show carryover entries with yellow background */}
                   {Object.entries(carryoverEntries).filter(([, count]) => count > 0).map(([type, count]) => (
