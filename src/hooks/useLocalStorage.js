@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { upsertEntry, deleteEntryVector } from '../services/vectorApi';
 import { fetchAllEntriesFromDb } from '../services/kbApi';
+import { updateProgressForEntry } from '../lib/plan/progressStore';
 
 const STORAGE_KEY = 'law_entries';
 const TEAM_PROGRESS_KEY = 'team_progress';
@@ -193,7 +194,11 @@ export const useLocalStorage = () => {
 
       // Progress increments are keyed by username + date
       const who = String(entry.created_by_username || entry.created_by_name || entry.team_member_id || '').trim();
-      if (who) updateTeamProgress(who, entry.type);
+      if (who) {
+        // Use the created_at date for progress tracking
+        const entryDate = entry.created_at ? new Date(entry.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        updateProgressForEntry(entryDate, who, entry.type);
+      }
       return payload;
     } catch (err) {
       console.error('Error adding entry:', err);

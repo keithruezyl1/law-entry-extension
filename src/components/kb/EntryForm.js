@@ -6,7 +6,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
     ...entry,
     source_urls: entry.source_urls || [''],
     tags: entry.tags || [''],
-    visibility: entry.visibility || { gli: true, cpa: false },
+    visibility: { gli: true, cpa: true }, // Always set both GLI and CPA
     offline: entry.offline || { pack_include: false }
   } : {
     type: '',
@@ -25,7 +25,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
     last_reviewed: new Date().toISOString().split('T')[0],
     visibility: {
       gli: true,
-      cpa: false
+      cpa: true
     },
     offline: {
       pack_include: false,
@@ -660,56 +660,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
               <p className="text-lg text-gray-600">Configure where this entry appears and offline pack settings.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <span className="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                    Visibility Settings
-                  </h3>
-                  
-                  <p className="text-sm text-gray-600 mb-6">
-                    Choose which modes can access this entry:
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <input
-                        type="checkbox"
-                        id="visibility-gli"
-                        checked={formData.visibility.gli}
-                        onChange={(e) => handleInputChange('visibility', { ...formData.visibility, gli: e.target.checked })}
-                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="visibility-gli" className="ml-3 flex items-center">
-                        <span className="text-lg mr-2">🔍</span>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">General Legal Inquiries (GLI)</div>
-                          <div className="text-xs text-gray-500">General legal questions and broad inquiries</div>
-                        </div>
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <input
-                        type="checkbox"
-                        id="visibility-cpa"
-                        checked={formData.visibility.cpa}
-                        onChange={(e) => handleInputChange('visibility', { ...formData.visibility, cpa: e.target.checked })}
-                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="visibility-cpa" className="ml-3 flex items-center">
-                        <span className="text-lg mr-2">📊</span>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">Case Probability Assessment (CPA)</div>
-                          <div className="text-xs text-gray-500">Case analysis, elements, defenses, and probability assessment</div>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 gap-8">
               <div className="space-y-6">
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

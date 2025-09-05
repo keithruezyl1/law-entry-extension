@@ -549,15 +549,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   const handleSaveEntry = async (entryData) => {
     try {
-      // Check if we're in yesterday mode
+      // Check if we're in yesterday mode OR if user has incomplete entries
       const isYesterdayMode = sessionStorage.getItem('yesterdayMode') === 'true';
+      const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
+      const userHasIncompleteEntries = incompleteEntries.some((entry) => 
+        entry.personId === user?.personId || 
+        entry.personName === user?.name
+      );
       
-      if (isYesterdayMode) {
-        // Set created_at to yesterday's date for yesterday mode entries
+      if (isYesterdayMode || userHasIncompleteEntries) {
+        // Set created_at to yesterday's date for yesterday mode entries or incomplete entries
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         entryData.created_at = yesterday.toISOString();
-        console.log('Yesterday mode: Setting created_at to', entryData.created_at);
+        console.log('Yesterday mode or incomplete entries: Setting created_at to', entryData.created_at);
       }
       
       if (editingEntry) {

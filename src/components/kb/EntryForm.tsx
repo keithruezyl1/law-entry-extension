@@ -242,7 +242,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       source_urls: [''],
       tags: [],
       last_reviewed: new Date().toISOString().slice(0, 10),
-      visibility: { gli: true, cpa: false },
+      visibility: { gli: true, cpa: true },
       // Type-specific fields initialization
       elements: [],
       penalties: [],
@@ -416,7 +416,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         source_urls: entry.source_urls && entry.source_urls.length > 0 ? entry.source_urls : [''],
         tags: entry.tags || [],
         last_reviewed: normalizeDate(entry.last_reviewed) || new Date().toISOString().slice(0, 10),
-        visibility: entry.visibility || { gli: true, cpa: false },
+        visibility: { gli: true, cpa: true }, // Always set both GLI and CPA
         // Type-specific fields
         elements: normalizeStringArray((entry as any)?.elements),
         penalties: normalizeStringArray((entry as any)?.penalties),
@@ -800,9 +800,30 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     
     // Automatically update progress for the user
     if ((user?.username || user?.personId) && sanitized.type) {
-      const today = new Date().toISOString().split('T')[0];
       const who = String(user.username || user.personId).trim();
-      updateProgressForEntry(today, who, sanitized.type);
+      
+      // Check if user has incomplete entries from yesterday
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayDate = yesterday.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Check if user is in the incomplete entries list
+      const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
+      const userHasIncompleteEntries = incompleteEntries.some((entry: any) => 
+        entry.personId === Number(String(user.personId).replace('P', '')) || 
+        entry.personName === user.name
+      );
+      
+      // If user has incomplete entries, credit to yesterday first
+      if (userHasIncompleteEntries) {
+        updateProgressForEntry(yesterdayDate, who, sanitized.type);
+        console.log(`Credited entry to yesterday's progress for ${who}: ${sanitized.type}`);
+      } else {
+        updateProgressForEntry(today, who, sanitized.type);
+        console.log(`Credited entry to today's progress for ${who}: ${sanitized.type}`);
+      }
+      
       window.dispatchEvent(new Event('refresh-progress'));
     }
     
@@ -1050,19 +1071,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                         />
                                       )}
                                       <p id="jurisdiction-help" className="kb-form-helper">Use title case; letters/spaces only</p>
-                                    </div>
-                                    <div className="kb-form-field">
-                                      <label className="kb-form-label">Visibility</label>
-                                      <div className="flex items-center gap-6 py-2">
-                                        <label className="flex items-center gap-2">
-                                          <input type="checkbox" className="w-4 h-4" {...register('visibility.gli' as const)} />
-                                          <span className="font-medium">GLI</span>
-                                        </label>
-                                        <label className="flex items-center gap-2">
-                                          <input type="checkbox" className="w-4 h-4" {...register('visibility.cpa' as const)} />
-                                          <span className="font-medium">CPA</span>
-                                        </label>
-                                      </div>
                                     </div>
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">

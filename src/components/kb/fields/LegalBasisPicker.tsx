@@ -135,9 +135,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl w-11 mb-2`}
+                    className={`h-11 rounded-xl mb-2 ${i === fields.length - 1 ? 'w-11' : 'flex-1'}`}
                   >
                     <Trash2 className="h-4 w-4" />
+                    {i !== fields.length - 1 && <span className="ml-2">Delete</span>}
                   </Button>
                 </div>
               </div>
