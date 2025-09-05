@@ -1013,43 +1013,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
             </span>
           )}</h3>
-          {incompleteEntries.length > 0 && (
-            <div className="yesterday-status">
-              <div className="status-indicator">
-                <div className="status-circle incomplete"></div>
-                <span>INCOMPLETE ENTRIES: </span>
-                {incompleteEntries.map((incomplete, index) => (
-                  <span key={incomplete.personId}>
-                    <span 
-                      className="incomplete-person-name"
-                      title={`Yesterday's quotas: ${Object.entries(incomplete.quotas)
-                        .filter(([, quota]) => quota > 0)
-                        .map(([type, quota]) => `${type}: ${incomplete.doneByType[type] || 0}/${quota}`)
-                        .join(', ')}`}
-                      style={{ 
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        color: '#dc3545'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#ffe6e6';
-                        e.target.style.padding = '2px 4px';
-                        e.target.style.borderRadius = '3px';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = 'transparent';
-                        e.target.style.padding = '0';
-                        e.target.style.borderRadius = '0';
-                      }}
-                    >
-                      {incomplete.personName}
-                    </span>
-                    {index < incompleteEntries.length - 1 && ', '}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
         <div className="team-members-grid">
           {dbTeamMembers.map(member => {
@@ -1214,16 +1177,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             return (
               <div key={personKey} className="team-member-card">
                 <h4>{personName}</h4>
-                {userHasIncompleteEntries && (
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: '#dc3545', 
-                    marginBottom: '4px',
-                    fontWeight: '600'
-                  }}>
-                    ⚠️ All created entries will be credited to yesterday's quota first
-                  </div>
-                )}
                 {totalEntriesCreated > totalDone && (
                   <div style={{ 
                     fontSize: '11px', 
