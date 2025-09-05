@@ -820,10 +820,18 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   const handleIncompleteEntriesModalOK = () => {
     if (pendingEntryForModal) {
-      // Set the entry's created_at to yesterday
-      const yesterday = new Date();
+      // Set the entry's created_at to yesterday with the same time
+      const now = new Date();
+      const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       pendingEntryForModal.created_at = yesterday.toISOString();
+      
+      console.log('Setting created_at to yesterday:', {
+        originalDate: now.toISOString(),
+        yesterdayDate: yesterday.toISOString(),
+        entryTitle: pendingEntryForModal.title,
+        entryType: pendingEntryForModal.type
+      });
       
       // Save the entry with yesterday's date
       addEntry(pendingEntryForModal);
