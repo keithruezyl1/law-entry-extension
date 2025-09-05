@@ -22,13 +22,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
-  const [showInternalSearch, setShowInternalSearch] = useState(false);
+  const [showInternalSearch, setShowInternalSearch] = useState(true); // Always show search initially
   const internalCount = useMemo(() => (items || []).filter((it: any) => it && it.type !== 'external').length, [items]);
-
-  // Automatically show the internal search only after at least one internal citation exists
-  React.useEffect(() => {
-    if (internalCount > 0) setShowInternalSearch(true);
-  }, [internalCount]);
 
   const options = useMemo(() => {
     const q = (query || '').trim().toLowerCase();
@@ -125,7 +120,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                         <Plus className="h-4 w-4 mr-2" />
                         Add external citation
                       </Button>
-                    ) : (
+                    ) : internalCount > 0 ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -135,7 +130,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                         <Plus className="h-4 w-4 mr-2" />
                         Add internal citation
                       </Button>
-                    )
+                    ) : null
                   )}
                   <Button
                     type="button"
@@ -201,7 +196,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               ))}
             </div>
           )}
-          {internalCount === 0 && (
+          {internalCount > 0 && (
             <Button
               type="button"
               variant="outline"

@@ -874,17 +874,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // based on the created_at timestamp set in handleSaveEntry
     
     await onSave(withMember);
-    // After successful create, clear all draft keys from localStorage
-    try {
-      localStorage.removeItem('kb_entry_draft');
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('kb_entry_') || key.startsWith('entry_draft_')) {
-          try { localStorage.removeItem(key); } catch {}
-        }
-      });
-    } catch (e) {
-      console.warn('Failed to clear entry drafts after create:', e);
-    }
+    // Note: Draft clearing is now handled in App.js handleSaveEntry function
+    // to ensure it happens at the right time and covers all draft types
     
     // Dispatch event to refresh progress display
     window.dispatchEvent(new Event('refresh-progress'));

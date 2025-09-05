@@ -178,12 +178,32 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [now, setNow] = useState(new Date());
   const [showCreationToast, setShowCreationToast] = useState(false);
 
-  // Show creation toast when session flag is set	h
+  // Show creation toast when session flag is set AND we're on dashboard
   useEffect(() => {
     try {
       const flag = sessionStorage.getItem('entryCreated');
-      if (flag) {
+      if (flag && location.pathname === '/dashboard') {
         setShowCreationToast(true);
+        
+        // Additional safety: Clear any remaining drafts when toast appears
+        try {
+          localStorage.removeItem('kb_entry_draft');
+          localStorage.removeItem('kb_draft');
+          localStorage.removeItem('kb_drafts');
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('kb_entry_') || 
+                key.startsWith('entry_draft_') || 
+                key.startsWith('kb_draft') ||
+                key.includes('draft') ||
+                key.includes('autosave')) {
+              localStorage.removeItem(key);
+            }
+          });
+          console.log('Additional draft clearing on toast appearance');
+        } catch (e) {
+          console.warn('Failed to clear drafts on toast appearance:', e);
+        }
+        
         const timer = setTimeout(() => {
           setShowCreationToast(false);
         }, 2000);
@@ -604,16 +624,24 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         // Set session flag for success toast on dashboard (instead of showing modal)
         try { sessionStorage.setItem('entryCreated', '1'); } catch {}
         
-        // Clear all localStorage drafts/autosaves for create entry
+        // Clear ALL localStorage drafts/autosaves for create entry
         try {
+          // Clear specific known draft keys
           localStorage.removeItem('kb_entry_draft');
-          // Clear any other draft-related keys
+          localStorage.removeItem('kb_draft');
+          localStorage.removeItem('kb_drafts');
+          
+          // Clear any other draft-related keys with comprehensive patterns
           Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('kb_entry_') || key.startsWith('entry_draft_')) {
+            if (key.startsWith('kb_entry_') || 
+                key.startsWith('entry_draft_') || 
+                key.startsWith('kb_draft') ||
+                key.includes('draft') ||
+                key.includes('autosave')) {
               localStorage.removeItem(key);
             }
           });
-          console.log('Cleared all entry drafts from localStorage');
+          console.log('Cleared all entry drafts and autosaves from localStorage');
         } catch (e) {
           console.warn('Failed to clear localStorage drafts:', e);
         }
