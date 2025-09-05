@@ -23,6 +23,12 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
   const [showInternalSearch, setShowInternalSearch] = useState(false);
+  const internalCount = useMemo(() => (items || []).filter((it: any) => it && it.type !== 'external').length, [items]);
+
+  // Automatically show the internal search only after at least one internal citation exists
+  React.useEffect(() => {
+    if (internalCount > 0) setShowInternalSearch(true);
+  }, [internalCount]);
 
   const options = useMemo(() => {
     const q = (query || '').trim().toLowerCase();
@@ -123,7 +129,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => { setShowInternalSearch(true); setQuery(''); }}
+                        onClick={() => { append({ type: 'internal', entry_id: '', url: '', title: '', note: '' }); }}
                         className="h-11 rounded-xl flex-1 mb-2"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -181,7 +187,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       append({ type: 'internal', entry_id: o.entry_id, url: '', title: o.title, note: '' });
                     }
                     setQuery('');
-                    setShowInternalSearch(false);
+                    // Keep search visible for adding more
                   }}
                 >
                   <div className="pl-3">
@@ -195,11 +201,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               ))}
             </div>
           )}
-          {!showInternalSearch && fields.filter((_, idx) => (items?.[idx]?.type !== 'external')).length === 0 && (
+          {internalCount === 0 && (
             <Button
               type="button"
               variant="outline"
-              onClick={() => { setShowInternalSearch(true); setQuery(''); }}
+              onClick={() => { append({ type: 'internal', entry_id: '', url: '', title: '', note: '' }); }}
               className="w-full h-11 rounded-xl mt-1"
             >
               <Plus className="h-4 w-4 mr-2" />

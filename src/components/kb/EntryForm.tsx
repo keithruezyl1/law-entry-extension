@@ -227,7 +227,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const methods = useForm<Entry>({
     resolver: zodResolver(EntrySchema as any),
     defaultValues: {
-      type: 'statute_section',
+      type: 'constitution_provision',
       entry_id: '',
       title: '',
       jurisdiction: 'PH',
@@ -291,6 +291,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const sectionId = watch('section_id');
   const title = watch('title');
   const citation = watch('canonical_citation');
+  const effectiveDate = watch('effective_date');
   const entry_id = watch('entry_id');
 
   // Clear type-specific fields when entry type changes
@@ -733,7 +734,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const confirmCancel = () => {
     try { localStorage.removeItem('kb_entry_draft'); } catch {}
     setShowCancelConfirm(false);
-    navigate('/dashboard', { state: { created: true } });
+    try { sessionStorage.setItem('entryCreated', '1'); } catch {}
+    navigate('/dashboard');
   };
   const abortCancel = () => setShowCancelConfirm(false);
 
@@ -873,6 +875,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // based on the created_at timestamp set in handleSaveEntry
     
     onSave(withMember);
+    // After successful create, clear all draft keys from localStorage
+    try {
+      localStorage.removeItem('kb_entry_draft');
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('kb_entry_') || key.startsWith('entry_draft_')) {
+          try { localStorage.removeItem(key); } catch {}
+        }
+      });
+    } catch (e) {
+      console.warn('Failed to clear entry drafts after create:', e);
+    }
     
     // Dispatch event to refresh progress display
     window.dispatchEvent(new Event('refresh-progress'));
@@ -889,8 +902,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
     
-    const idTokens = [citation, lawFamily, sectionId].filter(Boolean).join(' ');
-    const q = `${title || ''} ${idTokens}`.trim();
+    const idTokens = [title, lawFamily, sectionId, citation, effectiveDate]
+      .filter(Boolean)
+      .join(' ');
+    const q = `${idTokens}`.trim();
     if (!q) {
       setNearDuplicates([]);
       return;
@@ -918,6 +933,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             .filter(Boolean)
             .filter(w => !STOPWORDS.has(w) && w.length > 2); // Only keep meaningful words
           
+          const normalize = (s: string) => String(s || '')
+            .toLowerCase()
+            .replace(/[“”]/g, '"')
+            .replace(/[’]/g, "'")
+            .replace(/\s+/g, ' ')
+            .trim();
           const overlap = (a: string, b: string) => {
             const A = new Set(tokenize(a));
             const B = new Set(tokenize(b));
@@ -940,14 +961,22 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           
           const filtered = resultsRaw.filter((r: any) => {
             const sim = Number(r.similarity || r.score || 0);
-            const candidateTitle = String((r.title || r.canonical_citation || ''));
+            const candidateTokens = [r.title, r.canonical_citation, r.section_id, r.law_family, r.effective_date]
+              .filter(Boolean).map(normalize).join(' ');
+            const candidateTitle = normalize(String((r.title || r.canonical_citation || '')));
             const sameType = !type || !r.type || r.type === type;
             
             // Calculate token overlap for meaningful word similarity
-            const tokOverlap = overlap(title || '', candidateTitle);
+            const tokOverlap = overlap(normalize(title || ''), candidateTitle);
+
+            // Strong heuristics: exact or near-exact matches on section id, citation, or effective date
+            const exactSection = sectionId && candidateTokens.includes(normalize(sectionId));
+            const exactCitation = citation && candidateTokens.includes(normalize(citation));
+            const exactDate = effectiveDate && candidateTokens.includes(normalize(effectiveDate));
             
             // Show entries that could be duplicates - not too strict, not too loose
             const shouldShow = 
+              exactSection || exactCitation || exactDate ||
               // High semantic similarity (very likely duplicate)
               sim >= 0.8 ||
               // Good semantic similarity with decent token overlap
@@ -955,7 +984,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               // Same type with good token overlap (potential duplicate)
               (sameType && tokOverlap >= 0.4 && sim >= 0.5) ||
               // High token overlap (very similar wording)
-              tokOverlap >= 0.6;
+              tokOverlap >= 0.55;
             
             // Debug logging for each result
             console.log('Result:', {
@@ -979,7 +1008,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [title, citation]);
+  }, [title, lawFamily, sectionId, citation, effectiveDate]);
 
   // (Relations helper components were removed; using dedicated picker in Step 4)
 

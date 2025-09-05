@@ -16,27 +16,28 @@ The **Civilify Law Entry App** is a React-based web application designed as the 
 - **Responsive Design**: Mobile-friendly interface
 - **Shared Plan Management**: Import and share plans across all team members with database-backed synchronization
 
+### Recent Enhancements (Last updated 5/9/25 5PM)
+
+- **Creation Success Toast (2s)**: After creating an entry, the app redirects to the dashboard and shows a success toast for a full 2 seconds. The timer starts after navigation completes to ensure consistent duration.
+- **Safer Deletions with Reference Cleanup**: Before deleting an entry, the app now checks for inbound internal citations (`legal_bases`/`related_sections`) and warns the user with a list of affected entries. Upon confirmation, those dangling references are automatically removed from the citing entries.
+- **Rights Advisory – Expanded Scopes + Other**: The `rights_scope` now includes a comprehensive set of options (arrest, search, detention, counsel, GBV, minors, privacy, traffic stop, protective orders, fair trial, freedom of expression, legal aid access, complaint filing, labor rights, consumer rights, housing/land rights, health/education) and supports a free-text "Other" entry.
+- **Duplicate Matches Toast (create flow)**: While composing entries, the form surfaces a non-blocking toast for potential near-duplicate matches with quick visibility into titles/citations; a CTA is available for viewing all matches when applicable.
+- **Improved Relations Editing**: `LegalBasisPicker` supports internal linking with enriched context (titles and first URLs fetched where available) and defaults types sensibly.
+- **Navigation Robustness**: The success state for the creation toast is handled via session storage, ensuring reliable feedback across redirects and browser histories.
+
 ## Technology Stack
 
-- **Frontend**: React 19.1.1, TypeScript 4.9.5, React Hook Form 7.62.0, Zod 3.23.8
+- **Frontend**: React 19.1.1, TypeScript 4.9.5, React Hook Form 7.62.0, Zod 3.23.8, custom UI components (Select, Toast)
 - **Backend**: Node.js, Express.js, PostgreSQL with pgvector
 - **Authentication**: JWT tokens with individual team passwords
-- **Database**: Supabase (PostgreSQL) with DBeaver for management
+- **Database**: Render (PostgreSQL) with DBeaver for management
 - **Styling**: Tailwind CSS 4.1.12, Radix UI components
 - **Deployment**: Vercel (frontend), Render (backend)
 
 ## Authentication System
 
 ### Team Members & Passwords
-The app uses individual passwords for each team member:
-
-| Person ID | Name | Username | Password |
-|-----------|------|----------|----------|
-| P1 | Arda | arda | CivilifyP1! |
-| P2 | Delos Cientos | deloscientos | CivilifyP2! |
-| P3 | Paden | paden | CivilifyP3! |
-| P4 | Sendrijas | sendrijas | CivilifyP4! |
-| P5 | Tagarao | tagarao | CivilifyP5! |
+The app uses individual passwords for each team member
 
 ### Authentication Flow
 1. **Login**: User enters username and password
@@ -76,18 +77,18 @@ CREATE TABLE kb_entries (
 
 ### Prerequisites
 - **DBeaver**: Download and install from https://dbeaver.io/
-- **Supabase Account**: Create account at https://supabase.com/
-- **Database Connection**: Get connection details from Supabase dashboard
+- **Render PostgreSQL**: Provision a PostgreSQL instance on Render and copy its connection details
 
 ### Connection Setup in DBeaver
 1. **Open DBeaver** and create new connection
 2. **Select PostgreSQL** as database type
-3. **Enter connection details**:
-   - Host: `db.[your-project-ref].supabase.co`
+3. **Enter connection details from Render** (from your Render PostgreSQL service page):
+   - Host: `[your-render-db-host]`
    - Port: `5432`
-   - Database: `postgres`
-   - Username: `postgres`
-   - Password: `[your-database-password]`
+   - Database: `[your-db-name]`
+   - Username: `[your-db-user]`
+   - Password: `[your-db-password]`
+   - SSL: Enabled (Required by Render)
 4. **Test connection** and save
 
 ### Database Management
@@ -123,12 +124,6 @@ CREATE TABLE kb_entries (
 - **Completion Status**: Visual indicators (green/orange/red) for completion
 
 ## Shared Plan Management (UPDATED)
-
-### Plan Import Process
-1. **Upload Excel**: Import `Civilify_KB30_Schedule_CorePH.xlsx`
-2. **Set Day 1**: Choose project start date
-3. **Database Storage**: Plan stored in `shared_plans` table (NEW: Database-backed)
-4. **Team Sync**: All team members see the same plan across all devices
 
 ### Plan Features
 - **Shared Access**: Everyone sees the same imported plan
@@ -211,6 +206,8 @@ $$;
 - `DELETE /api/kb/entries/:id` - Delete entry
 - `GET /api/kb/entries/search` - Search entries with filters
 
+Note: Client deletion flow performs a preflight scan for inbound internal references and, on confirmation, cleans up dangling references in citing entries.
+
 ### Plan Management Endpoints (UPDATED)
 - `GET /api/plans/active` - Get current active plan from database
 - `POST /api/plans/import` - Import new plan to database
@@ -228,14 +225,12 @@ $$;
 ```bash
 # .env file in law-entry-app directory
 REACT_APP_API_BASE=https://your-backend-url.com
-REACT_APP_SUPABASE_URL=https://your-project.supabase.co
-REACT_APP_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ### Backend Environment Variables
 ```bash
 # .env file in server directory
-DATABASE_URL=postgresql://postgres:password@host:5432/postgres
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
 JWT_SECRET=your-jwt-secret-key
 PORT=4000
 NODE_ENV=production
@@ -260,13 +255,13 @@ CORS_ORIGIN=https://your-frontend-domain.vercel.app
    - Build Command: `npm install`
    - Start Command: `npm start`
 3. **Environment Variables**: Set `DATABASE_URL`, `JWT_SECRET`, `PGSSL`, `CORS_ORIGIN`
-4. **Database**: Connect to Supabase PostgreSQL
+4. **Database**: Use a Render PostgreSQL instance. Copy the external connection string and set it as `DATABASE_URL` (include `sslmode=require`).
 
-### Database (Supabase)
-1. **Project Setup**: Create new Supabase project
-2. **Database Migration**: Run SQL scripts from `server/sql/` directory
-3. **Connection**: Get connection string for backend
-4. **Row Level Security**: Configure RLS policies as needed
+### Database (Render PostgreSQL)
+1. **Provision DB**: Create a PostgreSQL instance on Render
+2. **Migrations**: Run SQL scripts from `server/sql/` in DBeaver or psql
+3. **Connection**: Use Render’s connection string in backend `DATABASE_URL`
+4. **SSL**: Ensure SSL is required (`sslmode=require`)
 
 ## Development Workflow
 
@@ -317,10 +312,10 @@ npm run migrate
 - **Plan Not Loading**: Verify shared_plans table exists and has data
 
 ### Database Issues
-- **Connection Refused**: Check Supabase connection string
+- **Connection Refused**: Verify Render DB connection string and SSL requirement
 - **Missing Tables**: Run migration scripts in DBeaver (especially 004_shared_plans.sql)
-- **Permission Errors**: Verify database user permissions
-- **Plan Import Fails**: Check if shared_plans table structure is correct
+- **Permission Errors**: Verify database user permissions on Render DB
+- **Plan Import Fails**: Check if `shared_plans` table structure is correct
 
 ### Deployment Issues
 - **Environment Variables**: Ensure all required vars are set
@@ -337,7 +332,7 @@ npm run migrate
 - **Route Protection**: All routes require valid authentication
 
 ### Database Security
-- **Connection Security**: Use SSL connections to Supabase
+- **Connection Security**: Use SSL connections to your managed PostgreSQL (Render)
 - **Row Level Security**: Configure RLS policies for data access
 - **API Security**: JWT validation on all protected endpoints
 - **Environment Variables**: Secure storage of sensitive config
@@ -346,7 +341,7 @@ npm run migrate
 
 ### Database Monitoring
 - **DBeaver**: Regular connection testing and data verification
-- **Supabase Dashboard**: Monitor database performance and usage
+- **Render Dashboard**: Monitor database usage and connection status
 - **Backup Strategy**: Regular exports of critical data
 - **Plan Data**: Monitor shared_plans table for data integrity
 
@@ -384,7 +379,7 @@ npm run migrate
 5. **Start Working**: Begin creating entries according to daily quotas
 
 ### For Administrators
-1. **Database Setup**: Ensure Supabase project is configured
+1. **Database Setup**: Ensure Render PostgreSQL is configured
 2. **User Management**: Add/update team members in `users` table
 3. **Plan Management**: Import and manage shared plans (NEW: Database-backed)
 4. **Monitoring**: Regular check of system health and usage

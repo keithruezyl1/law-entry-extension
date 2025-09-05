@@ -178,17 +178,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [now, setNow] = useState(new Date());
   const [showCreationToast, setShowCreationToast] = useState(false);
 
-  // Show creation toast based on navigation state
+  // Show creation toast when session flag is set	h
   useEffect(() => {
-    if (location && location.state && location.state.created) {
-      setShowCreationToast(true);
-      const timer = setTimeout(() => {
-        setShowCreationToast(false);
-      }, 2000);
-      navigate(location.pathname, { replace: true, state: {} });
-      return () => clearTimeout(timer);
-    }
-  }, [location, navigate]);
+    try {
+      const flag = sessionStorage.getItem('entryCreated');
+      if (flag) {
+        setShowCreationToast(true);
+        const timer = setTimeout(() => {
+          setShowCreationToast(false);
+        }, 2000);
+        sessionStorage.removeItem('entryCreated');
+        return () => clearTimeout(timer);
+      }
+    } catch {}
+  }, [location.pathname]);
 
   // Load plan from bundled JSON on mount
   useEffect(() => {
@@ -766,7 +769,44 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     if (!entryToDelete) return;
     
     try {
+      // 1) Gather inbound references (entries that cite this entry internally)
+      const inbound = entries.filter(e => {
+        const lb = Array.isArray(e.legal_bases) ? e.legal_bases : [];
+        const rs = Array.isArray(e.related_sections) ? e.related_sections : [];
+        const citesInLB = lb.some((x) => x && (x.entry_id === entryToDelete.entry_id || x.entry_id === entryToDelete.id));
+        const citesInRS = rs.some((x) => x && (x.entry_id === entryToDelete.entry_id || x.entry_id === entryToDelete.id));
+        return citesInLB || citesInRS;
+      });
+
+      // 2) If there are inbound references, warn the user with a detailed prompt
+      if (inbound.length > 0) {
+        const list = inbound.map(e => `• ${e.title} (${e.entry_id || e.id})`).join('\n');
+        const confirmed = window.confirm(
+          `This entry is cited internally by ${inbound.length} other entries.\n\n${list}\n\nProceed with deletion? Those references will be removed automatically.`
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      // 3) Delete the target entry
       await deleteEntry(entryToDelete.id);
+
+      // 4) Auto-remove dangling internal references from inbound entries
+      for (const e of inbound) {
+        const lb = Array.isArray(e.legal_bases) ? e.legal_bases : [];
+        const rs = Array.isArray(e.related_sections) ? e.related_sections : [];
+        const filteredLB = lb.filter((x) => x && (x.entry_id !== entryToDelete.entry_id && x.entry_id !== entryToDelete.id));
+        const filteredRS = rs.filter((x) => x && (x.entry_id !== entryToDelete.entry_id && x.entry_id !== entryToDelete.id));
+        if (filteredLB.length !== lb.length || filteredRS.length !== rs.length) {
+          try {
+            await updateEntry(e.id, { legal_bases: filteredLB, related_sections: filteredRS });
+          } catch (err) {
+            console.warn('Failed to clean references for', e.id, err);
+          }
+        }
+      }
+
       if (currentView === 'view' && selectedEntryId === entryToDelete.id) {
         navigate('/dashboard');
         setSelectedEntryId(null);

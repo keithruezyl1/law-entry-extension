@@ -1,4 +1,4 @@
--- Match function for vector KNN; suitable for exposure via Supabase Data Connect
+-- Match function for vector KNN; suitable for exposure via managed Postgres
 create or replace function match_kb_entries(query_embedding vector, match_count int)
 returns table(
   entry_id text,

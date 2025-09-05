@@ -339,16 +339,23 @@ export const useLocalStorage = () => {
 
     // Text search
     if (query && query.trim()) {
-      const searchTerm = query.toLowerCase().trim();
-      filteredEntries = filteredEntries.filter(entry => 
-        (entry.title && entry.title.toLowerCase().includes(searchTerm)) ||
-        (entry.entry_id && entry.entry_id.toLowerCase().includes(searchTerm)) ||
-        (entry.summary && entry.summary.toLowerCase().includes(searchTerm)) ||
-        (entry.text && entry.text.toLowerCase().includes(searchTerm)) ||
-        (entry.text_raw && entry.text_raw.toLowerCase().includes(searchTerm)) ||
-        (entry.law_family && entry.law_family.toLowerCase().includes(searchTerm)) ||
-        (entry.tags && entry.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
-      );
+      const searchTermRaw = query.toLowerCase().trim();
+      const searchTerm = searchTermRaw.replace(/[-_]/g, ' ');
+      filteredEntries = filteredEntries.filter(entry => {
+        const haystacks = [
+          entry.title,
+          entry.entry_id,
+          entry.summary,
+          entry.text,
+          entry.text_raw,
+          entry.law_family,
+          entry.canonical_citation,
+          entry.section_id,
+          entry.effective_date,
+          Array.isArray(entry.tags) ? entry.tags.join(' ') : ''
+        ].map(v => String(v || '').toLowerCase().replace(/[-_]/g, ' '));
+        return haystacks.some(h => h.includes(searchTerm));
+      });
     }
 
     // Type filter

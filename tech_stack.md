@@ -41,7 +41,7 @@
 - **Async/Await**: Modern asynchronous programming patterns
 
 ### Database & ORM
-- **PostgreSQL**: 15+ - Advanced open-source relational database
+- **PostgreSQL**: 15+ - Advanced open-source relational database (hosted on Render)
 - **pgvector**: Latest - Vector similarity search extension
 - **node-postgres**: 8.11.3 - PostgreSQL client for Node.js
 - **Connection Pooling**: Efficient database connection management
@@ -310,13 +310,13 @@ interface KBEntry {
 - **Start Command**: `npm start`
 - **Environment Variables**: Database and JWT configuration
 
-### Database (Supabase)
-- **Platform**: Supabase - Open source Firebase alternative
+### Database (Render PostgreSQL)
+- **Platform**: Render - Managed PostgreSQL
 - **Database**: PostgreSQL 15+ with pgvector extension
-- **Connection**: SSL-enabled PostgreSQL connection
+- **Connection**: SSL-enabled PostgreSQL connection (sslmode=require)
 - **Management**: DBeaver for database administration
-- **Backup**: Automated daily backups
-- **Monitoring**: Built-in performance monitoring
+- **Backup**: Automated backups per Render plan
+- **Monitoring**: Render dashboard monitoring
 
 ## Environment Configuration
 
@@ -324,14 +324,12 @@ interface KBEntry {
 ```bash
 # .env file in law-entry-app directory
 REACT_APP_API_BASE=https://your-backend-url.com
-REACT_APP_SUPABASE_URL=https://your-project.supabase.co
-REACT_APP_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ### Backend Environment Variables
 ```bash
 # .env file in server directory
-DATABASE_URL=postgresql://postgres:password@host:5432/postgres
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 PORT=4000
 NODE_ENV=production
@@ -406,7 +404,7 @@ export const pool = new Pool({
 - **Performance Metrics**: Response time monitoring
 
 ### Database Monitoring
-- **Supabase Dashboard**: Database performance metrics
+- **Render Dashboard**: Database performance metrics
 - **Query Performance**: Slow query identification
 - **Connection Monitoring**: Connection pool health
 - **Storage Usage**: Database size and growth tracking
