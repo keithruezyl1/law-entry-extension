@@ -26,7 +26,7 @@ function App() {
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/law-entry/:step" element={<DashboardOnlyRoute><LawEntryForm yesterdayMode={yesterdayMode} /></DashboardOnlyRoute>} />
+          <Route path="/law-entry/:step" element={<DashboardOnlyRoute><LawEntryForm /></DashboardOnlyRoute>} />
           <Route path="/entry/:entryId" element={<ProtectedRoute><EntryDetails /></ProtectedRoute>} />
           <Route path="/entry/:entryId/edit" element={<DashboardOnlyRoute><EntryEdit /></DashboardOnlyRoute>} />
           <Route path="*" element={<RootRedirect />} />
