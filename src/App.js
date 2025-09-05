@@ -1077,7 +1077,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // Calculate cumulative quotas - only carry over incomplete quotas from previous days
             const { getCumulativeCount } = require('./lib/plan/progressStore');
-            const todayISO = new Date().toISOString().split('T')[0];
+            const { getPlanDate, toISODate } = require('./lib/plan/planLoader');
+            const todayISO = toISODate(getPlanDate(new Date()));
             
             // Get time window bounds first
             const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());

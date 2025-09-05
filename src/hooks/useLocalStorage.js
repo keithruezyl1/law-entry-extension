@@ -654,7 +654,9 @@ export const useLocalStorage = () => {
 
   // Reset daily quotas (call this at the start of each day)
   const resetDailyQuotas = () => {
-    const today = new Date().toISOString().split('T')[0];
+    // Use 8 AM boundary for plan date calculation
+    const { getPlanDate, toISODate } = require('../lib/plan/planLoader');
+    const today = toISODate(getPlanDate(new Date()));
     
     // Update the last reset date
     setDailyQuotas(prev => ({
