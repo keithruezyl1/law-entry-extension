@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import './EntryForm.css';
 
 export default function EntryForm({ entry, existingEntries, onSave, onCancel }) {
+  const { user } = useAuth();
+  
   const [formData, setFormData] = useState(entry ? {
     ...entry,
     source_urls: entry.source_urls || [''],
@@ -132,19 +135,49 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
       if (field === 'type' && prev.type && prev.type !== value) {
         console.log(`Entry type changed from ${prev.type} to ${value}, clearing type-specific fields`);
         
-        // Clear all type-specific fields
-        const fieldsToClear = [
-          'elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof',
-          'rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms',
-          'circular_no', 'applicability', 'issuance_no', 'instrument_no', 'supersedes',
-          'steps_brief', 'forms_required', 'failure_states', 'violation_code', 'violation_name',
-          'license_action', 'fine_schedule', 'apprehension_flow', 'incident', 'phases',
-          'forms', 'handoff', 'rights_callouts', 'rights_scope', 'advice_points',
-          'legal_bases', 'related_sections', 'topics', 'jurisprudence'
-        ];
+        // Clear all type-specific fields with correct default values
+        const fieldsToClear = {
+          // Array fields
+          'elements': [],
+          'penalties': [],
+          'defenses': [],
+          'triggers': [],
+          'time_limits': [],
+          'required_forms': [],
+          'applicability': [],
+          'supersedes': [],
+          'steps_brief': [],
+          'forms_required': [],
+          'failure_states': [],
+          'fine_schedule': [],
+          'apprehension_flow': [],
+          'phases': [],
+          'forms': [],
+          'handoff': [],
+          'rights_callouts': [],
+          'advice_points': [],
+          'legal_bases': [],
+          'related_sections': [],
+          'topics': [],
+          'jurisprudence': [],
+          // String fields
+          'standard_of_proof': '',
+          'rule_no': '',
+          'section_no': '',
+          'circular_no': '',
+          'issuance_no': '',
+          'instrument_no': '',
+          'violation_code': '',
+          'violation_name': '',
+          'license_action': '',
+          'incident': '',
+          'rights_scope': '',
+          // Object fields
+          'prescriptive_period': null
+        };
         
-        fieldsToClear.forEach(fieldToClear => {
-          newData[fieldToClear] = fieldToClear === 'prescriptive_period' ? null : [];
+        Object.entries(fieldsToClear).forEach(([field, defaultValue]) => {
+          newData[field] = defaultValue;
         });
       }
       
@@ -181,10 +214,20 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
       if (!entry) {
         // Check if user has incomplete entries from yesterday
         const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
+        const userPersonId = user?.personId ? Number(String(user.personId).replace('P', '')) : null;
         const userHasIncompleteEntries = incompleteEntries.some((incompleteEntry) => 
-          incompleteEntry.personName === formData.created_by_name ||
-          incompleteEntry.personName === formData.created_by_username
+          incompleteEntry.personId === userPersonId || 
+          incompleteEntry.personName === user?.name ||
+          incompleteEntry.personName === user?.username
         );
+        
+        console.log('Checking incomplete entries for user:', {
+          userPersonId,
+          userName: user?.name,
+          userUsername: user?.username,
+          incompleteEntries,
+          userHasIncompleteEntries
+        });
         
         if (userHasIncompleteEntries) {
           // Set created_at to yesterday's date for incomplete entries
@@ -198,6 +241,11 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
         }
         
         formData.id = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Add user information to formData
+        formData.team_member_id = user?.personId ? Number(String(user.personId).replace('P','')) : undefined;
+        formData.created_by_name = user?.name || user?.username;
+        formData.created_by_username = user?.username;
       }
       
       // Call the onSave function passed from parent

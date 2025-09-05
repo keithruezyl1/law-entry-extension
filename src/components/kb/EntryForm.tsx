@@ -299,19 +299,49 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     if (previousType && type && previousType !== type) {
       console.log(`Entry type changed from ${previousType} to ${type}, clearing type-specific fields`);
       
-      // Clear all type-specific fields when type changes
-      const fieldsToClear = [
-        'elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof',
-        'rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms',
-        'circular_no', 'applicability', 'issuance_no', 'instrument_no', 'supersedes',
-        'steps_brief', 'forms_required', 'failure_states', 'violation_code', 'violation_name',
-        'license_action', 'fine_schedule', 'apprehension_flow', 'incident', 'phases',
-        'forms', 'handoff', 'rights_callouts', 'rights_scope', 'advice_points',
-        'legal_bases', 'related_sections', 'topics', 'jurisprudence'
-      ];
+      // Clear all type-specific fields when type changes with correct default values
+      const fieldsToClear = {
+        // Array fields
+        'elements': [],
+        'penalties': [],
+        'defenses': [],
+        'triggers': [],
+        'time_limits': [],
+        'required_forms': [],
+        'applicability': [],
+        'supersedes': [],
+        'steps_brief': [],
+        'forms_required': [],
+        'failure_states': [],
+        'fine_schedule': [],
+        'apprehension_flow': [],
+        'phases': [],
+        'forms': [],
+        'handoff': [],
+        'rights_callouts': [],
+        'advice_points': [],
+        'legal_bases': [],
+        'related_sections': [],
+        'topics': [],
+        'jurisprudence': [],
+        // String fields
+        'standard_of_proof': '',
+        'rule_no': '',
+        'section_no': '',
+        'circular_no': '',
+        'issuance_no': '',
+        'instrument_no': '',
+        'violation_code': '',
+        'violation_name': '',
+        'license_action': '',
+        'incident': '',
+        'rights_scope': '',
+        // Object fields
+        'prescriptive_period': null
+      };
       
-      fieldsToClear.forEach(field => {
-        methods.setValue(field as any, field === 'prescriptive_period' ? null : []);
+      Object.entries(fieldsToClear).forEach(([field, defaultValue]) => {
+        methods.setValue(field as any, defaultValue);
       });
     }
     setPreviousType(type);
