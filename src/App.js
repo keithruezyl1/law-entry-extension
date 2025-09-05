@@ -1164,16 +1164,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             return (
               <div key={personKey} className="team-member-card">
                 <h4>{personName}</h4>
-                {totalEntriesCreated > totalDone && (
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: '#059669', 
-                    marginBottom: '4px',
-                    fontWeight: '600'
-                  }}>
-                    ✅ Flexible quota: {totalEntriesCreated} total entries created
-                  </div>
-                )}
                 <div className="member-progress">
                   <span className="progress-count">{totalDone} / {totalReq}</span>
                   <div className="member-progress-bar">
