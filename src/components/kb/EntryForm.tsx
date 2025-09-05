@@ -937,8 +937,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             .toLowerCase()
             .replace(/[“”]/g, '"')
             .replace(/[’]/g, "'")
+            .replace(/[\-–—_()\[\],.:/]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
+          const compact = (s: string) => normalize(s).replace(/\s+/g, '');
           const overlap = (a: string, b: string) => {
             const A = new Set(tokenize(a));
             const B = new Set(tokenize(b));
@@ -963,6 +965,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             const sim = Number(r.similarity || r.score || 0);
             const candidateTokens = [r.title, r.canonical_citation, r.section_id, r.law_family, r.effective_date]
               .filter(Boolean).map(normalize).join(' ');
+            const candidateCompact = compact(candidateTokens);
             const candidateTitle = normalize(String((r.title || r.canonical_citation || '')));
             const sameType = !type || !r.type || r.type === type;
             
@@ -970,9 +973,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             const tokOverlap = overlap(normalize(title || ''), candidateTitle);
 
             // Strong heuristics: exact or near-exact matches on section id, citation, or effective date
-            const exactSection = sectionId && candidateTokens.includes(normalize(sectionId));
-            const exactCitation = citation && candidateTokens.includes(normalize(citation));
-            const exactDate = effectiveDate && candidateTokens.includes(normalize(effectiveDate));
+            const exactSection = sectionId && (candidateTokens.includes(normalize(sectionId)) || candidateCompact.includes(compact(sectionId)));
+            const exactCitation = citation && (candidateTokens.includes(normalize(citation)) || candidateCompact.includes(compact(citation)));
+            const exactDate = effectiveDate && (candidateTokens.includes(normalize(effectiveDate)) || candidateCompact.includes(compact(effectiveDate)));
             
             // Show entries that could be duplicates - not too strict, not too loose
             const shouldShow = 
