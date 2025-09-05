@@ -172,6 +172,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showIncompleteEntriesModal, setShowIncompleteEntriesModal] = useState(false);
   const [pendingEntryForModal, setPendingEntryForModal] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [now, setNow] = useState(new Date());
 
   // Load plan from bundled JSON on mount
@@ -648,6 +649,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         console.log('New entry created and saved to localStorage:', newEntry);
         console.log('Total entries in localStorage:', entries.length + 1);
         
+        // Show success modal for normal entry creation
+        setPendingEntryForModal(entryData);
+        setShowSuccessModal(true);
+        
         // Clear all localStorage drafts/autosaves for create entry
         try {
           localStorage.removeItem('kb_entry_draft');
@@ -836,12 +841,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       // Save the entry with yesterday's date
       addEntry(pendingEntryForModal);
       
+      // Show success popup
+      setShowSuccessModal(true);
+      
       // Clear the pending entry and close modal
       setPendingEntryForModal(null);
       setShowIncompleteEntriesModal(false);
       
-      // Navigate back to dashboard
-      navigate('/dashboard');
+      // Navigate back to dashboard after a short delay
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 100);
     }
   };
 
@@ -855,6 +865,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setPendingEntryForModal(entryData);
     setShowIncompleteEntriesModal(true);
   };
+
+  // Auto-close success modal after 2 seconds
+  useEffect(() => {
+    if (showSuccessModal) {
+      const timer = setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal]);
 
   const handleClearOptionSelect = (option) => {
     setClearOption(option);
@@ -1345,6 +1366,28 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             onClick={handleIncompleteEntriesModalCancel}
           >
             Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => {}} // Prevent closing until auto-close
+        title="Entry Created Successfully!"
+        subtitle={pendingEntryForModal ? 
+          (pendingEntryForModal.created_at && new Date(pendingEntryForModal.created_at).getDate() !== new Date().getDate() ? 
+            `"${pendingEntryForModal.title}" has been saved and credited to yesterday's progress.` : 
+            `"${pendingEntryForModal.title}" has been saved successfully.`) : 
+          "Entry has been saved successfully."}
+      >
+        <div className="modal-buttons">
+          <button
+            className="modal-button orange"
+            disabled
+            style={{ opacity: 0.6, cursor: 'not-allowed' }}
+          >
+            Auto-closing in 2 seconds...
           </button>
         </div>
       </Modal>
