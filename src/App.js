@@ -1017,7 +1017,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             <div className="yesterday-status">
               <div className="status-indicator">
                 <div className="status-circle incomplete"></div>
-                <span>Yesterday INCOMPLETE ENTRIES: </span>
+                <span>INCOMPLETE ENTRIES: </span>
                 {incompleteEntries.map((incomplete, index) => (
                   <span key={incomplete.personId}>
                     <span 
@@ -1094,8 +1094,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               ...(member?.dailyQuota || {}),
             };
             const today = new Date();
-            const dayIndex = computeDayIndex(today, day1Date);
-            const dayRows = rowsForDay(planRows, dayIndex);
+            const currentDayIndex = computeDayIndex(today, day1Date);
+            const dayRows = rowsForDay(planRows, currentDayIndex);
             // Match using plan codes P1..P5
             const personRow = dayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
             
@@ -1112,10 +1112,42 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               };
             }
             
-            const totalReq = Object.values(currentDayReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
+            // Calculate cumulative quotas including missing entries from previous days
+            const { getCumulativeCount } = require('./lib/plan/progressStore');
+            const todayISO = new Date().toISOString().split('T')[0];
+            
+            // Calculate missing quotas from previous days
+            const cumulativeReqs = { ...currentDayReqs };
+            
+            // Add missing quotas from all previous days
+            for (let prevDay = 0; prevDay < currentDayIndex; prevDay++) {
+              const prevDayRows = rowsForDay(planRows, prevDay);
+              const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+              
+              if (prevPersonRow) {
+                const prevDayReqs = {
+                  statute_section: Number(prevPersonRow.statute_section || 0),
+                  rule_of_court: Number(prevPersonRow.rule_of_court || 0),
+                  rights_advisory: Number(prevPersonRow.rights_advisory || 0),
+                  constitution_provision: Number(prevPersonRow.constitution_provision || 0),
+                  agency_circular: Number(prevPersonRow.agency_circular || 0),
+                  doj_issuance: Number(prevPersonRow.doj_issuance || 0),
+                  executive_issuance: Number(prevPersonRow.executive_issuance || 0),
+                  city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
+                };
+                
+                // Add previous day's quotas to cumulative requirements
+                Object.keys(cumulativeReqs).forEach(type => {
+                  cumulativeReqs[type] += prevDayReqs[type] || 0;
+                });
+              }
+            }
+            
+            const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
             // Compute progress from DB entries using 8 AM window
             const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());
-            const perTypeCounts = Object.fromEntries(Object.keys(currentDayReqs).map((t) => [t, 0]));
+            const perTypeCounts = Object.fromEntries(Object.keys(cumulativeReqs).map((t) => [t, 0]));
+            // Count cumulative entries from all days up to today
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
@@ -1128,7 +1160,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
               );
               
-              if (matchesUser && created >= start && created < end) {
+              // Count entries from all days up to today (not just today)
+              if (matchesUser && created <= end) {
                 if (perTypeCounts.hasOwnProperty(e.type)) {
                   perTypeCounts[e.type] = (perTypeCounts[e.type] || 0) + 1;
                 }
@@ -1165,7 +1198,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   </div>
                 </div>
                 <div className="member-breakdown">
-                  {Object.entries(currentDayReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
+                  {Object.entries(cumulativeReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => (
                     <span key={type} className="quota-item" style={{
                       display: 'inline-block',
                       background: '#eef2ff',

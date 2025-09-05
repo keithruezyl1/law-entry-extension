@@ -748,6 +748,36 @@
   margin-bottom: 0.75rem;
 }
 
+.basis-title {
+  margin-bottom: 0.5rem;
+}
+
+.basis-title-text {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.basis-citation {
+  margin-bottom: 0.5rem;
+}
+
+.citation-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.basis-description {
+  margin-bottom: 0.5rem;
+}
+
+.description-text {
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
 .external-citation {
   font-weight: 500;
   color: #374151;

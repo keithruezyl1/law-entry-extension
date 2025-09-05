@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -22,17 +22,135 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
-  const [showInternalSearch, setShowInternalSearch] = useState(true); // Show search initially when no citations
   const internalCount = useMemo(() => (items || []).filter((it: any) => it && it.type !== 'external').length, [items]);
+  const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0); // Show search only when no citations initially
   const [showAddButton, setShowAddButton] = useState(false); // Show add button after search selection
   const [showExternalAddButton, setShowExternalAddButton] = useState(false); // Show external add button after external citation
 
+  // Update search visibility when internal count changes
+  useEffect(() => {
+    if (internalCount === 0) {
+      setShowInternalSearch(true);
+      setShowAddButton(false);
+    } else if (internalCount > 0 && !showAddButton) {
+      setShowInternalSearch(false);
+    }
+  }, [internalCount, showAddButton]);
+
+  // Enhanced search function that handles pluralization and word variations
+  const normalizeSearchText = (text: string): string => {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ') // Remove punctuation
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  };
+
+  const getSearchTerms = (query: string): string[] => {
+    const normalized = normalizeSearchText(query);
+    return normalized.split(' ').filter(term => term.length > 0);
+  };
+
+  const createSearchVariations = (term: string): string[] => {
+    const variations = new Set([term]);
+    
+    // Handle pluralization
+    if (term.endsWith('s') && term.length > 3) {
+      variations.add(term.slice(0, -1)); // Remove 's' for singular
+    } else {
+      variations.add(term + 's'); // Add 's' for plural
+    }
+    
+    // Handle common word variations
+    const wordMap: Record<string, string[]> = {
+      'right': ['rights'],
+      'rights': ['right'],
+      'information': ['info'],
+      'info': ['information'],
+      'section': ['sec', 'sections'],
+      'sec': ['section', 'sections'],
+      'sections': ['section', 'sec'],
+      'article': ['art', 'articles'],
+      'art': ['article', 'articles'],
+      'articles': ['article', 'art'],
+      'constitution': ['const'],
+      'const': ['constitution'],
+      'amendment': ['amend', 'amendments'],
+      'amend': ['amendment', 'amendments'],
+      'amendments': ['amendment', 'amend']
+    };
+    
+    if (wordMap[term]) {
+      wordMap[term].forEach(variation => variations.add(variation));
+    }
+    
+    return Array.from(variations);
+  };
+
+  const calculateMatchScore = (entry: EntryLite, searchTerms: string[]): number => {
+    const searchableText = normalizeSearchText(
+      `${entry.entry_id} ${entry.title} ${entry.canonical_citation || ''}`
+    );
+    
+    let score = 0;
+    let matchedTerms = 0;
+    
+    for (const term of searchTerms) {
+      const variations = createSearchVariations(term);
+      let termMatched = false;
+      
+      for (const variation of variations) {
+        if (searchableText.includes(variation)) {
+          score += 1;
+          termMatched = true;
+          break;
+        }
+      }
+      
+      if (termMatched) {
+        matchedTerms++;
+      }
+    }
+    
+    // Bonus for exact phrase match
+    const exactQuery = normalizeSearchText(query);
+    if (searchableText.includes(exactQuery)) {
+      score += 2;
+    }
+    
+    // Bonus for title matches (more important than entry_id)
+    const titleText = normalizeSearchText(entry.title);
+    for (const term of searchTerms) {
+      const variations = createSearchVariations(term);
+      for (const variation of variations) {
+        if (titleText.includes(variation)) {
+          score += 0.5; // Bonus for title matches
+          break;
+        }
+      }
+    }
+    
+    // Return 0 if not all terms matched
+    return matchedTerms === searchTerms.length ? score : 0;
+  };
+
   const options = useMemo(() => {
-    const q = (query || '').trim().toLowerCase();
+    const q = (query || '').trim();
     if (!q) return [];
-    return existingEntries.filter((e) => 
-      (e.entry_id + ' ' + e.title + ' ' + (e.canonical_citation || '')).toLowerCase().includes(q)
-    ).slice(0, 8);
+    
+    const searchTerms = getSearchTerms(q);
+    if (searchTerms.length === 0) return [];
+    
+    const scoredEntries = existingEntries
+      .map(entry => ({
+        entry,
+        score: calculateMatchScore(entry, searchTerms)
+      }))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8);
+    
+    return scoredEntries.map(item => item.entry);
   }, [existingEntries, query]);
 
   return (
@@ -127,7 +245,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                           Add external citation
                         </Button>
                       ) : null
-                    ) : showAddButton ? (
+                    ) : (showAddButton || (internalCount > 0 && !showInternalSearch)) ? (
                       <Button
                         type="button"
                         variant="outline"

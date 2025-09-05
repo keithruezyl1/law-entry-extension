@@ -124,7 +124,8 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                   </span>
                   {basis.topic && <span className="basis-topic-pill">{basis.topic}</span>}
                 </div>
-                <div className="basis-content">
+                {/* Title - consistent for both types */}
+                <div className="basis-title">
                   {basis.type === 'internal' ? (
                     <span
                       className="link-button"
@@ -139,13 +140,37 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                         } catch {}
                       }}
                     >
-                      {basis.title ? `${basis.title} (${basis.entry_id})` : basis.entry_id}
+                      {basis.title || basis.entry_id}
                     </span>
                   ) : (
-                    <span className="external-citation">{basis.citation}</span>
+                    <span className="basis-title-text">{basis.title || basis.citation}</span>
                   )}
                 </div>
+                
+                {/* Citation - smaller grey text below title */}
+                <div className="basis-citation">
+                  {basis.type === 'internal' ? (
+                    <span className="citation-text">{basis.canonical_citation || basis.entry_id}</span>
+                  ) : (
+                    <span className="citation-text">{basis.citation}</span>
+                  )}
+                </div>
+                
+                {/* Topic/Summary - descriptive text */}
+                {(basis.topic || basis.summary) && (
+                  <div className="basis-description">
+                    {basis.type === 'internal' ? (
+                      <span className="description-text">{basis.summary || basis.topic}</span>
+                    ) : (
+                      <span className="description-text">{basis.topic}</span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Note - if provided */}
                 {basis.note && <div className="basis-note">{basis.note}</div>}
+                
+                {/* URL - at the bottom */}
                 {basis.url && (
                   <div className="basis-url">
                     <a href={basis.url} target="_blank" rel="noopener noreferrer" className="url-link">
@@ -828,14 +853,39 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
                             {rel?.type === 'internal' ? 'Internal' : 'External'}
                           </span>
                         </div>
-                        <div className="basis-content">
+                        {/* Title - consistent for both types */}
+                        <div className="basis-title">
                           {rel?.type === 'internal' && (rel?.entry_id || rel?.title) ? (
-                            <span className="link-button">{rel.title ? `${rel.title} (${rel.entry_id || ''})` : rel.entry_id}</span>
+                            <span className="link-button">{rel.title || rel.entry_id}</span>
                           ) : (
-                            <span className="external-citation">{String(rel?.citation || rel)}</span>
+                            <span className="basis-title-text">{rel?.title || rel?.citation || String(rel)}</span>
                           )}
                         </div>
+                        
+                        {/* Citation - smaller grey text below title */}
+                        <div className="basis-citation">
+                          {rel?.type === 'internal' ? (
+                            <span className="citation-text">{rel?.canonical_citation || rel?.entry_id}</span>
+                          ) : (
+                            <span className="citation-text">{rel?.citation || String(rel)}</span>
+                          )}
+                        </div>
+                        
+                        {/* Topic/Summary - descriptive text */}
+                        {(rel?.topic || rel?.summary) && (
+                          <div className="basis-description">
+                            {rel?.type === 'internal' ? (
+                              <span className="description-text">{rel?.summary || rel?.topic}</span>
+                            ) : (
+                              <span className="description-text">{rel?.topic}</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Note - if provided */}
                         {rel?.note && <div className="basis-note">{rel.note}</div>}
+                        
+                        {/* URL - at the bottom */}
                         {rel?.url && (
                           <div className="basis-url">
                             <a href={rel.url} target="_blank" rel="noopener noreferrer" className="url-link">
