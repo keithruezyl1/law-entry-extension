@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './EntryForm.css';
 
-export default function EntryForm({ entry, existingEntries, onSave, onCancel }) {
+export default function EntryForm({ entry, existingEntries, onSave, onCancel, onShowIncompleteEntriesModal }) {
   const { user } = useAuth();
   
   const [formData, setFormData] = useState(entry ? {
@@ -229,12 +229,17 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel }) 
           userHasIncompleteEntries
         });
         
-        if (userHasIncompleteEntries) {
-          // Set created_at to yesterday's date for incomplete entries
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          formData.created_at = yesterday.toISOString();
-          console.log('User has incomplete entries: Setting created_at to yesterday', formData.created_at);
+        if (userHasIncompleteEntries && onShowIncompleteEntriesModal) {
+          // Show modal with entry details instead of saving directly
+          formData.id = `kb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Add user information to formData
+          formData.team_member_id = user?.personId ? Number(String(user.personId).replace('P','')) : undefined;
+          formData.created_by_name = user?.name || user?.username;
+          formData.created_by_username = user?.username;
+          
+          onShowIncompleteEntriesModal(formData);
+          return;
         } else {
           formData.created_at = new Date().toISOString();
           console.log('No incomplete entries: Setting created_at to today', formData.created_at);

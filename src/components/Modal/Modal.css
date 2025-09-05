@@ -114,6 +114,26 @@
   background: #e55a2b;
 }
 
+.modal-button.orange {
+  background: #ff6b35;
+  color: white;
+}
+
+.modal-button.orange:hover {
+  background: #e55a2b;
+}
+
+.modal-button.orange-outline {
+  background: transparent;
+  color: #ff6b35;
+  border: 2px solid #ff6b35;
+}
+
+.modal-button.orange-outline:hover {
+  background: #ff6b35;
+  color: white;
+}
+
 .modal-options {
   display: flex;
   gap: 1rem;

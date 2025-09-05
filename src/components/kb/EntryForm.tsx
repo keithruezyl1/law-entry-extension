@@ -25,6 +25,7 @@ type EntryFormProps = {
   existingEntries?: Array<{ id: string; title: string; entry_id: string; type: string }>;
   onSave: (data: Entry) => void;
   onCancel: () => void;
+  onShowIncompleteEntriesModal?: (entryData: Entry) => void;
 };
 
 // Validation error type for required fields
@@ -176,7 +177,7 @@ const stepListBase: Step[] = [
   { id: 5, name: 'Review & Publish', description: 'Final check before saving' },
 ];
 
-export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel }: EntryFormProps) {
+export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel, onShowIncompleteEntriesModal }: EntryFormProps) {
   const { user } = useAuth();
   
   // Explicit mode detection
@@ -851,6 +852,22 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     console.log('Form data being sent:', withMember);
     console.log('Status field value:', withMember.status);
     console.log('Effective date value:', withMember.effective_date);
+    
+    // Check if user has incomplete entries from yesterday
+    if (onShowIncompleteEntriesModal && isCreateMode) {
+      const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
+      const userHasIncompleteEntries = incompleteEntries.some((incomplete: any) => 
+        incomplete.personId === user?.personId || 
+        incomplete.personName === user?.name ||
+        incomplete.personName === user?.username
+      );
+      
+      if (userHasIncompleteEntries) {
+        // Show modal with entry details instead of saving directly
+        onShowIncompleteEntriesModal(withMember);
+        return;
+      }
+    }
     
     // Progress tracking is now handled in useLocalStorage.js addEntry function
     // based on the created_at timestamp set in handleSaveEntry

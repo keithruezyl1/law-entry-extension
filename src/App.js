@@ -170,6 +170,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showChat, setShowChat] = useState(false);
   const [planLoading, setPlanLoading] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showIncompleteEntriesModal, setShowIncompleteEntriesModal] = useState(false);
+  const [pendingEntryForModal, setPendingEntryForModal] = useState(null);
   const [now, setNow] = useState(new Date());
 
   // Load plan from bundled JSON on mount
@@ -474,26 +476,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       incomplete.personName === user?.name
     );
     
-    if (currentUserIncomplete) {
-      const shouldWorkOnYesterday = window.confirm(
-        `You have incomplete entries from yesterday (${currentUserIncomplete.totalDone}/${currentUserIncomplete.totalReq}). Would you like to work on yesterday's quotas first?`
-      );
-      
-      if (shouldWorkOnYesterday) {
-        setYesterdayMode(true);
-        // Store yesterday mode in session storage for the form to use
-        sessionStorage.setItem('yesterdayMode', 'true');
-        sessionStorage.setItem('yesterdayQuotas', JSON.stringify(currentUserIncomplete.quotas));
-      } else {
-        setYesterdayMode(false);
-        sessionStorage.removeItem('yesterdayMode');
-        sessionStorage.removeItem('yesterdayQuotas');
-      }
-    } else {
-      setYesterdayMode(false);
-      sessionStorage.removeItem('yesterdayMode');
-      sessionStorage.removeItem('yesterdayQuotas');
-    }
+    // Always navigate to form - modal will be shown during form submission if needed
+    setYesterdayMode(false);
+    sessionStorage.removeItem('yesterdayMode');
+    sessionStorage.removeItem('yesterdayQuotas');
     
     try {
       const raw = localStorage.getItem('kb_entry_draft');
@@ -832,6 +818,36 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setShowLogoutModal(false);
   };
 
+  const handleIncompleteEntriesModalOK = () => {
+    if (pendingEntryForModal) {
+      // Set the entry's created_at to yesterday
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      pendingEntryForModal.created_at = yesterday.toISOString();
+      
+      // Save the entry with yesterday's date
+      addEntry(pendingEntryForModal);
+      
+      // Clear the pending entry and close modal
+      setPendingEntryForModal(null);
+      setShowIncompleteEntriesModal(false);
+      
+      // Navigate back to dashboard
+      navigate('/dashboard');
+    }
+  };
+
+  const handleIncompleteEntriesModalCancel = () => {
+    // Clear the pending entry and close modal without saving
+    setPendingEntryForModal(null);
+    setShowIncompleteEntriesModal(false);
+  };
+
+  const showIncompleteEntriesModalWithEntry = (entryData) => {
+    setPendingEntryForModal(entryData);
+    setShowIncompleteEntriesModal(true);
+  };
+
   const handleClearOptionSelect = (option) => {
     setClearOption(option);
     setClearModalStep(2);
@@ -1079,7 +1095,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                     marginBottom: '4px',
                     fontWeight: '600'
                   }}>
-                    ⚠️ Working on yesterday's quotas first
+                    ⚠️ All created entries will be credited to yesterday's quota first
                   </div>
                 )}
                 <div className="member-progress">
@@ -1183,6 +1199,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               existingEntries={entries}
               onSave={handleSaveEntry}
               onCancel={handleBackToList}
+              onShowIncompleteEntriesModal={showIncompleteEntriesModalWithEntry}
             />
           </>
         )}
@@ -1295,6 +1312,29 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <button
             className="modal-button cancel"
             onClick={handleLogoutCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {/* Incomplete Entries Modal */}
+      <Modal
+        isOpen={showIncompleteEntriesModal}
+        onClose={handleIncompleteEntriesModalCancel}
+        title="You have unfinished quotas from yesterday"
+        subtitle={pendingEntryForModal ? `"${pendingEntryForModal.title}" (${pendingEntryForModal.type}) will be credited to missing progress` : "New entry will be credited to missing progress"}
+      >
+        <div className="modal-buttons">
+          <button
+            className="modal-button orange"
+            onClick={handleIncompleteEntriesModalOK}
+          >
+            I understand
+          </button>
+          <button
+            className="modal-button orange-outline"
+            onClick={handleIncompleteEntriesModalCancel}
           >
             Cancel
           </button>
