@@ -61,7 +61,7 @@ export default function EntryPreview({ data }: PreviewProps) {
 
       {/* Summary (optional) */}
       {hasSummary && (
-        <div className="p-4 pt-0">
+        <div className="p-4 pt-2">
           <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Summary</div>
           <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{summary}</div>
         </div>

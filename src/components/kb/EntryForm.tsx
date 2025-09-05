@@ -810,10 +810,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       
       // Check if user is in the incomplete entries list
       const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
+      const userPersonId = user?.personId ? Number(String(user.personId).replace('P', '')) : null;
       const userHasIncompleteEntries = incompleteEntries.some((entry: any) => 
-        entry.personId === Number(String(user.personId).replace('P', '')) || 
-        entry.personName === user.name
+        entry.personId === userPersonId || 
+        entry.personName === user?.name ||
+        entry.personName === user?.username
       );
+      
+      console.log('Checking incomplete entries for user:', {
+        userPersonId,
+        userName: user?.name,
+        userUsername: user?.username,
+        incompleteEntries,
+        userHasIncompleteEntries
+      });
       
       // If user has incomplete entries, credit to yesterday first
       if (userHasIncompleteEntries) {

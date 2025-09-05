@@ -258,7 +258,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       const totalDone = Object.values(doneByType).reduce((sum, count) => sum + count, 0);
       
       if (totalDone < totalReq) {
-        incomplete.push({
+        const incompleteEntry = {
           personId,
           personName,
           totalDone,
@@ -274,11 +274,21 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             city_ordinance_section: row.city_ordinance_section || 0
           },
           doneByType
-        });
+        };
+        incomplete.push(incompleteEntry);
+        console.log(`Found incomplete entry for ${personName} (P${personId}): ${totalDone}/${totalReq}`, incompleteEntry);
       }
     });
     
     setIncompleteEntries(incomplete);
+    
+    // Store in sessionStorage for use in EntryForm
+    try {
+      sessionStorage.setItem('incompleteEntries', JSON.stringify(incomplete));
+      console.log('Stored incomplete entries in sessionStorage:', incomplete);
+    } catch (e) {
+      console.error('Failed to store incomplete entries in sessionStorage:', e);
+    }
   }, [planRows, day1Date, entries, now]);
 
   // Check incomplete entries when data changes
