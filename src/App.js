@@ -1063,9 +1063,25 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             });
             const totalDone = Object.values(perTypeCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
+            // Check if this user has incomplete entries from yesterday
+            const userHasIncompleteEntries = incompleteEntries.some((incomplete) => 
+              incomplete.personId === member.id || 
+              incomplete.personName === personName
+            );
+            
             return (
               <div key={personKey} className="team-member-card">
                 <h4>{personName}</h4>
+                {userHasIncompleteEntries && (
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#dc3545', 
+                    marginBottom: '4px',
+                    fontWeight: '600'
+                  }}>
+                    ⚠️ Working on yesterday's quotas first
+                  </div>
+                )}
                 <div className="member-progress">
                   <span className="progress-count">{totalDone} / {totalReq}</span>
                   <div className="member-progress-bar">
