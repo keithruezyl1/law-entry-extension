@@ -1062,6 +1062,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Match using plan codes P1..P5
             const personRow = dayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
             
+            // Debug logging for Delos Cientos
+            if (personName === 'Delos Cientos') {
+              console.log('Delos Cientos Debug:', {
+                personPlanCode,
+                currentDayIndex,
+                dayRows: dayRows.length,
+                personRow,
+                planRows: planRows ? planRows.length : 'null'
+              });
+            }
+            
             if (personRow) {
               currentDayReqs = {
                 statute_section: Number(personRow.statute_section || 0),
@@ -1073,6 +1084,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 executive_issuance: Number(personRow.executive_issuance || 0),
                 city_ordinance_section: Number(personRow.city_ordinance_section || 0)
               };
+            } else if (personName === 'Delos Cientos') {
+              console.warn('No personRow found for Delos Cientos on day', currentDayIndex);
             }
             
             // Calculate cumulative quotas with proper carryover logic
@@ -1085,6 +1098,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // Start with current day's requirements
             const cumulativeReqs = { ...currentDayReqs };
+            
+            // Debug logging for Delos Cientos
+            if (personName === 'Delos Cientos') {
+              console.log('Delos Cientos currentDayReqs:', currentDayReqs);
+            }
             
             // Always apply carryover logic since we're always viewing current day
             const isViewingCurrentDay = true;
@@ -1242,6 +1260,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
             const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
+            
+            // Debug logging for Delos Cientos
+            if (personName === 'Delos Cientos') {
+              console.log('Delos Cientos final cumulativeReqs:', cumulativeReqs);
+              console.log('Delos Cientos totalReq:', totalReq);
+            }
             
             // Calculate progress counts for each quota type
             const flexibleCounts = {};
