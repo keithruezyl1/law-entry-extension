@@ -1205,19 +1205,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             }
             }
             
-            // Reduce today's quota by entries from previous days that weren't part of quota but are now part of today's quota
-            if (isViewingCurrentDay) {
-              Object.keys(allPreviousEntries).forEach(type => {
-                if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
-                  // This entry type from previous days is now part of today's quota
-                  const previousCount = allPreviousEntries[type] || 0;
-                  if (previousCount > 0) {
-                    // Reduce today's quota by the amount already completed in previous days
-                    cumulativeReqs[type] = Math.max(0, cumulativeReqs[type] - previousCount);
-                  }
-                }
-              });
-            }
+            // Don't reduce quota by previous entries - they should count toward today's progress
+            // The quota calculation above already includes missing amounts from previous days
             
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
@@ -1248,9 +1237,22 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // For current day: previous entries don't count toward today's progress
-            // They only affect the quota calculation (which is already done above)
-            // The progress bar should only show today's entries
+            // Add previous day entries that are now part of today's quota (only for current day)
+            if (isViewingCurrentDay) {
+              Object.keys(allPreviousEntries).forEach(type => {
+                if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
+                  // This entry type from previous days is now part of today's quota
+                  const previousCount = allPreviousEntries[type] || 0;
+                  if (previousCount > 0) {
+                    // Add previous entries to today's count
+                    flexibleCounts[type] = (flexibleCounts[type] || 0) + previousCount;
+                  }
+                } else {
+                  // This entry type from previous days is not in today's quota - it's carryover
+                  carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
+                }
+              });
+            }
             
             const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
