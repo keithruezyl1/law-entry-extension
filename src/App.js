@@ -1147,9 +1147,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Add only MISSING quotas from previous days to today's quota (only for current day)
+            // Add only MISSING quotas from the MOST RECENT previous day to today's quota (only for current day)
             if (isViewingCurrentDay) {
-              for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
+              const mostRecentPrevDay = currentDayIndex - 1;
+              if (mostRecentPrevDay >= 1) {
+                const prevDay = mostRecentPrevDay;
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
               
@@ -1203,7 +1205,19 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             }
             }
             
-            // Don't reduce cumulativeReqs - previous entries will be counted in flexibleCounts
+            // Reduce today's quota by entries from previous days that weren't part of quota but are now part of today's quota
+            if (isViewingCurrentDay) {
+              Object.keys(allPreviousEntries).forEach(type => {
+                if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
+                  // This entry type from previous days is now part of today's quota
+                  const previousCount = allPreviousEntries[type] || 0;
+                  if (previousCount > 0) {
+                    // Reduce today's quota by the amount already completed in previous days
+                    cumulativeReqs[type] = Math.max(0, cumulativeReqs[type] - previousCount);
+                  }
+                }
+              });
+            }
             
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
