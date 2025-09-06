@@ -1099,6 +1099,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Start with current day's requirements
             const cumulativeReqs = { ...currentDayReqs };
             
+            // Always apply carryover logic since we're always viewing current day
+            const isViewingCurrentDay = true;
+            
+            // Count entries based on what day we're viewing
+            const allPreviousEntries = {};
+            const todayEntries = {};
+            
             // Debug logging for Delos Cientos
             if (personName === 'Delos Cientos') {
               console.log('Delos Cientos - After entry counting:', {
@@ -1107,13 +1114,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 currentDayReqs
               });
             }
-            
-            // Always apply carryover logic since we're always viewing current day
-            const isViewingCurrentDay = true;
-            
-            // Count entries based on what day we're viewing
-            const allPreviousEntries = {};
-            const todayEntries = {};
             
             // Debug logging for Delos Cientos entry matching
             if (personName === 'Delos Cientos') {
