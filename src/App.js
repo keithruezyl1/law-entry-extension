@@ -1111,7 +1111,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Calculate carryover quotas from previous days
+            // Add only MISSING quotas from previous days to today's quota
             for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
@@ -1128,20 +1128,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                 };
                 
-                // Calculate carryover for each entry type
+                // Add only missing quotas from previous days
                 Object.keys(prevDayReqs).forEach(type => {
                   const prevQuota = prevDayReqs[type] || 0;
                   const prevCompleted = allPreviousEntries[type] || 0;
                   
                   if (prevQuota > 0) {
-                    // If they completed more than required, reduce today's quota
-                    if (prevCompleted > prevQuota) {
-                      const excess = prevCompleted - prevQuota;
-                      cumulativeReqs[type] = Math.max(0, (cumulativeReqs[type] || 0) - excess);
-                    }
-                    // If they completed less than required, carry over the missing amount
-                    else if (prevCompleted < prevQuota) {
-                      const missing = prevQuota - prevCompleted;
+                    // Calculate missing amount from this previous day
+                    const missing = Math.max(0, prevQuota - prevCompleted);
+                    if (missing > 0) {
                       cumulativeReqs[type] = (cumulativeReqs[type] || 0) + missing;
                     }
                   }
