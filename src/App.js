@@ -1254,8 +1254,44 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             }
             
-            // Don't reduce quota by previous entries - they should count toward today's progress
-            // The quota calculation above already includes missing amounts from previous days
+            // Subtract excess entries from previous days from current day's quota
+            Object.keys(allPreviousEntries).forEach(type => {
+              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
+                // This entry type is in today's quota
+                const previousEntries = allPreviousEntries[type] || 0;
+                
+                // Calculate how many days of quota these previous entries should cover
+                // For each previous day, check if this entry type was part of the quota
+                let totalPreviousQuota = 0;
+                for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
+                  const prevDayRows = rowsForDay(planRows, prevDay);
+                  const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+                  
+                  if (prevPersonRow) {
+                    const prevDayQuota = Number(prevPersonRow[type] || 0);
+                    totalPreviousQuota += prevDayQuota;
+                  }
+                }
+                
+                // If previous entries exceed the total previous quota, subtract the excess from today's quota
+                if (previousEntries > totalPreviousQuota) {
+                  const excess = previousEntries - totalPreviousQuota;
+                  const oldQuota = cumulativeReqs[type];
+                  cumulativeReqs[type] = Math.max(0, cumulativeReqs[type] - excess);
+                  
+                  // Debug logging for Delos Cientos
+                  if (personName === 'Delos Cientos') {
+                    console.log(`Delos Cientos - Subtracting excess ${type}:`, {
+                      previousEntries,
+                      totalPreviousQuota,
+                      excess,
+                      oldQuota,
+                      newQuota: cumulativeReqs[type]
+                    });
+                  }
+                }
+              }
+            });
             
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
@@ -1263,8 +1299,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // Debug logging for Delos Cientos
             if (personName === 'Delos Cientos') {
-              console.log('Delos Cientos final cumulativeReqs:', cumulativeReqs);
-              console.log('Delos Cientos totalReq:', totalReq);
+              console.log('Delos Cientos Debug - Final Calculation:', {
+                allPreviousEntries,
+                todayEntries,
+                currentDayReqs,
+                finalCumulativeReqs: cumulativeReqs,
+                totalReq
+              });
             }
             
             // Calculate progress counts for each quota type
