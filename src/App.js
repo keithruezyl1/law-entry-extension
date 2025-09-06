@@ -1118,10 +1118,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Add only MISSING quotas from the MOST RECENT previous day to today's quota
-            const mostRecentPrevDay = currentDayIndex - 1;
-            if (mostRecentPrevDay >= 1) {
-              const prevDay = mostRecentPrevDay;
+            // Add MISSING quotas from ALL previous days to today's quota
+            for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
               
@@ -1136,20 +1134,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   executive_issuance: Number(prevPersonRow.executive_issuance || 0),
                   city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                 };
-                
+
                 // Count entries for THIS specific previous day only
                 const prevDayEntries = {};
                 (entries || []).forEach((e) => {
                   const created = e.created_at ? new Date(e.created_at) : null;
                   if (!created) return;
-                  
+
                   const matchesUser = (
                     (e.created_by && String(e.created_by) === String(member.id)) ||
                     (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
                     (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
                     (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
                   );
-                  
+
                   if (matchesUser) {
                     const entryDayIndex = computeDayIndex(created, day1Date);
                     if (entryDayIndex === prevDay) {
@@ -1157,12 +1155,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                     }
                   }
                 });
-                
+
                 // Add only missing quotas from this specific previous day
                 Object.keys(prevDayReqs).forEach(type => {
                   const prevQuota = prevDayReqs[type] || 0;
                   const prevCompleted = prevDayEntries[type] || 0;
-                  
+
                   if (prevQuota > 0) {
                     // Calculate missing amount from this specific previous day
                     const missing = Math.max(0, prevQuota - prevCompleted);
@@ -1206,20 +1204,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Add previous day entries that are now part of today's quota
-            Object.keys(allPreviousEntries).forEach(type => {
-              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
-                // This entry type from previous days is now part of today's quota
-                const previousCount = allPreviousEntries[type] || 0;
-                if (previousCount > 0) {
-                  // Add previous entries to today's count
-                  flexibleCounts[type] = (flexibleCounts[type] || 0) + previousCount;
-                }
-              } else {
-                // This entry type from previous days is not in today's quota - it's carryover
-                carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
-              }
-            });
+            // Don't add previous entries to today's progress - only count entries created TODAY
+            // Previous entries are already accounted for in the quota calculation above
+            // They should not contribute to today's progress bar
             
             const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
