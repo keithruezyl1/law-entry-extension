@@ -298,6 +298,11 @@ body {
   gap: 1rem;
 }
 
+/* For P1-P4 users: Right-align nav-right buttons */
+.App-nav:not(:has(.btn-danger)) .nav-right {
+  margin-left: auto;
+}
+
 .nav-buttons-grid {
   display: flex;
   gap: 1rem;
@@ -1027,7 +1032,7 @@ body {
          /* Row 3: Import Entries (expanded) for P1-P4, Import Entries | Clear All for P5 */
          .nav-import-expanded {
            width: 100% !important;
-           margin-top: 0.5rem !important;
+           margin-top: 0.75rem !important;
          }
          
          .btn-import-expanded {
