@@ -227,7 +227,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const methods = useForm<Entry>({
     resolver: zodResolver(EntrySchema as any),
     defaultValues: {
-      type: 'constitution_provision',
+      type: '',
       entry_id: '',
       title: '',
       jurisdiction: 'PH',
@@ -1111,6 +1111,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                         Entry Type <span className="kb-required">*</span>
                                       </label>
                                       <select className="kb-form-select" {...register('type')} onChange={(e) => setValue('type', e.target.value as any)}>
+                                        <option value="">Select Entry Type</option>
                                         {(TypeEnum.options || (TypeEnum as any)._def.values).map((v: string) => (
                                           <option key={v} value={v}>{v}</option>
                                         ))}
