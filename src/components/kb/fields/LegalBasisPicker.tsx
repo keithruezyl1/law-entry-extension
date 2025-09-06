@@ -3,7 +3,7 @@ import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-fo
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
-import { Trash2, Plus, Search } from 'lucide-react';
+import { Trash2, Plus, Search, X } from 'lucide-react';
 import { fetchEntryById } from '../../../services/kbApi';
 
 type EntryLite = { id?: string; entry_id: string; title: string; type?: string; canonical_citation?: string };
@@ -23,19 +23,32 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
   const internalCount = useMemo(() => (items || []).filter((it: any) => it && it.type !== 'external').length, [items]);
-  const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0); // Show search only when no citations initially
-  const [showAddButton, setShowAddButton] = useState(false); // Show add button after search selection
-  const [showExternalAddButton, setShowExternalAddButton] = useState(false); // Show external add button after external citation
+  const externalCount = useMemo(() => (items || []).filter((it: any) => it && it.type === 'external').length, [items]);
+  
+  // Internal citation states
+  const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0);
+  const [showAddInternalButton, setShowAddInternalButton] = useState(false);
+  
+  // External citation states
+  const [showExternalAddButton, setShowExternalAddButton] = useState(externalCount === 0);
 
-  // Update search visibility when internal count changes
+  // Update states when counts change
   useEffect(() => {
     if (internalCount === 0) {
       setShowInternalSearch(true);
-      setShowAddButton(false);
-    } else if (internalCount > 0 && !showAddButton) {
+      setShowAddInternalButton(false);
+    } else {
       setShowInternalSearch(false);
     }
-  }, [internalCount, showAddButton]);
+  }, [internalCount]);
+
+  useEffect(() => {
+    if (externalCount === 0) {
+      setShowExternalAddButton(true);
+    } else {
+      setShowExternalAddButton(false);
+    }
+  }, [externalCount]);
 
   // Enhanced search function that handles pluralization and word variations
   const normalizeSearchText = (text: string): string => {
@@ -175,30 +188,26 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         </Button>
       </div>
 
-      {/* Current items (no card borders) */}
-      {fields.length > 0 && (
+      {tab === 'internal' ? (
         <div className="space-y-4">
+          {/* Show existing internal citations */}
           {fields.map((f, i) => {
-            const itemType = items?.[i]?.type;
-            const isExternal = itemType === 'external';
-            const idLabel = isExternal ? 'Citation (external)' : 'Entry ID (internal)';
-            const idPlaceholder = isExternal ? 'e.g., People v. Doria, G.R. No. …' : 'e.g., ROC-113-5 or RPC-308';
-            // Hide items that don't match the current tab selection
-            if ((tab === 'internal' && isExternal) || (tab === 'external' && !isExternal)) {
-              return null;
-            }
+            if (items?.[i]?.type === 'external') return null;
+            
+            const internalFields = fields.filter((_, idx) => items?.[idx]?.type !== 'external');
+            const isLastInternal = f.id === internalFields[internalFields.length - 1]?.id;
+            
             return (
               <div key={f.id} className="space-y-3">
-                {/* Type is implicit via tab; keep hidden input to save */}
-                <input type="hidden" value={itemType || (tab === 'external' ? 'external' : 'internal')} {...register(`${name}.${i}.type` as const)} />
-
+                <input type="hidden" value="internal" {...register(`${name}.${i}.type` as const)} />
+                
                 <div className="grid gap-3">
                   <div>
-                    <label className="kb-form-label">{idLabel}</label>
+                    <label className="kb-form-label">Entry ID (internal)</label>
                     <Input
                       className="kb-form-input"
-                      placeholder={idPlaceholder}
-                      {...register((`${name}.${i}.` + (isExternal ? 'citation' : 'entry_id')) as any)}
+                      placeholder="e.g., ROC-113-5 or RPC-308"
+                      {...register(`${name}.${i}.entry_id` as const)}
                     />
                   </div>
                   <div>
@@ -227,136 +236,197 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   </div>
                 </div>
 
-                {/* Action row: Add then Delete (delete on right) */}
+                {/* Action buttons for internal citations */}
                 <div className="flex items-center gap-3 mt-2">
-                  {i === fields.length - 1 && (
-                    tab === 'external' ? (
-                      showExternalAddButton ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => { 
-                            append({ type: 'external', citation: '', url: '' }); 
-                            setShowExternalAddButton(false); // Hide add button
-                          }}
-                          className="h-11 rounded-xl flex-1 mb-2"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add external citation
-                        </Button>
-                      ) : null
-                    ) : (showAddButton || (internalCount > 0 && !showInternalSearch)) ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => { 
-                          setShowAddButton(false); // Hide add button
-                          setShowInternalSearch(true); // Show search for next citation
-                        }}
-                        className="h-11 rounded-xl flex-1 mb-2"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add internal citation
-                      </Button>
-                    ) : null
+                  {isLastInternal && showAddInternalButton && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { 
+                        setShowAddInternalButton(false);
+                        setShowInternalSearch(true);
+                      }}
+                      className="h-11 rounded-xl flex-1"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add internal citation
+                    </Button>
                   )}
                   <Button
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl mb-2 ${i === fields.length - 1 ? 'flex-1' : 'w-11'}`}
+                    className={`h-11 rounded-xl ${isLastInternal && showAddInternalButton ? 'flex-1' : 'w-11'}`}
                   >
                     <Trash2 className="h-4 w-4" />
-                    {i === fields.length - 1 && <span className="ml-2">Delete</span>}
+                    {isLastInternal && showAddInternalButton && <span className="ml-2">Delete</span>}
                   </Button>
                 </div>
               </div>
             );
           })}
-        </div>
-      )}
 
-      {tab === 'internal' ? (
-        <div className="space-y-3">
-          {/* Show search when no citations OR when add button was clicked */}
-          {(internalCount === 0 || showInternalSearch) && (
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                className="kb-form-input kb-input-search"
-                placeholder="Search by entry_id or title…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-          )}
-          {(internalCount === 0 || showInternalSearch) && (query || '').trim().length > 0 && (
-            <div className="rounded-xl max-h-56 overflow-auto bg-white shadow-sm border">
-              {options.length === 0 && (
-                <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
-                  No matches found
+          {/* Search interface for adding new internal citations */}
+          {showInternalSearch && (
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="kb-form-input kb-input-search"
+                  placeholder="Search by entry_id or title…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              
+              {query.trim().length > 0 && (
+                <div className="rounded-xl max-h-56 overflow-auto bg-white shadow-sm border">
+                  {options.length === 0 && (
+                    <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
+                      No matches found
+                    </div>
+                  )}
+                  {options.map((o) => (
+                    <button
+                      type="button"
+                      key={o.entry_id}
+                      className="w-full text-left p-4 hover:bg-orange-50 active:bg-orange-100 transition-colors border-b last:border-b-0"
+                      onClick={async () => {
+                        try {
+                          const full = await fetchEntryById(o.entry_id);
+                          const firstUrl = Array.isArray(full?.source_urls) && full.source_urls.length > 0 ? full.source_urls[0] : '';
+                          append({ type: 'internal', entry_id: o.entry_id, url: firstUrl || '', title: full?.title || o.title, note: full?.summary || '' });
+                        } catch {
+                          append({ type: 'internal', entry_id: o.entry_id, url: '', title: o.title, note: '' });
+                        }
+                        setQuery('');
+                        setShowInternalSearch(false);
+                        setShowAddInternalButton(true);
+                      }}
+                    >
+                      <div className="pl-3">
+                        <div className="font-medium text-sm mb-0.5">{o.title}</div>
+                        <div className="text-xs text-muted-foreground mb-0.5">{o.entry_id}</div>
+                        {o.canonical_citation && (
+                          <div className="text-xs text-muted-foreground mb-0.5">{o.canonical_citation}</div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
-              {options.map((o) => (
-                <button
+              
+              <div className="flex gap-3">
+                <Button
                   type="button"
-                  key={o.entry_id}
-                  className="w-full text-left p-4 hover:bg-orange-50 active:bg-orange-100 transition-colors border-b last:border-b-0"
-                  onClick={async () => {
-                    try {
-                      const full = await fetchEntryById(o.entry_id);
-                      const firstUrl = Array.isArray(full?.source_urls) && full.source_urls.length > 0 ? full.source_urls[0] : '';
-                      append({ type: 'internal', entry_id: o.entry_id, url: firstUrl || '', title: full?.title || o.title, note: full?.summary || '' });
-                    } catch {
-                      append({ type: 'internal', entry_id: o.entry_id, url: '', title: o.title, note: '' });
-                    }
+                  variant="outline"
+                  onClick={() => {
+                    setShowInternalSearch(false);
+                    setShowAddInternalButton(true);
                     setQuery('');
-                    setShowInternalSearch(false); // Hide search after selection
-                    setShowAddButton(true); // Show add button after selection
                   }}
+                  className="h-11 rounded-xl"
                 >
-                  <div className="pl-3">
-                    <div className="font-medium text-sm mb-0.5">{o.title}</div>
-                    <div className="text-xs text-muted-foreground mb-0.5">{o.entry_id}</div>
-                    {o.canonical_citation && (
-                      <div className="text-xs text-muted-foreground mb-0.5">{o.canonical_citation}</div>
-                    )}
-                  </div>
-                </button>
-              ))}
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
             </div>
           )}
-          
-          {/* Always show Add internal citation button at bottom */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => { 
-              setShowAddButton(false); // Hide add button
-              setShowInternalSearch(true); // Show search for next citation
-            }}
-            className="w-full h-11 rounded-xl mt-3"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add internal citation
-          </Button>
         </div>
       ) : (
-        <div>
-          {/* Always show Add external citation button */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => { 
-              append({ type: 'external', citation: '', url: '' }); 
-              setShowExternalAddButton(true); // Show add button after creating first external citation
-              try { (control as any)._options?.context?.trigger?.('legal_bases'); } catch {} 
-            }}
-            className="w-full h-11 rounded-xl mt-1"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add external citation
-          </Button>
+        <div className="space-y-4">
+          {/* Show existing external citations */}
+          {fields.map((f, i) => {
+            if (items?.[i]?.type !== 'external') return null;
+            
+            const externalFields = fields.filter((_, idx) => items?.[idx]?.type === 'external');
+            const isLastExternal = f.id === externalFields[externalFields.length - 1]?.id;
+            
+            return (
+              <div key={f.id} className="space-y-3">
+                <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
+                
+                <div className="grid gap-3">
+                  <div>
+                    <label className="kb-form-label">Citation (external)</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder="e.g., People v. Doria, G.R. No. …"
+                      {...register(`${name}.${i}.citation` as const)}
+                    />
+                  </div>
+                  <div>
+                    <label className="kb-form-label">URL</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder="https://…"
+                      {...register(`${name}.${i}.url` as const)}
+                    />
+                  </div>
+                  <div>
+                    <label className="kb-form-label">Title</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder="e.g., Arrest, Search, Bail"
+                      {...register(`${name}.${i}.title` as const)}
+                    />
+                  </div>
+                  <div>
+                    <label className="kb-form-label">Note</label>
+                    <Input
+                      className="kb-form-input"
+                      placeholder="short note or descriptor"
+                      {...register(`${name}.${i}.note` as const)}
+                    />
+                  </div>
+                </div>
+
+                {/* Action buttons for external citations */}
+                <div className="flex items-center gap-3 mt-2">
+                  {isLastExternal && showExternalAddButton && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { 
+                        append({ type: 'external', citation: '', url: '', title: '', note: '' });
+                        setShowExternalAddButton(false);
+                      }}
+                      className="h-11 rounded-xl flex-1"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add external citation
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => remove(i)}
+                    className={`h-11 rounded-xl ${isLastExternal && showExternalAddButton ? 'flex-1' : 'w-11'}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {isLastExternal && showExternalAddButton && <span className="ml-2">Delete</span>}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Show Add external citation button when no external citations exist */}
+          {externalCount === 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { 
+                append({ type: 'external', citation: '', url: '', title: '', note: '' });
+                setShowExternalAddButton(false);
+              }}
+              className="w-full h-11 rounded-xl"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add external citation
+            </Button>
+          )}
         </div>
       )}
     </div>

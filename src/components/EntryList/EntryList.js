@@ -38,6 +38,26 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
     window.addEventListener('open-entry-detail', handler);
     return () => window.removeEventListener('open-entry-detail', handler);
   }, [selectedEntry]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && selectedEntry) {
+        if (entryStack.length > 0) {
+          const prev = entryStack[entryStack.length - 1];
+          setEntryStack(entryStack.slice(0, -1));
+          setSelectedEntry(prev);
+        } else {
+          setSelectedEntry(null);
+        }
+      }
+    };
+    
+    if (selectedEntry) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedEntry, entryStack]);
   console.log('EntryList received entries:', entries);
   console.log('EntryList entries length:', entries.length);
   
@@ -347,7 +367,21 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
       
       {/* Entry Detail View */}
       {selectedEntry && (
-        <div className="entry-detail-overlay">
+        <div 
+          className="entry-detail-overlay"
+          onClick={(e) => {
+            // Close modal when clicking on the overlay (not the content)
+            if (e.target === e.currentTarget) {
+              if (entryStack.length > 0) {
+                const prev = entryStack[entryStack.length - 1];
+                setEntryStack(entryStack.slice(0, -1));
+                setSelectedEntry(prev);
+              } else {
+                setSelectedEntry(null);
+              }
+            }
+          }}
+        >
           <EntryView
             entry={selectedEntry}
             onEdit={() => onEditEntry(selectedEntry.id)}
@@ -357,20 +391,6 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
             }}
             teamMemberNames={teamMemberNames}
           />
-          <button 
-            onClick={() => {
-              if (entryStack.length > 0) {
-                const prev = entryStack[entryStack.length - 1];
-                setEntryStack(entryStack.slice(0, -1));
-                setSelectedEntry(prev);
-              } else {
-                setSelectedEntry(null);
-              }
-            }} 
-            className="back-to-list-btn"
-          >
-            {entryStack.length > 0 ? '← Back to Previous Law' : '← Back to List'}
-          </button>
         </div>
       )}
     </div>
