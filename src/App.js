@@ -1228,8 +1228,61 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               incomplete.personName === personName
             );
             
+            // Calculate detailed breakdown for hover popup
+            const getDayBreakdown = (dayIndex) => {
+              const dayRows = rowsForDay(planRows, dayIndex);
+              const personRow = dayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+              
+              if (!personRow) return null;
+              
+              const dayReqs = {
+                statute_section: Number(personRow.statute_section || 0),
+                rule_of_court: Number(personRow.rule_of_court || 0),
+                rights_advisory: Number(personRow.rights_advisory || 0),
+                constitution_provision: Number(personRow.constitution_provision || 0),
+                agency_circular: Number(personRow.agency_circular || 0),
+                doj_issuance: Number(personRow.doj_issuance || 0),
+                executive_issuance: Number(personRow.executive_issuance || 0),
+                city_ordinance_section: Number(personRow.city_ordinance_section || 0)
+              };
+              
+              // Count entries for this specific day
+              const dayEntries = {};
+              (entries || []).forEach((e) => {
+                const created = e.created_at ? new Date(e.created_at) : null;
+                if (!created) return;
+                
+                const matchesUser = (
+                  (e.created_by && String(e.created_by) === String(member.id)) ||
+                  (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                  (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                  (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+                );
+                
+                if (matchesUser) {
+                  const entryDayIndex = computeDayIndex(created, day1Date);
+                  if (entryDayIndex === dayIndex) {
+                    dayEntries[e.type] = (dayEntries[e.type] || 0) + 1;
+                  }
+                }
+              });
+              
+              return { dayReqs, dayEntries };
+            };
+            
+            const day2Breakdown = getDayBreakdown(2); // Day 2 (yesterday)
+            const day1Breakdown = getDayBreakdown(1); // Day 1 (day before yesterday)
+            
             return (
-              <div key={personKey} className="team-member-card">
+              <div key={personKey} className="team-member-card" style={{ position: 'relative' }}
+                   onMouseEnter={(e) => {
+                     const popup = e.currentTarget.querySelector('.debug-popup');
+                     if (popup) popup.style.display = 'block';
+                   }}
+                   onMouseLeave={(e) => {
+                     const popup = e.currentTarget.querySelector('.debug-popup');
+                     if (popup) popup.style.display = 'none';
+                   }}>
                 <h4>{personName}</h4>
                 <div className="member-progress">
                   <span className="progress-count">{totalDone} / {totalReq}</span>
@@ -1239,6 +1292,135 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                       style={{ width: `${Math.min((totalDone / Math.max(1, totalReq)) * 100, 100)}%` }}
                     ></div>
                   </div>
+                </div>
+                
+                {/* Hover popup for debugging */}
+                <div className="debug-popup" style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginTop: '8px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  zIndex: 1000,
+                  fontSize: '12px',
+                  display: 'none'
+                }}>
+                  {/* Day 2 (Yesterday) */}
+                  {day2Breakdown && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong style={{ color: '#495057' }}>Day 2 (Yesterday):</strong>
+                      <div style={{ marginTop: '4px' }}>
+                        {Object.entries(day2Breakdown.dayReqs).filter(([, quota]) => quota > 0).map(([type, quota]) => {
+                          const completed = day2Breakdown.dayEntries[type] || 0;
+                          const missing = Math.max(0, quota - completed);
+                          const isCompleted = completed >= quota;
+                          
+                          return (
+                            <div key={type} style={{ marginBottom: '2px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                background: isCompleted ? '#dcfce7' : '#eef2ff',
+                                color: isCompleted ? '#166534' : '#3730a3',
+                                borderRadius: '4px',
+                                padding: '1px 6px',
+                                marginRight: '4px',
+                                fontSize: '11px',
+                                fontWeight: '600'
+                              }}>
+                                {type}: {completed}/{quota}
+                              </span>
+                              {missing > 0 && (
+                                <span style={{ color: '#dc2626', fontSize: '11px' }}>
+                                  (missing: {missing})
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {/* Yellow pills for non-quota entries */}
+                        {Object.entries(day2Breakdown.dayEntries).filter(([type, count]) => 
+                          count > 0 && (!day2Breakdown.dayReqs[type] || day2Breakdown.dayReqs[type] === 0)
+                        ).map(([type, count]) => (
+                          <div key={type} style={{ marginBottom: '2px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              borderRadius: '4px',
+                              padding: '1px 6px',
+                              marginRight: '4px',
+                              fontSize: '11px',
+                              fontWeight: '600'
+                            }}>
+                              {type}: {count}/-
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Day 1 (Day before yesterday) */}
+                  {day1Breakdown && (
+                    <div>
+                      <strong style={{ color: '#495057' }}>Day 1 (Day before yesterday):</strong>
+                      <div style={{ marginTop: '4px' }}>
+                        {Object.entries(day1Breakdown.dayReqs).filter(([, quota]) => quota > 0).map(([type, quota]) => {
+                          const completed = day1Breakdown.dayEntries[type] || 0;
+                          const missing = Math.max(0, quota - completed);
+                          const isCompleted = completed >= quota;
+                          
+                          return (
+                            <div key={type} style={{ marginBottom: '2px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                background: isCompleted ? '#dcfce7' : '#eef2ff',
+                                color: isCompleted ? '#166534' : '#3730a3',
+                                borderRadius: '4px',
+                                padding: '1px 6px',
+                                marginRight: '4px',
+                                fontSize: '11px',
+                                fontWeight: '600'
+                              }}>
+                                {type}: {completed}/{quota}
+                              </span>
+                              {missing > 0 && (
+                                <span style={{ color: '#dc2626', fontSize: '11px' }}>
+                                  (missing: {missing})
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {/* Yellow pills for non-quota entries */}
+                        {Object.entries(day1Breakdown.dayEntries).filter(([type, count]) => 
+                          count > 0 && (!day1Breakdown.dayReqs[type] || day1Breakdown.dayReqs[type] === 0)
+                        ).map(([type, count]) => (
+                          <div key={type} style={{ marginBottom: '2px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              borderRadius: '4px',
+                              padding: '1px 6px',
+                              marginRight: '4px',
+                              fontSize: '11px',
+                              fontWeight: '600'
+                            }}>
+                              {type}: {count}/-
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="member-breakdown">
                   {/* Show quota types */}
