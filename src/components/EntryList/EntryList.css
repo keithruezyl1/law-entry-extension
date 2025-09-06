@@ -558,6 +558,14 @@
     overflow: visible;
     text-overflow: initial;
   }
+  
+  /* Ellipses for entry IDs after 60 characters on mobile */
+  .entry-id {
+    max-width: 60ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* Entry Badges */

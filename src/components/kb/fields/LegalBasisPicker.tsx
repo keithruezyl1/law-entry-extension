@@ -256,7 +256,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
           {/* Search interface for adding new internal citations */}
           {showInternalSearch && (
-            <div className="space-y-3">
+            <div className="space-y-3 mt-4">
               <div className="flex gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -408,7 +408,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               onClick={() => { 
                 append({ type: 'external', citation: '', url: '', title: '', note: '' });
               }}
-              className="w-full h-11 rounded-xl"
+              className="w-full h-11 rounded-xl mt-4"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add external citation
