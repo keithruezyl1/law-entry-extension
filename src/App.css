@@ -115,6 +115,37 @@ body {
   gap: 1rem;
 }
 
+.team-progress-header {
+  margin-bottom: 1.5rem;
+}
+
+.day-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.day-filter-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.day-filter-select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: white;
+  min-width: 120px;
+}
+
+.day-filter-select:focus {
+  outline: none;
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+}
+
 .team-member-card {
   background: #f5f5f5;
   border: 1px solid #d0d0d0;

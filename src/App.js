@@ -177,6 +177,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [now, setNow] = useState(new Date());
   const [showCreationToast, setShowCreationToast] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(null); // null = current day, number = specific day
 
   // Show creation toast when session flag is set AND we're on dashboard
   useEffect(() => {
@@ -1008,11 +1009,32 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       {currentView !== 'form' && (
       <div className="team-progress">
         <div className="team-progress-header">
-          <h3>Today's Team Progress {(
-            <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>
-              {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
-            </span>
-          )}</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3>
+              {selectedDay === null ? 'Today\'s' : `Day ${selectedDay}'s`} Team Progress
+              {selectedDay === null && (
+                <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>
+                  {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
+                </span>
+              )}
+            </h3>
+            <div className="day-filter-container">
+              <label className="day-filter-label">View Day:</label>
+              <select 
+                className="day-filter-select"
+                value={selectedDay === null ? 'current' : selectedDay} 
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedDay(value === 'current' ? null : parseInt(value));
+                }}
+              >
+                <option value="current">Current Day</option>
+                {Array.from({ length: 30 }, (_, i) => i + 1).map(day => (
+                  <option key={day} value={day}>Day {day}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
         <div className="team-members-grid">
           {dbTeamMembers.map(member => {
@@ -1057,7 +1079,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               ...(member?.dailyQuota || {}),
             };
             const today = new Date();
-            const currentDayIndex = computeDayIndex(today, day1Date);
+            const currentDayIndex = selectedDay === null ? computeDayIndex(today, day1Date) : selectedDay;
             const dayRows = rowsForDay(planRows, currentDayIndex);
             // Match using plan codes P1..P5
             const personRow = dayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
@@ -1083,11 +1105,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Get time window bounds first
             const { start, end } = require('./lib/plan/planLoader').getPlanWindowBounds(new Date());
             
-            // Start with today's requirements
+            // Start with current day's requirements
             const cumulativeReqs = { ...currentDayReqs };
             
-            // Count all entries from previous plan days
+            // Only apply carryover logic if viewing current day
+            const isViewingCurrentDay = selectedDay === null;
+            
+            // Count entries based on what day we're viewing
             const allPreviousEntries = {};
+            const todayEntries = {};
+            
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
@@ -1104,15 +1131,25 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 // Determine which plan day this entry belongs to
                 const entryDayIndex = computeDayIndex(created, day1Date);
                 
-                // Only count entries from previous plan days (before current day)
-                if (entryDayIndex < currentDayIndex) {
-                  allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
+                if (isViewingCurrentDay) {
+                  // For current day: count previous entries for carryover logic
+                  if (entryDayIndex < currentDayIndex) {
+                    allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
+                  } else if (entryDayIndex === currentDayIndex) {
+                    todayEntries[e.type] = (todayEntries[e.type] || 0) + 1;
+                  }
+                } else {
+                  // For specific day: only count entries from that day
+                  if (entryDayIndex === currentDayIndex) {
+                    todayEntries[e.type] = (todayEntries[e.type] || 0) + 1;
+                  }
                 }
               }
             });
             
-            // Add only MISSING quotas from previous days to today's quota
-            for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
+            // Add only MISSING quotas from previous days to today's quota (only for current day)
+            if (isViewingCurrentDay) {
+              for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
               
@@ -1164,37 +1201,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 });
               }
             }
+            }
             
             // Don't reduce cumulativeReqs - previous entries will be counted in flexibleCounts
             
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
             const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
-            
-            // Count today's entries (current plan day)
-            const todayEntries = {};
-            (entries || []).forEach((e) => {
-              const created = e.created_at ? new Date(e.created_at) : null;
-              if (!created) return;
-              
-              // Check multiple fields to match the user
-              const matchesUser = (
-                (e.created_by && String(e.created_by) === String(member.id)) ||
-                (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
-                (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
-                (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
-              );
-              
-              if (matchesUser) {
-                // Determine which plan day this entry belongs to
-                const entryDayIndex = computeDayIndex(created, day1Date);
-                
-                // Count entries from current plan day
-                if (entryDayIndex === currentDayIndex) {
-                  todayEntries[e.type] = (todayEntries[e.type] || 0) + 1;
-                }
-              }
-            });
             
             // Calculate progress counts for each quota type
             const flexibleCounts = {};
@@ -1221,20 +1234,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Add previous day entries that are now part of today's quota
-            Object.keys(allPreviousEntries).forEach(type => {
-              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
-                // This entry type from previous days is now part of today's quota
-                const previousCount = allPreviousEntries[type] || 0;
-                if (previousCount > 0) {
-                  // Add previous entries to today's count
-                  flexibleCounts[type] = (flexibleCounts[type] || 0) + previousCount;
-                }
-              } else {
-                // This entry type from previous days is not in today's quota - it's carryover
-                carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
-              }
-            });
+            // For current day: previous entries don't count toward today's progress
+            // They only affect the quota calculation (which is already done above)
+            // The progress bar should only show today's entries
             
             const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
