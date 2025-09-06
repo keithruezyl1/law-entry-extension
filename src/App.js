@@ -1075,7 +1075,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               };
             }
             
-            // Calculate cumulative quotas - only carry over incomplete quotas from previous days
+            // Calculate cumulative quotas with proper carryover logic
             const { getCumulativeCount } = require('./lib/plan/progressStore');
             const { getPlanDate, toISODate } = require('./lib/plan/planLoader');
             const todayISO = toISODate(getPlanDate(new Date()));
@@ -1086,7 +1086,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Start with today's requirements
             const cumulativeReqs = { ...currentDayReqs };
             
-            // Count entries from all previous plan days to see what was completed
+            // Count all entries from previous plan days
             const allPreviousEntries = {};
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
@@ -1102,7 +1102,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               
               if (matchesUser) {
                 // Determine which plan day this entry belongs to
-                const entryPlanDate = getPlanDate(created);
                 const entryDayIndex = computeDayIndex(created, day1Date);
                 
                 // Only count entries from previous plan days (before current day)
@@ -1112,21 +1111,21 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Debug logging for Kent (P2)
-            if (String(member.id) === '2' || String(personName).toLowerCase().includes('delos')) {
-              console.log('🔍 Kent Debug Info:', {
-                currentDayIndex,
-                todayISO,
-                start: start.toISOString(),
-                end: end.toISOString(),
-                allPreviousEntries,
-                currentDayReqs,
-                personName,
-                memberId: member.id
-              });
-            }
+            // Debug logging for all team members to verify carryover logic
+            console.log(`🔍 ${personName} (P${member.id}) Debug Info:`, {
+              currentDayIndex,
+              todayISO,
+              allPreviousEntries,
+              currentDayReqs,
+              cumulativeReqs,
+              todayEntries,
+              flexibleCounts,
+              carryoverEntries,
+              totalReq,
+              totalDone: Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0)
+            });
             
-            // Add incomplete quotas from previous days
+            // Calculate carryover quotas from previous days
             for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
@@ -1143,42 +1142,31 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                 };
                 
-                // Only add incomplete quotas from previous days
+                // Calculate carryover for each entry type
                 Object.keys(prevDayReqs).forEach(type => {
                   const prevQuota = prevDayReqs[type] || 0;
                   const prevCompleted = allPreviousEntries[type] || 0;
-                  const prevIncomplete = Math.max(0, prevQuota - prevCompleted);
                   
-                  if (prevIncomplete > 0) {
-                    cumulativeReqs[type] = (cumulativeReqs[type] || 0) + prevIncomplete;
+                  if (prevQuota > 0) {
+                    // If they completed more than required, reduce today's quota
+                    if (prevCompleted > prevQuota) {
+                      const excess = prevCompleted - prevQuota;
+                      cumulativeReqs[type] = Math.max(0, (cumulativeReqs[type] || 0) - excess);
+                    }
+                    // If they completed less than required, carry over the missing amount
+                    else if (prevCompleted < prevQuota) {
+                      const missing = prevQuota - prevCompleted;
+                      cumulativeReqs[type] = (cumulativeReqs[type] || 0) + missing;
+                    }
                   }
                 });
               }
             }
             
             const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
-            // Compute progress from DB entries using 8 AM window
-            const perTypeCounts = Object.fromEntries(Object.keys(cumulativeReqs).map((t) => [t, 0]));
-            // Count available entries (today's entries + unused entries from previous days)
-            const allEntryTypes = {};
-            const usedPreviousEntries = {};
-            
-            // First, count how many entries were used to fulfill previous day quotas
-            Object.keys(allPreviousEntries).forEach(type => {
-              for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
-                const prevDayRows = rowsForDay(planRows, prevDay);
-                const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
-                
-                if (prevPersonRow) {
-                  const prevQuota = Number(prevPersonRow[type] || 0);
-                  if (prevQuota > 0) {
-                    usedPreviousEntries[type] = (usedPreviousEntries[type] || 0) + Math.min(prevQuota, allPreviousEntries[type] || 0);
-                  }
-                }
-              }
-            });
             
             // Count today's entries (current plan day)
+            const todayEntries = {};
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
@@ -1197,42 +1185,33 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 
                 // Count entries from current plan day
                 if (entryDayIndex === currentDayIndex) {
-                  allEntryTypes[e.type] = (allEntryTypes[e.type] || 0) + 1;
+                  todayEntries[e.type] = (todayEntries[e.type] || 0) + 1;
                 }
               }
             });
             
-            // Add unused entries from previous days
-            Object.keys(allPreviousEntries).forEach(type => {
-              const totalPrevious = allPreviousEntries[type] || 0;
-              const usedPrevious = usedPreviousEntries[type] || 0;
-              const unusedPrevious = Math.max(0, totalPrevious - usedPrevious);
-              
-              if (unusedPrevious > 0) {
-                allEntryTypes[type] = (allEntryTypes[type] || 0) + unusedPrevious;
-              }
-            });
-            
-            // Apply accurate quota allocation - only count entries that match quota types
-            const flexibleCounts = { ...perTypeCounts };
+            // Calculate progress counts for each quota type
+            const flexibleCounts = {};
             const carryoverEntries = {};
-            const totalEntriesCreated = Object.values(allEntryTypes).reduce((sum, count) => sum + count, 0);
             
-            // First, allocate entries to their specific types if they exist in quota
+            // Initialize counts for all quota types
             Object.keys(cumulativeReqs).forEach(type => {
-              if (allEntryTypes[type]) {
-                flexibleCounts[type] = Math.min(allEntryTypes[type], cumulativeReqs[type]);
-              }
+              flexibleCounts[type] = 0;
             });
             
-            // Track carryover entries (entries that don't match any quota type)
-            Object.keys(allEntryTypes).forEach(type => {
-              if (!cumulativeReqs[type] || cumulativeReqs[type] === 0) {
-                // This entry type is not in the quota - it's a carryover
-                carryoverEntries[type] = allEntryTypes[type];
-              } else if (allEntryTypes[type] > cumulativeReqs[type]) {
-                // This entry type has more entries than needed - excess is carryover
-                carryoverEntries[type] = allEntryTypes[type] - cumulativeReqs[type];
+            // Count entries that match quota types
+            Object.keys(todayEntries).forEach(type => {
+              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
+                // This entry type is in today's quota
+                flexibleCounts[type] = Math.min(todayEntries[type], cumulativeReqs[type]);
+                
+                // If there are excess entries, they become carryover
+                if (todayEntries[type] > cumulativeReqs[type]) {
+                  carryoverEntries[type] = todayEntries[type] - cumulativeReqs[type];
+                }
+              } else {
+                // This entry type is not in today's quota - it's carryover
+                carryoverEntries[type] = todayEntries[type];
               }
             });
             
@@ -1567,3 +1546,4 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 }
 
 export default App;
+
