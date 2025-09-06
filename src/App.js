@@ -1381,7 +1381,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
       {currentView !== 'form' && (
       <nav className="App-nav">
-        <div className="nav-buttons-grid">
+        <div className="nav-left">
           <button 
             onClick={handleCreateNew} 
             className="btn-primary"
@@ -1389,13 +1389,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           >
             Create New Entry
           </button>
-          <button onClick={() => setShowChat(true)} className="btn-secondary">
+        </div>
+        
+        <div className="nav-right">
+          <button onClick={() => setShowChat(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
             Ask Villy (RAG)
           </button>
-          <button onClick={handleExport} className="btn-secondary">
+          <button onClick={handleExport} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
             Export Entries
           </button>
-          <label className="btn-secondary">
+          <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
             Import Entries
             <input 
               type="file" 
@@ -1404,16 +1407,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               style={{ display: 'none' }}
             />
           </label>
-        </div>
-        
-        {/* Tagarao-only admin buttons */}
-        {isTagarao(user) && (
-          <div className="nav-admin-buttons">
-            <button onClick={handleClearAll} className="btn-danger">
+          {/* Tagarao-only admin buttons */}
+          {isTagarao(user) && (
+            <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
               Clear All Entries
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </nav>
       )}
 
