@@ -1391,72 +1391,57 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           </button>
         </div>
         
-        <div className="nav-right">
-          {/* Row 2: Ask Villy and Export Entries */}
-          <div className="nav-right-row">
-            <button onClick={() => setShowChat(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-              Ask Villy (RAG)
-            </button>
-            <button onClick={handleExport} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-              Export Entries
-            </button>
-          </div>
-          
-          {/* Row 3: Import Entries (expanded for P1-P4, or Import + Clear All for P5) */}
-          {(() => {
-            const nameToPlanCode = { 'Arda': 'P1', 'Delos Cientos': 'P2', 'Paden': 'P3', 'Sendrijas': 'P4', 'Tagarao': 'P5' };
-            const currentUserName = user?.name || user?.username || user?.id;
-            const currentUserPlanCode = nameToPlanCode[currentUserName];
-            const isP1ToP4 = currentUserPlanCode && ['P1', 'P2', 'P3', 'P4'].includes(currentUserPlanCode);
-            const isP5 = currentUserPlanCode === 'P5';
-            
-            if (isP1ToP4) {
-              // P1-P4: Import Entries expanded (full width)
-              return (
-                <label className="btn-secondary btn-import-expanded">
-                  Import Entries
-                  <input 
-                    type="file" 
-                    accept=".json" 
-                    onChange={handleImport} 
-                    style={{ display: 'none' }}
-                  />
-                </label>
-              );
-            } else if (isP5) {
-              // P5: Import Entries and Clear All Entries (2 columns)
-              return (
-                <div className="nav-right-row">
-                  <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-                    Import Entries
-                    <input 
-                      type="file" 
-                      accept=".json" 
-                      onChange={handleImport} 
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                  <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
-                    Clear All Entries
-                  </button>
-                </div>
-              );
-            } else {
-              // Fallback: Import Entries only
-              return (
-                <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-                  Import Entries
-                  <input 
-                    type="file" 
-                    accept=".json" 
-                    onChange={handleImport} 
-                    style={{ display: 'none' }}
-                  />
-                </label>
-              );
-            }
-          })()}
-        </div>
+         <div className="nav-right">
+           <button onClick={() => setShowChat(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+             Ask Villy (RAG)
+           </button>
+           <button onClick={handleExport} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+             Export Entries
+           </button>
+           {/* For P5: Import Entries and Clear All Entries in nav-right */}
+           {isTagarao(user) ? (
+             <>
+               <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                 Import Entries
+                 <input 
+                   type="file" 
+                   accept=".json" 
+                   onChange={handleImport} 
+                   style={{ display: 'none' }}
+                 />
+               </label>
+               <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
+                 Clear All Entries
+               </button>
+             </>
+           ) : (
+             /* For P1-P4: Only Import Entries in nav-right, expanded version below */
+             <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+               Import Entries
+               <input 
+                 type="file" 
+                 accept=".json" 
+                 onChange={handleImport} 
+                 style={{ display: 'none' }}
+               />
+             </label>
+           )}
+         </div>
+        
+         {/* P1-P4 users: Expanded Import Entries button in mobile (Row 3) */}
+         {!isTagarao(user) && (
+           <div className="nav-import-expanded">
+             <label className="btn-secondary btn-import-expanded">
+               Import Entries
+               <input 
+                 type="file" 
+                 accept=".json" 
+                 onChange={handleImport} 
+                 style={{ display: 'none' }}
+               />
+             </label>
+           </div>
+         )}
       </nav>
       )}
 
