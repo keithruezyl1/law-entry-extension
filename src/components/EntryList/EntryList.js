@@ -322,11 +322,6 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
               {/* Mobile badges - positioned absolutely */}
               <div className="entry-badges-mobile">
                 <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
-                {entry.status && (
-                  <span className={`status-badge status-${entry.status}`}>
-                    {entry.status}
-                  </span>
-                )}
               </div>
               <div className="entry-content">
                 <div className="entry-main">
