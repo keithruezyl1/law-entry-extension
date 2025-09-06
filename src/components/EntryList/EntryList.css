@@ -757,7 +757,7 @@
     flex-direction: column !important;
     align-items: center !important;
     gap: 0 !important;
-    padding: 0 1rem !important;
+    padding: 0 0.75rem !important;
     width: 100vw !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
@@ -894,11 +894,11 @@
   }
   
   .entry-badges-mobile .entry-type-badge {
-    font-size: 0.7rem !important;
-    padding: 0.25rem 0.5rem !important;
+    font-size: 0.6rem !important;
+    padding: 0.15rem 0.35rem !important;
     background: #ff6b35 !important;
     color: white !important;
-    border-radius: 4px !important;
+    border-radius: 3px !important;
     font-weight: 600 !important;
     text-transform: capitalize !important;
     white-space: nowrap !important;
@@ -924,7 +924,7 @@
 /* Small mobile devices */
 @media (max-width: 480px) {
   .entry-list {
-    padding: 0 0.75rem !important;
+    padding: 0 0.5rem !important;
   }
   
   .entry-card {
@@ -958,7 +958,7 @@
   }
   
   .entry-badges-mobile .entry-type-badge {
-    font-size: 0.65rem !important;
-    padding: 0.2rem 0.4rem !important;
+    font-size: 0.55rem !important;
+    padding: 0.1rem 0.3rem !important;
   }
 }

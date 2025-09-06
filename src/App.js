@@ -1381,7 +1381,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
       {currentView !== 'form' && (
       <nav className="App-nav">
-        <div className="nav-left">
+        <div className="nav-buttons-grid">
           <button 
             onClick={handleCreateNew} 
             className="btn-primary"
@@ -1389,18 +1389,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           >
             Create New Entry
           </button>
-        </div>
-        
-
-        
-        <div className="nav-right">
-          <button onClick={() => setShowChat(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+          <button onClick={() => setShowChat(true)} className="btn-secondary">
             Ask Villy (RAG)
           </button>
-          <button onClick={handleExport} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+          <button onClick={handleExport} className="btn-secondary">
             Export Entries
           </button>
-          <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+          <label className="btn-secondary">
             Import Entries
             <input 
               type="file" 
@@ -1409,15 +1404,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               style={{ display: 'none' }}
             />
           </label>
-          {/* Tagarao-only admin buttons */}
-          {isTagarao(user) && (
-            <>
-              <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
-                Clear All
-              </button>
-            </>
-          )}
         </div>
+        
+        {/* Tagarao-only admin buttons */}
+        {isTagarao(user) && (
+          <div className="nav-admin-buttons">
+            <button onClick={handleClearAll} className="btn-danger">
+              Clear All Entries
+            </button>
+          </div>
+        )}
       </nav>
       )}
 

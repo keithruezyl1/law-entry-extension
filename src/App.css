@@ -290,12 +290,23 @@ body {
   background: white;
   padding: 1rem 2rem;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   border-bottom: 1px solid #e0e0e0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  flex-wrap: wrap;
   gap: 1rem;
+}
+
+.nav-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.nav-admin-buttons {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .nav-left, .nav-center, .nav-right {
@@ -948,6 +959,21 @@ body {
     max-width: 100vw;
     padding: 0;
     margin: 0;
+  }
+  
+  /* Mobile navigation */
+  .App-nav {
+    padding: 1rem !important;
+    gap: 0.75rem !important;
+  }
+  
+  .nav-buttons-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .nav-admin-buttons {
+    margin-top: 0.5rem !important;
   }
   .App-header {
     padding: 0.75rem 1rem;
