@@ -234,7 +234,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                         setShowAddInternalButton(false);
                         setShowInternalSearch(true);
                       }}
-                      className="h-11 rounded-xl flex-1"
+                      className="h-11 rounded-xl flex-1 mb-2"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add internal citation
@@ -380,7 +380,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       onClick={() => { 
                         append({ type: 'external', citation: '', url: '', title: '', note: '' });
                       }}
-                      className="h-11 rounded-xl flex-1"
+                      className="h-11 rounded-xl flex-1 mb-2"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add external citation
