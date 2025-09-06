@@ -273,6 +273,11 @@
   line-height: 1.3;
   cursor: pointer;
   transition: color 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .entry-type-badge {
@@ -304,6 +309,9 @@
   line-height: 1.4;
   margin-right: 10px;
   flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entry-team-member {
@@ -321,6 +329,9 @@
   font-size: 0.95rem;
   color: #4a4a4a;
   line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entry-id {
@@ -498,6 +509,27 @@
   
   .search-input {
     height: 44px;
+  }
+}
+
+/* Desktop: Show full content without ellipses */
+@media (min-width: 769px) {
+  .entry-title {
+    white-space: normal;
+    text-overflow: initial;
+    overflow: visible;
+  }
+  
+  .entry-subtitle {
+    white-space: normal;
+    text-overflow: initial;
+    overflow: visible;
+  }
+  
+  .entry-snippet {
+    white-space: normal;
+    text-overflow: initial;
+    overflow: visible;
   }
 }
 

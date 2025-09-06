@@ -1297,12 +1297,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                           <div className="kb-action-bar">
                             <div className="flex gap-3">
                               <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
-                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
-                            </div>
-                            <div className="flex gap-3">
                               {!entry && (
                                 <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
+                            </div>
+                            <div className="flex gap-3">
+                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                               <Button 
                                 type="button" 
                                 onClick={goNext} 
@@ -1354,12 +1354,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                           <div className="kb-action-bar">
                             <div className="flex gap-3">
                               <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
-                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
-                            </div>
-                            <div className="flex gap-3">
                               {!entry && (
                                 <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
+                            </div>
+                            <div className="flex gap-3">
+                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                               <Button 
                                 type="button" 
                                 onClick={goNext} 

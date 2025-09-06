@@ -2,8 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
-import { Select } from '../../ui/Select';
-import { Trash2, Plus, Search, X } from 'lucide-react';
+import { Trash2, Plus, Search, ArrowLeft } from 'lucide-react';
 import { fetchEntryById } from '../../../services/kbApi';
 
 type EntryLite = { id?: string; entry_id: string; title: string; type?: string; canonical_citation?: string };
@@ -16,7 +15,6 @@ interface LegalBasisPickerProps {
 }
 
 export function LegalBasisPicker({ name, control, register, existingEntries = [] }: LegalBasisPickerProps) {
-  const form = ({} as any) as { setValue: Function; getValues: Function; trigger: Function };
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -29,9 +27,6 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0);
   const [showAddInternalButton, setShowAddInternalButton] = useState(false);
   
-  // External citation states
-  const [showExternalAddButton, setShowExternalAddButton] = useState(externalCount === 0);
-
   // Update states when counts change
   useEffect(() => {
     if (internalCount === 0) {
@@ -41,14 +36,6 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       setShowInternalSearch(false);
     }
   }, [internalCount]);
-
-  useEffect(() => {
-    if (externalCount === 0) {
-      setShowExternalAddButton(true);
-    } else {
-      setShowExternalAddButton(false);
-    }
-  }, [externalCount]);
 
   // Enhanced search function that handles pluralization and word variations
   const normalizeSearchText = (text: string): string => {
@@ -237,7 +224,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 </div>
 
                 {/* Action buttons for internal citations */}
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex items-center gap-3 mt-2 mb-4">
                   {isLastInternal && showAddInternalButton && (
                     <Button
                       type="button"
@@ -269,14 +256,30 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           {/* Search interface for adding new internal citations */}
           {showInternalSearch && (
             <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="kb-form-input kb-input-search"
-                  placeholder="Search by entry_id or title…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="kb-form-input kb-input-search"
+                    placeholder="Search by entry_id or title…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </div>
+                {internalCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowInternalSearch(false);
+                      setShowAddInternalButton(true);
+                      setQuery('');
+                    }}
+                    className="h-11 rounded-xl px-3"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               
               {query.trim().length > 0 && (
@@ -316,21 +319,6 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 </div>
               )}
               
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowInternalSearch(false);
-                    setShowAddInternalButton(true);
-                    setQuery('');
-                  }}
-                  className="h-11 rounded-xl"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
             </div>
           )}
         </div>
@@ -383,14 +371,13 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 </div>
 
                 {/* Action buttons for external citations */}
-                <div className="flex items-center gap-3 mt-2">
-                  {isLastExternal && showExternalAddButton && (
+                <div className="flex items-center gap-3 mt-2 mb-4">
+                  {isLastExternal && (
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => { 
                         append({ type: 'external', citation: '', url: '', title: '', note: '' });
-                        setShowExternalAddButton(false);
                       }}
                       className="h-11 rounded-xl flex-1"
                     >
@@ -402,10 +389,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl ${isLastExternal && showExternalAddButton ? 'flex-1' : 'w-11'}`}
+                    className={`h-11 rounded-xl ${isLastExternal ? 'flex-1' : 'w-11'}`}
                   >
                     <Trash2 className="h-4 w-4" />
-                    {isLastExternal && showExternalAddButton && <span className="ml-2">Delete</span>}
+                    {isLastExternal && <span className="ml-2">Delete</span>}
                   </Button>
                 </div>
               </div>
@@ -419,7 +406,6 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               variant="outline"
               onClick={() => { 
                 append({ type: 'external', citation: '', url: '', title: '', note: '' });
-                setShowExternalAddButton(false);
               }}
               className="w-full h-11 rounded-xl"
             >
