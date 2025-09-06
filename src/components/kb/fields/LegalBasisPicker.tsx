@@ -244,7 +244,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1' : 'w-11'}`}
+                    className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1 mb-2' : 'w-11'}`}
                   >
                     <Trash2 className="h-4 w-4" />
                     {isLastInternal && (showAddInternalButton || showInternalSearch) && <span className="ml-2">Delete</span>}
@@ -390,7 +390,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl ${externalCount > 1 ? 'flex-1' : 'w-11'}`}
+                    className={`h-11 rounded-xl ${externalCount > 1 ? 'flex-1 mb-2' : 'w-11'}`}
                   >
                     <Trash2 className="h-4 w-4" />
                     {externalCount > 1 && <span className="ml-2">Delete</span>}
