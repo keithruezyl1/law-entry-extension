@@ -1398,8 +1398,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
            <button onClick={handleExport} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
              Export Entries
            </button>
-           {/* For P5: Import Entries and Clear All Entries in nav-right */}
-           {isTagarao(user) ? (
+           {/* For P5: Import Entries and Clear All Entries in nav-right (Row 2) */}
+           {isTagarao(user) && (
              <>
                <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
                  Import Entries
@@ -1414,17 +1414,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                  Clear All Entries
                </button>
              </>
-           ) : (
-             /* For P1-P4: Only Import Entries in nav-right, expanded version below */
-             <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-               Import Entries
-               <input 
-                 type="file" 
-                 accept=".json" 
-                 onChange={handleImport} 
-                 style={{ display: 'none' }}
-               />
-             </label>
            )}
          </div>
         
