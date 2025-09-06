@@ -373,10 +373,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   // Handle initial entry loading for view/edit
   useEffect(() => {
     if (initialEntryId && (currentView === 'view' || isEditing) && !loading) {
-      console.log('Looking for entry with ID:', initialEntryId);
-      console.log('Current entries:', entries);
-      console.log('Entries length:', entries.length);
-      console.log('Loading state:', loading);
       
       const entry = getEntryById(initialEntryId);
       console.log('Found entry:', entry);
@@ -437,9 +433,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     fetchTeamMembers();
   }, []);
 
-  // Debug: Log entries state
-  console.log('Current entries in App.js:', entries);
-  console.log('Entries length:', entries.length);
 
   // Team member names from database - use the same data as dbTeamMembers
   const teamMemberNames = useMemo(() => {
@@ -618,8 +611,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           }
         }
         const newEntry = await addEntry(entryData);
-        console.log('New entry created and saved to localStorage:', newEntry);
-        console.log('Total entries in localStorage:', entries.length + 1);
         
         // Set session flag for success toast on dashboard (instead of showing modal)
         try { sessionStorage.setItem('entryCreated', '1'); } catch {}
@@ -1062,16 +1053,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Match using plan codes P1..P5
             const personRow = dayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
             
-            // Debug logging for Delos Cientos
-            if (personName === 'Delos Cientos') {
-              console.log('Delos Cientos Debug:', {
-                personPlanCode,
-                currentDayIndex,
-                dayRows: dayRows.length,
-                personRow,
-                planRows: planRows ? planRows.length : 'null'
-              });
-            }
             
             if (personRow) {
               currentDayReqs = {
@@ -1106,23 +1087,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const allPreviousEntries = {};
             const todayEntries = {};
             
-            // Debug logging for Delos Cientos
-            if (personName === 'Delos Cientos') {
-              console.log('Delos Cientos - After entry counting:', {
-                allPreviousEntries,
-                todayEntries,
-                currentDayReqs
-              });
-            }
             
-            // Debug logging for Delos Cientos entry matching
-            if (personName === 'Delos Cientos') {
-              console.log('Delos Cientos - Entry matching debug:', {
-                memberId: member.id,
-                personName,
-                totalEntries: entries?.length || 0
-              });
-            }
             
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
@@ -1140,37 +1105,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
               );
               
-              // Debug logging for Delos Cientos
-              if (personName === 'Delos Cientos' && e.type === 'statute_section') {
-                console.log('Delos Cientos - Checking statute_section entry:', {
-                  entryId: e.entry_id,
-                  type: e.type,
-                  created_by: e.created_by,
-                  team_member_id: e.team_member_id,
-                  created_by_name: e.created_by_name,
-                  created_by_username: e.created_by_username,
-                  memberId: member.id,
-                  matchesUser,
-                  created: created.toISOString(),
-                  updated_at: e.updated_at, // Show for debugging but not used for progress
-                  note: 'Only created_at affects progress, updated_at is ignored for security'
-                });
-              }
               
               if (matchesUser) {
                 // Determine which plan day this entry belongs to based on CREATION date only
                 const entryDayIndex = computeDayIndex(created, day1Date);
                 
-                // Debug logging for Delos Cientos
-                if (personName === 'Delos Cientos' && e.type === 'statute_section') {
-                  console.log('Delos Cientos - Entry matched, day calculation:', {
-                    entryId: e.entry_id,
-                    entryDayIndex,
-                    currentDayIndex,
-                    created: created.toISOString(),
-                    note: 'Progress calculated from creation date only'
-                  });
-                }
                 
                 // Count entries based on their CREATION day only
                 // Updates to entries do NOT affect progress calculation
@@ -1203,21 +1142,21 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
                 // Add missing quotas from all days before the most recent previous day
                 for (let prevDay = 1; prevDay < mostRecentPrevDay; prevDay++) {
-                  const prevDayRows = rowsForDay(planRows, prevDay);
-                  const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
-                  
-                  if (prevPersonRow) {
-                    const prevDayReqs = {
-                      statute_section: Number(prevPersonRow.statute_section || 0),
-                      rule_of_court: Number(prevPersonRow.rule_of_court || 0),
-                      rights_advisory: Number(prevPersonRow.rights_advisory || 0),
-                      constitution_provision: Number(prevPersonRow.constitution_provision || 0),
-                      agency_circular: Number(prevPersonRow.agency_circular || 0),
-                      doj_issuance: Number(prevPersonRow.doj_issuance || 0),
-                      executive_issuance: Number(prevPersonRow.executive_issuance || 0),
-                      city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
-                    };
-
+              const prevDayRows = rowsForDay(planRows, prevDay);
+              const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+              
+              if (prevPersonRow) {
+                const prevDayReqs = {
+                  statute_section: Number(prevPersonRow.statute_section || 0),
+                  rule_of_court: Number(prevPersonRow.rule_of_court || 0),
+                  rights_advisory: Number(prevPersonRow.rights_advisory || 0),
+                  constitution_provision: Number(prevPersonRow.constitution_provision || 0),
+                  agency_circular: Number(prevPersonRow.agency_circular || 0),
+                  doj_issuance: Number(prevPersonRow.doj_issuance || 0),
+                  executive_issuance: Number(prevPersonRow.executive_issuance || 0),
+                  city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
+                };
+                
                     // Count entries for this previous day (based on CREATION date only)
                     const prevDayEntries = {};
                     (entries || []).forEach((e) => {
@@ -1244,7 +1183,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                       const prevQuota = prevDayReqs[type] || 0;
                       const prevCompleted = prevDayEntries[type] || 0;
                       
-                      if (prevQuota > 0) {
+                  if (prevQuota > 0) {
                         const missing = Math.max(0, prevQuota - prevCompleted);
                         prevDayActualQuota[type] = (prevDayActualQuota[type] || 0) + missing;
                         
@@ -1258,27 +1197,27 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                         // These excess entries should reduce the actual quota if this type is in today's quota
                         if (prevDayActualQuota[type] && prevDayActualQuota[type] > 0) {
                           prevDayActualQuota[type] = Math.max(0, prevDayActualQuota[type] - prevCompleted);
-                        }
-                      }
-                    });
+                }
+              }
+            });
                   }
                 }
-
+            
                 // Count entries for the most recent previous day (based on CREATION date only)
                 const prevDayEntries = {};
-                (entries || []).forEach((e) => {
-                  const created = e.created_at ? new Date(e.created_at) : null;
-                  if (!created) return;
-
-                  const matchesUser = (
-                    (e.created_by && String(e.created_by) === String(member.id)) ||
-                    (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
-                    (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
-                    (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
-                  );
-
-                  if (matchesUser) {
-                    const entryDayIndex = computeDayIndex(created, day1Date);
+            (entries || []).forEach((e) => {
+              const created = e.created_at ? new Date(e.created_at) : null;
+              if (!created) return;
+              
+              const matchesUser = (
+                (e.created_by && String(e.created_by) === String(member.id)) ||
+                (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+              );
+              
+              if (matchesUser) {
+                const entryDayIndex = computeDayIndex(created, day1Date);
                     if (entryDayIndex === mostRecentPrevDay) {
                       prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
                     }
@@ -1294,9 +1233,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                     const missing = Math.max(0, prevQuota - prevCompleted);
                     if (missing > 0) {
                       cumulativeReqs[type] = (cumulativeReqs[type] || 0) + missing;
-                    }
-                  }
-                });
+                }
+              }
+            });
               }
             }
             
@@ -1325,16 +1264,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   const oldQuota = cumulativeReqs[type];
                   cumulativeReqs[type] = Math.max(0, cumulativeReqs[type] - excess);
                   
-                  // Debug logging for Delos Cientos
-                  if (personName === 'Delos Cientos') {
-                    console.log(`Delos Cientos - Subtracting excess ${type}:`, {
-                      previousEntries,
-                      totalPreviousQuota,
-                      excess,
-                      oldQuota,
-                      newQuota: cumulativeReqs[type]
-                    });
-                  }
                 }
               }
             });
@@ -1343,16 +1272,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
             
-            // Debug logging for Delos Cientos
-            if (personName === 'Delos Cientos') {
-              console.log('Delos Cientos Debug - Final Calculation:', {
-                allPreviousEntries,
-                todayEntries,
-                currentDayReqs,
-                finalCumulativeReqs: cumulativeReqs,
-                totalReq
-              });
-            }
             
             // Calculate progress counts for each quota type
             const flexibleCounts = {};
@@ -1389,19 +1308,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
-            // Debug logging for all team members to verify carryover logic
-            console.log(`🔍 ${personName} (P${member.id}) Debug Info:`, {
-              currentDayIndex,
-              todayISO,
-              allPreviousEntries,
-              currentDayReqs,
-              cumulativeReqs,
-              todayEntries,
-              flexibleCounts,
-              carryoverEntries,
-              totalReq,
-              totalDone
-            });
             
             // Check if this user has incomplete entries from yesterday
             const userHasIncompleteEntries = incompleteEntries.some((incomplete) => 

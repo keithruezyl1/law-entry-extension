@@ -16,7 +16,7 @@ The **Civilify Law Entry App** is a React-based web application designed as the 
 - **Responsive Design**: Mobile-friendly interface
 - **Shared Plan Management**: Import and share plans across all team members with database-backed synchronization
 
-### Recent Enhancements (Last updated 5/9/25 5PM)
+### Recent Enhancements (Last updated 9/6/25 2:45PM)
 
 - **Creation Success Toast (2s)**: After creating an entry, the app redirects to the dashboard and shows a success toast for a full 2 seconds. The timer starts after navigation completes to ensure consistent duration.
 - **Safer Deletions with Reference Cleanup**: Before deleting an entry, the app now checks for inbound internal citations (`legal_bases`/`related_sections`) and warns the user with a list of affected entries. Upon confirmation, those dangling references are automatically removed from the citing entries.
@@ -24,6 +24,16 @@ The **Civilify Law Entry App** is a React-based web application designed as the 
 - **Duplicate Matches Toast (create flow)**: While composing entries, the form surfaces a non-blocking toast for potential near-duplicate matches with quick visibility into titles/citations; a CTA is available for viewing all matches when applicable.
 - **Improved Relations Editing**: `LegalBasisPicker` supports internal linking with enriched context (titles and first URLs fetched where available) and defaults types sensibly.
 - **Navigation Robustness**: The success state for the creation toast is handled via session storage, ensuring reliable feedback across redirects and browser histories.
+
+### Critical Bug Fixes & Security Improvements (9/6/25)
+
+- **Fixed White Screen Error**: Resolved `ReferenceError: Cannot access 'b' before initialization` that was causing the application to display a blank white screen.
+- **Fixed Entry Type Default Issue**: Corrected bug where all new entries were defaulting to "constitution_provision" regardless of the selected entry type. Now properly requires users to select an entry type.
+- **Enhanced Security Against Quota Manipulation**: Implemented safeguards to ensure that entry updates cannot affect progress calculations. Only entry creation dates (`created_at`) are used for quota calculations, preventing team members from manipulating quotas by editing existing entries.
+- **Fixed Entry Attribution Bug**: Resolved critical issue where entries were being attributed to wrong team members due to missing `created_by` field in the database. This was causing incorrect quota calculations and progress tracking.
+- **Improved Data Integrity**: Enhanced entry creation process to properly set `created_by`, `created_by_name`, and `created_by_username` fields, ensuring accurate team member attribution.
+- **Cleaned Up Console Logging**: Removed excessive debug logging that was cluttering the browser console, improving performance and debugging experience.
+- **Quota System Reliability**: Fixed carryover logic and excess entry handling to ensure accurate daily quota calculations and progress tracking across all team members.
 
 ## Technology Stack
 
@@ -120,8 +130,11 @@ CREATE TABLE kb_entries (
 
 ### Progress Calculation
 - **Daily Counts**: Track entries by type per person per day
-- **Carryover Logic**: Unfinished quotas carry over to next day
+- **Carryover Logic**: Unfinished quotas carry over to next day with cumulative calculation
+- **Excess Entry Handling**: Entries made in previous days that exceed quotas reduce future quotas for the same entry type
+- **Security**: Only entry creation dates affect progress; updates do not impact quotas
 - **Completion Status**: Visual indicators (green/orange/red) for completion
+- **Yellow Pills**: Display entries that are not part of current day's quota but were created previously
 
 ## Shared Plan Management (UPDATED)
 
@@ -310,6 +323,9 @@ npm run migrate
 - **Authentication Errors**: Check JWT_SECRET and token expiration
 - **CORS Issues**: Ensure backend allows frontend domain
 - **Plan Not Loading**: Verify shared_plans table exists and has data
+- **White Screen Error**: Check browser console for JavaScript errors, especially variable initialization issues
+- **Incorrect Quota Calculations**: Verify `created_by` field is properly set in database entries
+- **Entry Type Defaulting**: Ensure entry form properly validates and sets entry type selection
 
 ### Database Issues
 - **Connection Refused**: Verify Render DB connection string and SSL requirement
@@ -330,6 +346,12 @@ npm run migrate
 - **JWT Tokens**: Secure session management with expiration
 - **Password Storage**: Simple comparison for small team (not hashed)
 - **Route Protection**: All routes require valid authentication
+
+### Quota System Security
+- **Entry Creation Only**: Progress calculations only use entry creation dates (`created_at`), not update dates
+- **No Update Manipulation**: Entry updates cannot affect quota progress or completion status
+- **Proper Attribution**: All entries must have correct `created_by` field to prevent quota manipulation
+- **Data Integrity**: Entry creation process validates and sets all required user attribution fields
 
 ### Database Security
 - **Connection Security**: Use SSL connections to your managed PostgreSQL (Render)

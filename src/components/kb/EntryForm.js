@@ -235,6 +235,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel, on
           
           // Add user information to formData
           formData.team_member_id = user?.personId ? Number(String(user.personId).replace('P','')) : undefined;
+          formData.created_by = user?.personId ? Number(String(user.personId).replace('P','')) : undefined;
           formData.created_by_name = user?.name || user?.username;
           formData.created_by_username = user?.username;
           
@@ -249,6 +250,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel, on
         
         // Add user information to formData
         formData.team_member_id = user?.personId ? Number(String(user.personId).replace('P','')) : undefined;
+        formData.created_by = user?.personId ? Number(String(user.personId).replace('P','')) : undefined;
         formData.created_by_name = user?.name || user?.username;
         formData.created_by_username = user?.username;
       }

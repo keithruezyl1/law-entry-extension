@@ -180,6 +180,7 @@ export const useLocalStorage = () => {
         jurisprudence: entry.jurisprudence,
         legal_bases: entry.legal_bases,
         related_sections: entry.related_sections,
+        created_by: entry.created_by,
         created_by_name: entry.created_by_name,
       };
       const resp = await upsertEntry(payload);

@@ -846,6 +846,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const withMember = {
       ...sanitized,
       team_member_id: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
+      created_by: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
       created_by_name: user?.name || user?.username,
       created_by_username: user?.username,
     } as any;
