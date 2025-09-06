@@ -1128,13 +1128,34 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                 };
                 
-                // Add only missing quotas from previous days
+                // Count entries for THIS specific previous day only
+                const prevDayEntries = {};
+                (entries || []).forEach((e) => {
+                  const created = e.created_at ? new Date(e.created_at) : null;
+                  if (!created) return;
+                  
+                  const matchesUser = (
+                    (e.created_by && String(e.created_by) === String(member.id)) ||
+                    (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                    (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                    (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+                  );
+                  
+                  if (matchesUser) {
+                    const entryDayIndex = computeDayIndex(created, day1Date);
+                    if (entryDayIndex === prevDay) {
+                      prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
+                    }
+                  }
+                });
+                
+                // Add only missing quotas from this specific previous day
                 Object.keys(prevDayReqs).forEach(type => {
                   const prevQuota = prevDayReqs[type] || 0;
-                  const prevCompleted = allPreviousEntries[type] || 0;
+                  const prevCompleted = prevDayEntries[type] || 0;
                   
                   if (prevQuota > 0) {
-                    // Calculate missing amount from this previous day
+                    // Calculate missing amount from this specific previous day
                     const missing = Math.max(0, prevQuota - prevCompleted);
                     if (missing > 0) {
                       cumulativeReqs[type] = (cumulativeReqs[type] || 0) + missing;
