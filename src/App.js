@@ -1118,13 +1118,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Add MISSING quotas from ALL previous days to today's quota
-            for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
-              const prevDayRows = rowsForDay(planRows, prevDay);
+            // Calculate the actual quota for the most recent previous day (base + cumulative missing)
+            const mostRecentPrevDay = currentDayIndex - 1;
+            if (mostRecentPrevDay >= 1) {
+              // Get the base quota for the most recent previous day
+              const prevDayRows = rowsForDay(planRows, mostRecentPrevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
               
               if (prevPersonRow) {
-                const prevDayReqs = {
+                let prevDayActualQuota = {
                   statute_section: Number(prevPersonRow.statute_section || 0),
                   rule_of_court: Number(prevPersonRow.rule_of_court || 0),
                   rights_advisory: Number(prevPersonRow.rights_advisory || 0),
@@ -1135,7 +1137,70 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                 };
 
-                // Count entries for THIS specific previous day only
+                // Add missing quotas from all days before the most recent previous day
+                for (let prevDay = 1; prevDay < mostRecentPrevDay; prevDay++) {
+                  const prevDayRows = rowsForDay(planRows, prevDay);
+                  const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+                  
+                  if (prevPersonRow) {
+                    const prevDayReqs = {
+                      statute_section: Number(prevPersonRow.statute_section || 0),
+                      rule_of_court: Number(prevPersonRow.rule_of_court || 0),
+                      rights_advisory: Number(prevPersonRow.rights_advisory || 0),
+                      constitution_provision: Number(prevPersonRow.constitution_provision || 0),
+                      agency_circular: Number(prevPersonRow.agency_circular || 0),
+                      doj_issuance: Number(prevPersonRow.doj_issuance || 0),
+                      executive_issuance: Number(prevPersonRow.executive_issuance || 0),
+                      city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
+                    };
+
+                    // Count entries for this previous day
+                    const prevDayEntries = {};
+                    (entries || []).forEach((e) => {
+                      const created = e.created_at ? new Date(e.created_at) : null;
+                      if (!created) return;
+
+                      const matchesUser = (
+                        (e.created_by && String(e.created_by) === String(member.id)) ||
+                        (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                        (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                        (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+                      );
+
+                      if (matchesUser) {
+                        const entryDayIndex = computeDayIndex(created, day1Date);
+                        if (entryDayIndex === prevDay) {
+                          prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
+                        }
+                      }
+                    });
+
+                    // Add missing quotas and subtract excess entries from this previous day
+                    Object.keys(prevDayReqs).forEach(type => {
+                      const prevQuota = prevDayReqs[type] || 0;
+                      const prevCompleted = prevDayEntries[type] || 0;
+                      
+                      if (prevQuota > 0) {
+                        const missing = Math.max(0, prevQuota - prevCompleted);
+                        prevDayActualQuota[type] = (prevDayActualQuota[type] || 0) + missing;
+                        
+                        // If there were excess entries, subtract them from the actual quota
+                        if (prevCompleted > prevQuota) {
+                          const excess = prevCompleted - prevQuota;
+                          prevDayActualQuota[type] = Math.max(0, prevDayActualQuota[type] - excess);
+                        }
+                      } else if (prevCompleted > 0) {
+                        // This entry type had no quota in previous day but entries were made
+                        // These excess entries should reduce the actual quota if this type is in today's quota
+                        if (prevDayActualQuota[type] && prevDayActualQuota[type] > 0) {
+                          prevDayActualQuota[type] = Math.max(0, prevDayActualQuota[type] - prevCompleted);
+                        }
+                      }
+                    });
+                  }
+                }
+
+                // Count entries for the most recent previous day
                 const prevDayEntries = {};
                 (entries || []).forEach((e) => {
                   const created = e.created_at ? new Date(e.created_at) : null;
@@ -1150,19 +1215,18 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
                   if (matchesUser) {
                     const entryDayIndex = computeDayIndex(created, day1Date);
-                    if (entryDayIndex === prevDay) {
+                    if (entryDayIndex === mostRecentPrevDay) {
                       prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
                     }
                   }
                 });
 
-                // Add only missing quotas from this specific previous day
-                Object.keys(prevDayReqs).forEach(type => {
-                  const prevQuota = prevDayReqs[type] || 0;
+                // Calculate missing from the most recent previous day using the actual quota
+                Object.keys(prevDayActualQuota).forEach(type => {
+                  const prevQuota = prevDayActualQuota[type] || 0;
                   const prevCompleted = prevDayEntries[type] || 0;
-
+                  
                   if (prevQuota > 0) {
-                    // Calculate missing amount from this specific previous day
                     const missing = Math.max(0, prevQuota - prevCompleted);
                     if (missing > 0) {
                       cumulativeReqs[type] = (cumulativeReqs[type] || 0) + missing;
