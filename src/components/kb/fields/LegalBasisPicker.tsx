@@ -34,6 +34,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       setShowAddInternalButton(false);
     } else {
       setShowInternalSearch(false);
+      setShowAddInternalButton(true);
     }
   }, [internalCount]);
 
@@ -275,7 +276,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       setShowAddInternalButton(true);
                       setQuery('');
                     }}
-                    className="h-11 rounded-xl px-3"
+                    className="h-11 w-11 rounded-xl p-0 flex items-center justify-center"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
