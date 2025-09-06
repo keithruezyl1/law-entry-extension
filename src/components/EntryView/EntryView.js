@@ -614,6 +614,8 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             <div className="entry-title-row">
               <h1>{currentEntry.title}</h1>
               <span className="entry-id-badge">{currentEntry.entry_id}</span>
+            </div>
+            <div className="entry-badges-row">
               <span className="entry-type-badge">{entryType ? entryType.label : currentEntry.type}</span>
               <span className={`status-badge status-${currentEntry.status}`}>
                 {currentEntry.status}
@@ -650,7 +652,7 @@ const EntryView = ({ entry, onEdit, onDelete, teamMemberNames = {} }) => {
             <h3>Basic Information</h3>
             <div className="info-grid">
               <div className="info-item">
-                <span className="label">Team Member:</span>
+                <span className="label">Entry created by:</span>
                 <span className="value">{getTeamMemberName(currentEntry.team_member_id)}</span>
               </div>
               <div className="info-item">
