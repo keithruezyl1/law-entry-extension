@@ -1333,35 +1333,48 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                     city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                   };
                   
-                  // Add missing quotas from previous days
+                  // Count entries from this previous day only
+                  const prevDayEntries = {};
+                  (entries || []).forEach((e) => {
+                    const created = e.created_at ? new Date(e.created_at) : null;
+                    if (!created) return;
+                    
+                    const matchesUser = (
+                      (e.created_by && String(e.created_by) === String(member.id)) ||
+                      (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                      (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                      (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+                    );
+                    
+                    if (matchesUser) {
+                      const entryDayIndex = computeDayIndex(created, day1Date);
+                      if (entryDayIndex === prevDay) {
+                        prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
+                      }
+                    }
+                  });
+
+                  // Add missing quotas and subtract excess entries from previous days
                   Object.keys(prevDayReqs).forEach(type => {
                     const prevQuota = prevDayReqs[type] || 0;
+                    const prevCompleted = prevDayEntries[type] || 0;
+                    
                     if (prevQuota > 0) {
-                      // Count entries from this previous day only
-                      const prevDayEntries = {};
-                      (entries || []).forEach((e) => {
-                        const created = e.created_at ? new Date(e.created_at) : null;
-                        if (!created) return;
-                        
-                        const matchesUser = (
-                          (e.created_by && String(e.created_by) === String(member.id)) ||
-                          (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
-                          (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
-                          (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
-                        );
-                        
-                        if (matchesUser) {
-                          const entryDayIndex = computeDayIndex(created, day1Date);
-                          if (entryDayIndex === prevDay) {
-                            prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
-                          }
-                        }
-                      });
-                      
-                      const prevCompleted = prevDayEntries[type] || 0;
                       const missing = Math.max(0, prevQuota - prevCompleted);
                       if (missing > 0) {
                         dayReqs[type] = (dayReqs[type] || 0) + missing;
+                      }
+                      
+                      // If there were excess entries, subtract them from the quota
+                      if (prevCompleted > prevQuota) {
+                        const excess = prevCompleted - prevQuota;
+                        dayReqs[type] = Math.max(0, dayReqs[type] - excess);
+                      }
+                    } else if (prevCompleted > 0) {
+                      // This entry type had no quota in previous day but entries were made
+                      // These excess entries should reduce the quota if this type is in today's quota
+                      if (dayReqs[type] && dayReqs[type] > 0) {
+                        dayReqs[type] = Math.max(0, dayReqs[type] - prevCompleted);
                       }
                     }
                   });
@@ -1388,6 +1401,64 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   }
                 }
               });
+
+              // Add excess entries from previous days as "completed" entries for this day
+              for (let prevDay = 1; prevDay < dayIndex; prevDay++) {
+                const prevDayRows = rowsForDay(planRows, prevDay);
+                const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+                
+                if (prevPersonRow) {
+                  const prevDayReqs = {
+                    statute_section: Number(prevPersonRow.statute_section || 0),
+                    rule_of_court: Number(prevPersonRow.rule_of_court || 0),
+                    rights_advisory: Number(prevPersonRow.rights_advisory || 0),
+                    constitution_provision: Number(prevPersonRow.constitution_provision || 0),
+                    agency_circular: Number(prevPersonRow.agency_circular || 0),
+                    doj_issuance: Number(prevPersonRow.doj_issuance || 0),
+                    executive_issuance: Number(prevPersonRow.executive_issuance || 0),
+                    city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
+                  };
+                  
+                  // Count entries from this previous day
+                  const prevDayEntries = {};
+                  (entries || []).forEach((e) => {
+                    const created = e.created_at ? new Date(e.created_at) : null;
+                    if (!created) return;
+                    
+                    const matchesUser = (
+                      (e.created_by && String(e.created_by) === String(member.id)) ||
+                      (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                      (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                      (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+                    );
+                    
+                    if (matchesUser) {
+                      const entryDayIndex = computeDayIndex(created, day1Date);
+                      if (entryDayIndex === prevDay) {
+                        prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
+                      }
+                    }
+                  });
+
+                  // Add excess entries from previous days as completed entries for this day
+                  Object.keys(prevDayReqs).forEach(type => {
+                    const prevQuota = prevDayReqs[type] || 0;
+                    const prevCompleted = prevDayEntries[type] || 0;
+                    
+                    if (prevQuota > 0 && prevCompleted > prevQuota) {
+                      // There were excess entries in this previous day
+                      const excess = prevCompleted - prevQuota;
+                      dayEntries[type] = (dayEntries[type] || 0) + excess;
+                    } else if (prevQuota === 0 && prevCompleted > 0) {
+                      // This entry type had no quota in previous day but entries were made
+                      // These entries count as completed for this day if this type is in this day's quota
+                      if (dayReqs[type] && dayReqs[type] > 0) {
+                        dayEntries[type] = (dayEntries[type] || 0) + prevCompleted;
+                      }
+                    }
+                  });
+                }
+              }
               
               return { dayReqs, dayEntries };
             };
