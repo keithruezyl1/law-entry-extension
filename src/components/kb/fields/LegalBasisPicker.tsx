@@ -225,7 +225,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 </div>
 
                 {/* Action buttons for internal citations */}
-                <div className={`flex items-center gap-3 mt-2 ${showInternalSearch ? 'mb-4' : 'mb-4'}`}>
+                <div className="flex items-center gap-3 mt-2 mb-6">
                   {isLastInternal && showAddInternalButton && (
                     <Button
                       type="button"
@@ -372,7 +372,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 </div>
 
                 {/* Action buttons for external citations */}
-                <div className="flex items-center gap-3 mt-2 mb-4">
+                <div className="flex items-center gap-3 mt-2 mb-6">
                   {isLastExternal && (
                     <Button
                       type="button"
