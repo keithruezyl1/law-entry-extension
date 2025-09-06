@@ -177,7 +177,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [now, setNow] = useState(new Date());
   const [showCreationToast, setShowCreationToast] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(null); // null = current day, number = specific day
 
   // Show creation toast when session flag is set AND we're on dashboard
   useEffect(() => {
@@ -1009,32 +1008,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       {currentView !== 'form' && (
       <div className="team-progress">
         <div className="team-progress-header">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3>
-              {selectedDay === null ? 'Today\'s' : `Day ${selectedDay}'s`} Team Progress
-              {selectedDay === null && (
-                <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>
-                  {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
-                </span>
-              )}
-            </h3>
-            <div className="day-filter-container">
-              <label className="day-filter-label">View Day:</label>
-              <select 
-                className="day-filter-select"
-                value={selectedDay === null ? 'current' : selectedDay} 
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSelectedDay(value === 'current' ? null : parseInt(value));
-                }}
-              >
-                <option value="current">Current Day</option>
-                {Array.from({ length: 30 }, (_, i) => i + 1).map(day => (
-                  <option key={day} value={day}>Day {day}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <h3>Today's Team Progress {(
+            <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>
+              {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
+            </span>
+          )}</h3>
         </div>
         <div className="team-members-grid">
           {dbTeamMembers.map(member => {
@@ -1079,7 +1057,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               ...(member?.dailyQuota || {}),
             };
             const today = new Date();
-            const currentDayIndex = selectedDay === null ? computeDayIndex(today, day1Date) : selectedDay;
+            const currentDayIndex = computeDayIndex(today, day1Date);
             const dayRows = rowsForDay(planRows, currentDayIndex);
             // Match using plan codes P1..P5
             const personRow = dayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
@@ -1108,8 +1086,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Start with current day's requirements
             const cumulativeReqs = { ...currentDayReqs };
             
-            // Only apply carryover logic if viewing current day
-            const isViewingCurrentDay = selectedDay === null;
+            // Always apply carryover logic since we're always viewing current day
+            const isViewingCurrentDay = true;
             
             // Count entries based on what day we're viewing
             const allPreviousEntries = {};
@@ -1131,27 +1109,19 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 // Determine which plan day this entry belongs to
                 const entryDayIndex = computeDayIndex(created, day1Date);
                 
-                if (isViewingCurrentDay) {
-                  // For current day: count previous entries for carryover logic
-                  if (entryDayIndex < currentDayIndex) {
-                    allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
-                  } else if (entryDayIndex === currentDayIndex) {
-                    todayEntries[e.type] = (todayEntries[e.type] || 0) + 1;
-                  }
-                } else {
-                  // For specific day: only count entries from that day
-                  if (entryDayIndex === currentDayIndex) {
-                    todayEntries[e.type] = (todayEntries[e.type] || 0) + 1;
-                  }
+                // For current day: count previous entries for carryover logic
+                if (entryDayIndex < currentDayIndex) {
+                  allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
+                } else if (entryDayIndex === currentDayIndex) {
+                  todayEntries[e.type] = (todayEntries[e.type] || 0) + 1;
                 }
               }
             });
             
-            // Add only MISSING quotas from the MOST RECENT previous day to today's quota (only for current day)
-            if (isViewingCurrentDay) {
-              const mostRecentPrevDay = currentDayIndex - 1;
-              if (mostRecentPrevDay >= 1) {
-                const prevDay = mostRecentPrevDay;
+            // Add only MISSING quotas from the MOST RECENT previous day to today's quota
+            const mostRecentPrevDay = currentDayIndex - 1;
+            if (mostRecentPrevDay >= 1) {
+              const prevDay = mostRecentPrevDay;
               const prevDayRows = rowsForDay(planRows, prevDay);
               const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
               
@@ -1203,7 +1173,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 });
               }
             }
-            }
             
             // Don't reduce quota by previous entries - they should count toward today's progress
             // The quota calculation above already includes missing amounts from previous days
@@ -1237,22 +1206,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Add previous day entries that are now part of today's quota (only for current day)
-            if (isViewingCurrentDay) {
-              Object.keys(allPreviousEntries).forEach(type => {
-                if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
-                  // This entry type from previous days is now part of today's quota
-                  const previousCount = allPreviousEntries[type] || 0;
-                  if (previousCount > 0) {
-                    // Add previous entries to today's count
-                    flexibleCounts[type] = (flexibleCounts[type] || 0) + previousCount;
-                  }
-                } else {
-                  // This entry type from previous days is not in today's quota - it's carryover
-                  carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
+            // Add previous day entries that are now part of today's quota
+            Object.keys(allPreviousEntries).forEach(type => {
+              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
+                // This entry type from previous days is now part of today's quota
+                const previousCount = allPreviousEntries[type] || 0;
+                if (previousCount > 0) {
+                  // Add previous entries to today's count
+                  flexibleCounts[type] = (flexibleCounts[type] || 0) + previousCount;
                 }
-              });
-            }
+              } else {
+                // This entry type from previous days is not in today's quota - it's carryover
+                carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
+              }
+            });
             
             const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
             
