@@ -292,18 +292,18 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
           <div className="entry-list">
             {paginatedEntries.map(entry => (
             <div key={entry.id} className="entry-card">
+              <div className="entry-badges">
+                <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
+                {entry.status && (
+                  <span className={`status-badge status-${entry.status}`}>
+                    {entry.status}
+                  </span>
+                )}
+              </div>
               <div className="entry-content">
                 <div className="entry-main">
                   <div className="entry-title-row">
                     <h3 className="entry-title" onClick={() => { setEntryStack([]); setSelectedEntry(entry); }}>{entry.title || 'Untitled Entry'}</h3>
-                    <div className="entry-badges">
-                      <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
-                      {entry.status && (
-                        <span className={`status-badge status-${entry.status}`}>
-                          {entry.status}
-                        </span>
-                      )}
-                    </div>
                   </div>
                                       <div className="entry-subtitle-row">
                       <div className="entry-subtitle">civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}</div>

@@ -134,6 +134,18 @@
   color: white;
 }
 
+.modal-button.orange-outline:active,
+.modal-button.orange-outline.active {
+  background: #ff6b35;
+  color: white;
+}
+
+.modal-button.cancel:active,
+.modal-button.cancel.active {
+  background: #ff6b35;
+  color: white;
+}
+
 .modal-options {
   display: flex;
   gap: 1rem;

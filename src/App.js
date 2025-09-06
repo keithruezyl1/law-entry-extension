@@ -1527,10 +1527,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       >
         <div className="modal-buttons">
           <button
-            className="modal-button"
+            className="modal-button orange-outline"
             onClick={handleResumeYes}
           >
-            Yes
+            Yes, continue inputting
           </button>
           <button
             className="modal-button cancel"
