@@ -985,6 +985,12 @@ body {
   
   .nav-right {
     width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  .nav-right-row {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.5rem !important;
@@ -1011,6 +1017,34 @@ body {
     text-align: center !important;
     font-size: 1rem !important;
     font-weight: 600 !important;
+  }
+  
+  /* P1-P4 users: Expanded Import Entries button */
+  .nav-import-expanded {
+    width: 100% !important;
+    margin-top: 0.5rem !important;
+  }
+  
+  .btn-import-expanded {
+    width: 100% !important;
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 0.9rem !important;
+    background: #6c757d !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .btn-import-expanded:hover {
+    background: #5a6268 !important;
+    transform: translateY(-1px) !important;
   }
   .App-header {
     padding: 0.75rem 1rem;
