@@ -1413,7 +1413,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             if (isP1ToP4) {
               // P1-P4: Import Entries expanded (full width)
               return (
-                <label className="btn-secondary" style={{ width: '100%', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
+                <label className="btn-secondary btn-import-expanded">
                   Import Entries
                   <input 
                     type="file" 
