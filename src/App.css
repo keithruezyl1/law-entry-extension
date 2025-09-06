@@ -1032,7 +1032,7 @@ body {
          /* Row 3: Import Entries (expanded) for P1-P4, Import Entries | Clear All for P5 */
          .nav-import-expanded {
            width: 100% !important;
-           margin-top: 0.75rem !important;
+           margin-top: 0.5rem !important;
          }
          
          .btn-import-expanded {
