@@ -1144,17 +1144,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             }
             
-            // Handle entries that were created in previous days but are now part of today's quota
-            Object.keys(allPreviousEntries).forEach(type => {
-              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
-                // This entry type is now part of today's quota, so previous entries should count
-                const previousCount = allPreviousEntries[type] || 0;
-                if (previousCount > 0) {
-                  // Reduce today's quota by the amount already completed in previous days
-                  cumulativeReqs[type] = Math.max(0, cumulativeReqs[type] - previousCount);
-                }
-              }
-            });
+            // Don't reduce cumulativeReqs - previous entries will be counted in flexibleCounts
             
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
