@@ -1111,20 +1111,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Debug logging for all team members to verify carryover logic
-            console.log(`🔍 ${personName} (P${member.id}) Debug Info:`, {
-              currentDayIndex,
-              todayISO,
-              allPreviousEntries,
-              currentDayReqs,
-              cumulativeReqs,
-              todayEntries,
-              flexibleCounts,
-              carryoverEntries,
-              totalReq,
-              totalDone: Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0)
-            });
-            
             // Calculate carryover quotas from previous days
             for (let prevDay = 1; prevDay < currentDayIndex; prevDay++) {
               const prevDayRows = rowsForDay(planRows, prevDay);
@@ -1216,6 +1202,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             });
             
             const totalDone = Object.values(flexibleCounts).reduce((s, n) => s + (Number(n) || 0), 0);
+            
+            // Debug logging for all team members to verify carryover logic
+            console.log(`🔍 ${personName} (P${member.id}) Debug Info:`, {
+              currentDayIndex,
+              todayISO,
+              allPreviousEntries,
+              currentDayReqs,
+              cumulativeReqs,
+              todayEntries,
+              flexibleCounts,
+              carryoverEntries,
+              totalReq,
+              totalDone
+            });
             
             // Check if this user has incomplete entries from yesterday
             const userHasIncompleteEntries = incompleteEntries.some((incomplete) => 
