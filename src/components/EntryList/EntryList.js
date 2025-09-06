@@ -58,6 +58,33 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [selectedEntry, entryStack]);
+
+  // Handle browser back button to close modal
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (selectedEntry) {
+        e.preventDefault();
+        if (entryStack.length > 0) {
+          const prev = entryStack[entryStack.length - 1];
+          setEntryStack(entryStack.slice(0, -1));
+          setSelectedEntry(prev);
+        } else {
+          setSelectedEntry(null);
+        }
+        // Push a new state to prevent the browser from actually going back
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+
+    if (selectedEntry) {
+      // Push a state when modal opens to enable back button handling
+      window.history.pushState(null, '', window.location.href);
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [selectedEntry, entryStack]);
   console.log('EntryList received entries:', entries);
   console.log('EntryList entries length:', entries.length);
   
