@@ -1149,6 +1149,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             }
             
+            // Don't add extra quota types - only carry over missing amounts from existing quota types
+            
             const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
             
             // Count today's entries (current plan day)
@@ -1196,8 +1198,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   carryoverEntries[type] = todayEntries[type] - cumulativeReqs[type];
                 }
               } else {
-                // This entry type is not in today's quota - it's carryover
+                // This entry type is not in today's quota - it's carryover (yellow pill)
                 carryoverEntries[type] = todayEntries[type];
+              }
+            });
+            
+            // Also count previous day entries that don't match today's quota as carryover
+            Object.keys(allPreviousEntries).forEach(type => {
+              if (!cumulativeReqs[type] || cumulativeReqs[type] === 0) {
+                // This entry type from previous days is not in today's quota - it's carryover
+                carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
               }
             });
             
