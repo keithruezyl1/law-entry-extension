@@ -225,7 +225,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 </div>
 
                 {/* Action buttons for internal citations */}
-                <div className="flex items-center gap-3 mt-2 mb-4">
+                <div className={`flex items-center gap-3 mt-2 ${showInternalSearch ? 'mb-4' : 'mb-4'}`}>
                   {isLastInternal && showAddInternalButton && (
                     <Button
                       type="button"
@@ -244,10 +244,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl ${isLastInternal && showAddInternalButton ? 'flex-1' : 'w-11'}`}
+                    className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1' : 'w-11'}`}
                   >
                     <Trash2 className="h-4 w-4" />
-                    {isLastInternal && showAddInternalButton && <span className="ml-2">Delete</span>}
+                    {isLastInternal && (showAddInternalButton || showInternalSearch) && <span className="ml-2">Delete</span>}
                   </Button>
                 </div>
               </div>
@@ -390,10 +390,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl ${isLastExternal ? 'flex-1' : 'w-11'}`}
+                    className={`h-11 rounded-xl ${externalCount > 1 ? 'flex-1' : 'w-11'}`}
                   >
                     <Trash2 className="h-4 w-4" />
-                    {isLastExternal && <span className="ml-2">Delete</span>}
+                    {externalCount > 1 && <span className="ml-2">Delete</span>}
                   </Button>
                 </div>
               </div>
