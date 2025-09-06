@@ -1144,6 +1144,18 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             }
             
+            // Handle entries that were created in previous days but are now part of today's quota
+            Object.keys(allPreviousEntries).forEach(type => {
+              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
+                // This entry type is now part of today's quota, so previous entries should count
+                const previousCount = allPreviousEntries[type] || 0;
+                if (previousCount > 0) {
+                  // Reduce today's quota by the amount already completed in previous days
+                  cumulativeReqs[type] = Math.max(0, cumulativeReqs[type] - previousCount);
+                }
+              }
+            });
+            
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
             const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
@@ -1198,9 +1210,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             });
             
-            // Also count previous day entries that don't match today's quota as carryover
+            // Add previous day entries that are now part of today's quota
             Object.keys(allPreviousEntries).forEach(type => {
-              if (!cumulativeReqs[type] || cumulativeReqs[type] === 0) {
+              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
+                // This entry type from previous days is now part of today's quota
+                const previousCount = allPreviousEntries[type] || 0;
+                if (previousCount > 0) {
+                  // Add previous entries to today's count
+                  flexibleCounts[type] = (flexibleCounts[type] || 0) + previousCount;
+                }
+              } else {
                 // This entry type from previous days is not in today's quota - it's carryover
                 carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
               }
@@ -1235,7 +1254,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               
               if (!personRow) return null;
               
-              const dayReqs = {
+              // Start with the base quota for this day
+              const baseDayReqs = {
                 statute_section: Number(personRow.statute_section || 0),
                 rule_of_court: Number(personRow.rule_of_court || 0),
                 rights_advisory: Number(personRow.rights_advisory || 0),
@@ -1245,6 +1265,61 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 executive_issuance: Number(personRow.executive_issuance || 0),
                 city_ordinance_section: Number(personRow.city_ordinance_section || 0)
               };
+              
+              // Calculate actual quotas including carryover from previous days
+              const dayReqs = { ...baseDayReqs };
+              
+              // Add carryover from previous days (only for days before this day)
+              for (let prevDay = 1; prevDay < dayIndex; prevDay++) {
+                const prevDayRows = rowsForDay(planRows, prevDay);
+                const prevPersonRow = prevDayRows.find((r) => String(r.Person || '').trim().toUpperCase() === String(personPlanCode).trim().toUpperCase());
+                
+                if (prevPersonRow) {
+                  const prevDayReqs = {
+                    statute_section: Number(prevPersonRow.statute_section || 0),
+                    rule_of_court: Number(prevPersonRow.rule_of_court || 0),
+                    rights_advisory: Number(prevPersonRow.rights_advisory || 0),
+                    constitution_provision: Number(prevPersonRow.constitution_provision || 0),
+                    agency_circular: Number(prevPersonRow.agency_circular || 0),
+                    doj_issuance: Number(prevPersonRow.doj_issuance || 0),
+                    executive_issuance: Number(prevPersonRow.executive_issuance || 0),
+                    city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
+                  };
+                  
+                  // Add missing quotas from previous days
+                  Object.keys(prevDayReqs).forEach(type => {
+                    const prevQuota = prevDayReqs[type] || 0;
+                    if (prevQuota > 0) {
+                      // Count entries from this previous day only
+                      const prevDayEntries = {};
+                      (entries || []).forEach((e) => {
+                        const created = e.created_at ? new Date(e.created_at) : null;
+                        if (!created) return;
+                        
+                        const matchesUser = (
+                          (e.created_by && String(e.created_by) === String(member.id)) ||
+                          (e.team_member_id && String(e.team_member_id) === String(member.id)) ||
+                          (e.created_by_name && String(e.created_by_name).toLowerCase() === String(personName).toLowerCase()) ||
+                          (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
+                        );
+                        
+                        if (matchesUser) {
+                          const entryDayIndex = computeDayIndex(created, day1Date);
+                          if (entryDayIndex === prevDay) {
+                            prevDayEntries[e.type] = (prevDayEntries[e.type] || 0) + 1;
+                          }
+                        }
+                      });
+                      
+                      const prevCompleted = prevDayEntries[type] || 0;
+                      const missing = Math.max(0, prevQuota - prevCompleted);
+                      if (missing > 0) {
+                        dayReqs[type] = (dayReqs[type] || 0) + missing;
+                      }
+                    }
+                  });
+                }
+              }
               
               // Count entries for this specific day
               const dayEntries = {};
