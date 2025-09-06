@@ -1101,7 +1101,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // Debug logging for Delos Cientos
             if (personName === 'Delos Cientos') {
-              console.log('Delos Cientos currentDayReqs:', currentDayReqs);
+              console.log('Delos Cientos - After entry counting:', {
+                allPreviousEntries,
+                todayEntries,
+                currentDayReqs
+              });
             }
             
             // Always apply carryover logic since we're always viewing current day
@@ -1111,9 +1115,22 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const allPreviousEntries = {};
             const todayEntries = {};
             
+            // Debug logging for Delos Cientos entry matching
+            if (personName === 'Delos Cientos') {
+              console.log('Delos Cientos - Entry matching debug:', {
+                memberId: member.id,
+                personName,
+                totalEntries: entries?.length || 0
+              });
+            }
+            
             (entries || []).forEach((e) => {
               const created = e.created_at ? new Date(e.created_at) : null;
               if (!created) return;
+              
+              // SECURITY: Only count entries based on their CREATION date, not update date
+              // This prevents quota manipulation through entry updates
+              // The created_at field is immutable and represents when the entry was first created
               
               // Check multiple fields to match the user
               const matchesUser = (
@@ -1123,11 +1140,40 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 (e.created_by_username && String(e.created_by_username).toLowerCase() === String(personName).toLowerCase())
               );
               
+              // Debug logging for Delos Cientos
+              if (personName === 'Delos Cientos' && e.type === 'statute_section') {
+                console.log('Delos Cientos - Checking statute_section entry:', {
+                  entryId: e.entry_id,
+                  type: e.type,
+                  created_by: e.created_by,
+                  team_member_id: e.team_member_id,
+                  created_by_name: e.created_by_name,
+                  created_by_username: e.created_by_username,
+                  memberId: member.id,
+                  matchesUser,
+                  created: created.toISOString(),
+                  updated_at: e.updated_at, // Show for debugging but not used for progress
+                  note: 'Only created_at affects progress, updated_at is ignored for security'
+                });
+              }
+              
               if (matchesUser) {
-                // Determine which plan day this entry belongs to
+                // Determine which plan day this entry belongs to based on CREATION date only
                 const entryDayIndex = computeDayIndex(created, day1Date);
                 
-                // For current day: count previous entries for carryover logic
+                // Debug logging for Delos Cientos
+                if (personName === 'Delos Cientos' && e.type === 'statute_section') {
+                  console.log('Delos Cientos - Entry matched, day calculation:', {
+                    entryId: e.entry_id,
+                    entryDayIndex,
+                    currentDayIndex,
+                    created: created.toISOString(),
+                    note: 'Progress calculated from creation date only'
+                  });
+                }
+                
+                // Count entries based on their CREATION day only
+                // Updates to entries do NOT affect progress calculation
                 if (entryDayIndex < currentDayIndex) {
                   allPreviousEntries[e.type] = (allPreviousEntries[e.type] || 0) + 1;
                 } else if (entryDayIndex === currentDayIndex) {
@@ -1172,7 +1218,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                       city_ordinance_section: Number(prevPersonRow.city_ordinance_section || 0)
                     };
 
-                    // Count entries for this previous day
+                    // Count entries for this previous day (based on CREATION date only)
                     const prevDayEntries = {};
                     (entries || []).forEach((e) => {
                       const created = e.created_at ? new Date(e.created_at) : null;
@@ -1218,7 +1264,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   }
                 }
 
-                // Count entries for the most recent previous day
+                // Count entries for the most recent previous day (based on CREATION date only)
                 const prevDayEntries = {};
                 (entries || []).forEach((e) => {
                   const created = e.created_at ? new Date(e.created_at) : null;
