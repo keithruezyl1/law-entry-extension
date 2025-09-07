@@ -1289,6 +1289,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Count entries that match quota types
             console.log('DEBUG: todayEntries:', todayEntries);
             console.log('DEBUG: cumulativeReqs after carryover:', cumulativeReqs);
+            
+            // First, handle entry types that have entries today
             Object.keys(todayEntries).forEach(type => {
               const originalQuota = originalQuotas[type];
               
@@ -1307,6 +1309,23 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 // This entry type is not in today's quota - it's carryover (yellow pill)
                 carryoverEntries[type] = todayEntries[type];
                 console.log(`DEBUG: ${type} - not in today's quota, adding to carryover: ${todayEntries[type]}`);
+              }
+            });
+            
+            // Then, handle entry types that were in original quota but have no entries today (satisfied via carryover)
+            Object.keys(originalQuotas).forEach(type => {
+              const originalQuota = originalQuotas[type];
+              if (originalQuota && originalQuota > 0 && !todayEntries[type]) {
+                // This entry type was in today's original quota but has no entries today
+                if (cumulativeReqs[type] === 0) {
+                  // Adjusted quota is 0, meaning we completed the quota via carryover
+                  flexibleCounts[type] = originalQuota;
+                  console.log(`DEBUG: ${type} - no entries today, but quota satisfied via carryover, setting flexibleCounts to: ${originalQuota}`);
+                } else {
+                  // Show 0 progress against the original quota
+                  flexibleCounts[type] = 0;
+                  console.log(`DEBUG: ${type} - no entries today, showing 0 progress`);
+                }
               }
             });
             
