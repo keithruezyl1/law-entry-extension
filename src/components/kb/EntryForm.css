@@ -512,6 +512,11 @@
 	}
 }
 
+/* Relations section labels - add more space between labels and toggle buttons */
+.space-y-3 .kb-form-label {
+	margin-bottom: 0.75rem;
+}
+
 @media (max-width: 480px) {
 	.kb-action-bar {
 		padding: 8px 12px;

@@ -1239,6 +1239,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               }
             }
             
+            // Store original quotas before carryover adjustments for display purposes
+            const originalQuotas = { ...cumulativeReqs };
+            
             // Subtract excess entries from previous days from current day's quota
             Object.keys(allPreviousEntries).forEach(type => {
               if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
@@ -1286,11 +1289,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             Object.keys(todayEntries).forEach(type => {
               if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
                 // This entry type is in today's quota
-                flexibleCounts[type] = Math.min(todayEntries[type], cumulativeReqs[type]);
+                // Show progress against the original quota, not the adjusted one
+                const originalQuota = originalQuotas[type];
+                const currentCount = Math.min(todayEntries[type], originalQuota);
+                flexibleCounts[type] = currentCount;
                 
-                // If there are excess entries, they become carryover
-                if (todayEntries[type] > cumulativeReqs[type]) {
-                  carryoverEntries[type] = todayEntries[type] - cumulativeReqs[type];
+                // If we have entries but the adjusted quota is 0, it means we completed the quota via carryover
+                if (cumulativeReqs[type] === 0 && todayEntries[type] > 0) {
+                  // Show as completed (green pill) since the quota was satisfied via carryover
+                  flexibleCounts[type] = originalQuota;
                 }
               } else {
                 // This entry type is not in today's quota - it's carryover (yellow pill)
@@ -1332,7 +1339,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 
                 <div className="member-breakdown">
                   {/* Show quota types */}
-                  {Object.entries(cumulativeReqs).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => {
+                  {Object.entries(originalQuotas).filter(([, quota]) => Number(quota) > 0).map(([type, quota]) => {
                     const currentCount = flexibleCounts[type] || 0;
                     const isCompleted = currentCount >= quota;
                     

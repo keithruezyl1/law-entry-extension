@@ -338,6 +338,13 @@ body {
   align-items: center;
   justify-content: center;
   flex: 1;
+  box-sizing: border-box;
+}
+
+/* Ensure Import Entries label has exact same height as buttons */
+.nav-right label {
+  height: 44px !important;
+  line-height: 1;
 }
 
 .nav-btn {
@@ -639,7 +646,7 @@ body {
   background: #28a745;
   color: white;
   border: none;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1rem;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
