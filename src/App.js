@@ -1287,13 +1287,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // Count entries that match quota types
             Object.keys(todayEntries).forEach(type => {
-              if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
-                // This entry type is in today's quota
-                const originalQuota = originalQuotas[type];
-                
-                // If the adjusted quota is 0, it means we completed the quota via carryover
+              const originalQuota = originalQuotas[type];
+              
+              if (originalQuota && originalQuota > 0) {
+                // This entry type was in today's original quota
                 if (cumulativeReqs[type] === 0) {
-                  // Show as completed (green pill) since the quota was satisfied via carryover
+                  // Adjusted quota is 0, meaning we completed the quota via carryover
                   flexibleCounts[type] = originalQuota;
                 } else {
                   // Show progress against the original quota
