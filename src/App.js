@@ -1289,15 +1289,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             Object.keys(todayEntries).forEach(type => {
               if (cumulativeReqs[type] && cumulativeReqs[type] > 0) {
                 // This entry type is in today's quota
-                // Show progress against the original quota, not the adjusted one
                 const originalQuota = originalQuotas[type];
-                const currentCount = Math.min(todayEntries[type], originalQuota);
-                flexibleCounts[type] = currentCount;
                 
-                // If we have entries but the adjusted quota is 0, it means we completed the quota via carryover
-                if (cumulativeReqs[type] === 0 && todayEntries[type] > 0) {
+                // If the adjusted quota is 0, it means we completed the quota via carryover
+                if (cumulativeReqs[type] === 0) {
                   // Show as completed (green pill) since the quota was satisfied via carryover
                   flexibleCounts[type] = originalQuota;
+                } else {
+                  // Show progress against the original quota
+                  flexibleCounts[type] = Math.min(todayEntries[type], originalQuota);
                 }
               } else {
                 // This entry type is not in today's quota - it's carryover (yellow pill)
@@ -1308,8 +1308,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             // Add previous day entries that are NOT part of today's quota to carryover display
             Object.keys(allPreviousEntries).forEach(type => {
               if (!cumulativeReqs[type] || cumulativeReqs[type] === 0) {
-                // This entry type from previous days is not in today's quota - it's carryover (yellow pill)
-                carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
+                // Only add to carryover if this entry type was never part of today's quota
+                // If it was part of today's quota but satisfied via carryover, don't show as carryover
+                if (!originalQuotas[type] || originalQuotas[type] === 0) {
+                  // This entry type from previous days is not in today's quota - it's carryover (yellow pill)
+                  carryoverEntries[type] = (carryoverEntries[type] || 0) + allPreviousEntries[type];
+                }
               }
             });
             
