@@ -582,5 +582,63 @@
 	text-indent: 12px;
 }
 
+/* ===================== DARK MODE (Form) ===================== */
+.dark-mode .kb-form {
+	background-color: #0b1220;
+	color: #f9fafb; /* Default text -> white */
+}
+
+/* White texts -> black when appropriate (on light fields) */
+.dark-mode .kb-form .kb-input,
+.dark-mode .kb-form input[type="text"],
+.dark-mode .kb-form input[type="url"],
+.dark-mode .kb-form input[type="date"],
+.dark-mode .kb-form select,
+.dark-mode .kb-form textarea {
+	background: #e5e7eb; /* light grey field */
+	border-color: #cbd5e1; /* lighter grey outline */
+	color: #111827; /* black text in fields */
+}
+.dark-mode .kb-form .kb-input::placeholder,
+.dark-mode .kb-form input::placeholder,
+.dark-mode .kb-form textarea::placeholder {
+	color: #4b5563; /* dark grey placeholder */
+}
+
+/* Keep greys as greys */
+.dark-mode .kb-form .kb-help,
+.dark-mode .kb-form-subtitle,
+.dark-mode .kb-form-autosave { color: #9ca3af; }
+
+/* Cards and sections */
+.dark-mode .kb-step-card,
+.dark-mode .kb-form .form-section,
+.dark-mode .kb-form .section-card {
+	background: #1f2937;
+	border-color: #374151;
+	box-shadow: none;
+}
+
+/* Action bar */
+.dark-mode .kb-action-bar {
+	background: #1f2937;
+	box-shadow: inset 0 1px 0 #1f2937;
+}
+
+/* Buttons: keep orange; neutral buttons dark */
+.dark-mode .kb-form .kb-btn-outline {
+	background: #111827;
+	color: #e5e7eb;
+	border-color: #374151;
+}
+.dark-mode .kb-form .kb-btn-outline:hover {
+	background: #0b1220;
+	border-color: #4b5563;
+}
+
+/* Dropdown alignment */
+.kb-form-select { line-height: 48px; }
+.kb-form-select option { padding: 8px 12px; line-height: 1.4; }
+
 
 
