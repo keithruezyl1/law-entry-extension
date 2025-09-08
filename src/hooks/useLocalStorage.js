@@ -342,6 +342,47 @@ export const useLocalStorage = () => {
     if (query && query.trim()) {
       const searchTermRaw = query.toLowerCase().trim();
       const searchTerm = searchTermRaw.replace(/[-_]/g, ' ');
+
+      // Basic fuzzy helpers (token-level Damerau-Levenshtein with small threshold)
+      const tokenize = (s) => s.split(/\s+/).filter(Boolean);
+      const dlDistance = (a, b) => {
+        const al = a.length, bl = b.length;
+        if (!al) return bl; if (!bl) return al;
+        const dp = Array.from({ length: al + 1 }, () => new Array(bl + 1).fill(0));
+        for (let i = 0; i <= al; i++) dp[i][0] = i;
+        for (let j = 0; j <= bl; j++) dp[0][j] = j;
+        for (let i = 1; i <= al; i++) {
+          for (let j = 1; j <= bl; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            dp[i][j] = Math.min(
+              dp[i - 1][j] + 1,
+              dp[i][j - 1] + 1,
+              dp[i - 1][j - 1] + cost
+            );
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+              dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + cost);
+            }
+          }
+        }
+        return dp[al][bl];
+      };
+      const fuzzyMatch = (q, h) => {
+        if (!q) return true; if (!h) return false;
+        if (h.includes(q)) return true;
+        const qt = tokenize(q);
+        const ht = tokenize(h);
+        // If any token pair has edit distance <=1 (short) or <=2 (long), accept
+        for (const qs of qt) {
+          for (const hs of ht) {
+            const d = dlDistance(qs, hs);
+            if ((qs.length <= 4 && d <= 1) || (qs.length > 4 && d <= 2)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
       filteredEntries = filteredEntries.filter(entry => {
         const haystacks = [
           entry.title,
@@ -355,7 +396,7 @@ export const useLocalStorage = () => {
           entry.effective_date,
           Array.isArray(entry.tags) ? entry.tags.join(' ') : ''
         ].map(v => String(v || '').toLowerCase().replace(/[-_]/g, ' '));
-        return haystacks.some(h => h.includes(searchTerm));
+        return haystacks.some(h => fuzzyMatch(searchTerm, h));
       });
     }
 

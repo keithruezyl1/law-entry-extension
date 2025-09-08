@@ -3,7 +3,7 @@ import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-fo
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Trash2, Plus, Search, ArrowLeft } from 'lucide-react';
-import { fetchEntryById } from '../../../services/kbApi';
+import { fetchEntryById, fetchAllEntriesFromDb } from '../../../services/kbApi';
 
 type EntryLite = { id?: string; entry_id: string; title: string; type?: string; canonical_citation?: string };
 
@@ -20,6 +20,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
+  const [allEntries, setAllEntries] = useState<EntryLite[] | null>(null);
   const internalCount = useMemo(() => (items || []).filter((it: any) => it && it.type !== 'external').length, [items]);
   const externalCount = useMemo(() => (items || []).filter((it: any) => it && it.type === 'external').length, [items]);
   
@@ -38,7 +39,28 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     }
   }, [internalCount]);
 
-  // Enhanced search function that handles pluralization and word variations
+  // Load full entries from DB once (to enable searching by tags/law_family/citation)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await fetchAllEntriesFromDb();
+        if (!cancelled && Array.isArray(rows) && rows.length) {
+          const mapped: EntryLite[] = rows.map((r: any) => ({
+            id: r.id,
+            entry_id: r.entry_id,
+            title: r.title || '',
+            type: r.type,
+            canonical_citation: r.canonical_citation || ''
+          }));
+          setAllEntries(mapped);
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Enhanced search function that handles pluralization, word variations, and minor typos
   const normalizeSearchText = (text: string): string => {
     return String(text || '')
       .toLowerCase()
@@ -88,9 +110,33 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     return Array.from(variations);
   };
 
+  // Levenshtein distance for small typo tolerance
+  const editDistance = (a: string, b: string): number => {
+    const m = a.length, n = b.length;
+    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return dp[m][n];
+  };
+
   const calculateMatchScore = (entry: EntryLite, searchTerms: string[]): number => {
+    // In-memory entries from DB may include additional fields when used directly; attempt to include likely properties
+    const anyEntry: any = entry as any;
+    const tagsJoined = Array.isArray(anyEntry.tags) ? anyEntry.tags.join(' ') : '';
+    const lawFamily = anyEntry.law_family || '';
+    const citation = anyEntry.canonical_citation || '';
     const searchableText = normalizeSearchText(
-      `${entry.entry_id} ${entry.title} ${entry.canonical_citation || ''}`
+      `${entry.entry_id} ${entry.title} ${citation} ${lawFamily} ${tagsJoined}`
     );
     
     let score = 0;
@@ -105,6 +151,20 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           score += 1;
           termMatched = true;
           break;
+        }
+        // If not included, allow small typos against individual words in searchable text
+        if (!termMatched) {
+          const words = searchableText.split(' ');
+          for (const w of words) {
+            const dist = editDistance(variation, w);
+            const allowed = variation.length <= 5 ? 1 : 2;
+            if (dist <= allowed) {
+              score += 0.75; // fuzzy bonus
+              termMatched = true;
+              break;
+            }
+          }
+          if (termMatched) break;
         }
       }
       
@@ -142,7 +202,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     const searchTerms = getSearchTerms(q);
     if (searchTerms.length === 0) return [];
     
-    const scoredEntries = existingEntries
+    const pool = (allEntries && allEntries.length ? allEntries : existingEntries);
+    const scoredEntries = pool
       .map(entry => ({
         entry,
         score: calculateMatchScore(entry, searchTerms)
@@ -152,7 +213,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       .slice(0, 8);
     
     return scoredEntries.map(item => item.entry);
-  }, [existingEntries, query]);
+  }, [existingEntries, allEntries, query]);
 
   return (
     <div className="space-y-4">

@@ -13,10 +13,7 @@ interface StatuteSectionFormProps {
 export function StatuteSectionForm({ control }: StatuteSectionFormProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-      <div className="md:col-span-2">
-        <div className="kb-form-section-title mb-1">Statute Details</div>
-        <p className="kb-form-helper mb-4">Capture the core structure of the section.</p>
-      </div>
+      {/* Removed header and helper per requirements for statute_section */}
       <div className="md:col-span-2">
         <StringArray
           control={control}

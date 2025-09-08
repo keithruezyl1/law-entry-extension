@@ -19,7 +19,7 @@ export function RightsAdvisoryForm({ control }: RightsAdvisoryFormProps) {
           name="rights_scope"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="mb-3">Rights Scope</FormLabel>
+              <FormLabel className="mb-3 kb-form-label">Rights Scope</FormLabel>
               <FormControl>
                 <>
                   <Select
@@ -55,7 +55,7 @@ export function RightsAdvisoryForm({ control }: RightsAdvisoryFormProps) {
                       { value: 'health/education', label: 'Health/Education' },
                       { value: 'Other', label: 'Other (type your own)' }
                     ]}
-                    className="h-11 px-4 text-base rounded-xl"
+                    className="h-11 px-4 text-base rounded-xl leading-tight"
                   />
                   {/* If Other/custom, show text input */}
                   {(
@@ -69,6 +69,7 @@ export function RightsAdvisoryForm({ control }: RightsAdvisoryFormProps) {
                         placeholder="Type custom rights scope"
                         value={field.value}
                         onChange={(e) => field.onChange(e.target.value)}
+                        className="h-11 px-4 text-base rounded-xl"
                       />
                     </div>
                   )}

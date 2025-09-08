@@ -12,16 +12,13 @@ interface RuleOfCourtFormProps {
 export function RuleOfCourtForm({ control }: RuleOfCourtFormProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-      <div className="md:col-span-2">
-        <div className="kb-form-section-title mb-1">Rule Details</div>
-        <p className="kb-form-helper mb-4">Provide the specific rule and section numbers.</p>
-      </div>
+      {/* Removed header and helper per requirements for rule_of_court */}
       <FormField
         control={control}
         name="rule_no"
         render={({ field }) => (
           <FormItem className="kb-field-spaced">
-            <FormLabel className="kb-form-label kb-label-spaced-sm">Rule Number <span className="text-red-600">*</span></FormLabel>
+            <FormLabel className="kb-form-label kb-label-spaced-sm">Rule Number</FormLabel>
             <FormControl>
               <Input
                 {...field}
@@ -39,7 +36,7 @@ export function RuleOfCourtForm({ control }: RuleOfCourtFormProps) {
         name="section_no"
         render={({ field }) => (
           <FormItem className="kb-field-spaced">
-            <FormLabel className="kb-form-label kb-label-spaced-sm">Section Number <span className="text-red-600">*</span></FormLabel>
+            <FormLabel className="kb-form-label kb-label-spaced-sm">Section Number</FormLabel>
             <FormControl>
               <Input
                 {...field}

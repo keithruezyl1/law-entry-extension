@@ -1129,6 +1129,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                       <label className="kb-form-label">
                                         Jurisdiction <span className="kb-required">*</span>
                                       </label>
+                                      <p id="jurisdiction-help" className="kb-form-helper kb-helper-spaced">Use title case; letters/spaces only</p>
                                       <select
                                         className="kb-form-select"
                                         value={isOtherJurisdiction ? 'Other' : 'PH'}
@@ -1151,7 +1152,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                           aria-describedby="jurisdiction-help"
                                         />
                                       )}
-                                      <p id="jurisdiction-help" className="kb-form-helper">Use title case; letters/spaces only</p>
                                     </div>
                                     <div className="kb-form-field">
                                       <label className="kb-form-label">
@@ -1341,12 +1341,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Textarea rows={4} placeholder="1–3 sentence neutral synopsis" {...register('summary')} />
                             </div>
                             <div className="kb-form-field">
-                              <label className="kb-form-label">Legal Text</label>
+                              <label className="kb-form-label mt-4">Legal Text</label>
                               <p className="kb-form-helper kb-helper-below">Substance-only, normalized.</p>
                               <Textarea rows={12} placeholder="Clean, normalized legal text" {...register('text')} />
                             </div>
                             <div className="kb-form-field">
-                              <label className="kb-form-label">Tags</label>
+                              <label className="kb-form-label mt-4">Tags</label>
                               <TagArray control={control} register={register} watch={watch} />
                             </div>
                           </div>
@@ -1512,7 +1512,7 @@ function UrlArray({ control, register, watch, setValue }: any) {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-3.5 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-white transition-colors mt-6"
+          className="w-full px-4 py-4 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-white transition-colors mt-6"
         >
           + Add Item
         </button>

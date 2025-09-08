@@ -22,7 +22,7 @@ export function StringArray({ control, name, label, help, placeholder = "Enter i
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-sm font-medium mb-0 block">{label}</label>
+        <label className="text-sm font-medium mb-2 block">{label}</label>
         {help && (
           <p className="text-xs text-muted-foreground mt-1 mb-2">{help}</p>
         )}
