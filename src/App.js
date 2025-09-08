@@ -177,6 +177,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [now, setNow] = useState(new Date());
   const [showCreationToast, setShowCreationToast] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('app_theme');
+      return saved === 'dark';
+    } catch (_) { return false; }
+  });
 
   // Show creation toast when session flag is set AND we're on dashboard
   useEffect(() => {
@@ -242,6 +248,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Apply theme class to root element
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark-mode');
+    } else {
+      root.classList.remove('dark-mode');
+    }
+    try { localStorage.setItem('app_theme', isDarkMode ? 'dark' : 'light'); } catch (_) {}
+  }, [isDarkMode]);
 
   // React to verification refresh or progress changes (trigger re-render)
   useEffect(() => {
@@ -974,9 +991,29 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <h1>Civilify Law Entry</h1>
           <span className="header-entries-count">{stats.totalEntries} entries</span>
         </div>
-        <button onClick={handleLogout} className="logout-btn">
-          Logout ({user?.name})
-        </button>
+        <div className="header-actions">
+          <button
+            aria-label="Toggle theme"
+            className={`theme-toggle ${isDarkMode ? 'theme-toggle--dark' : 'theme-toggle--light'}`}
+            onClick={() => setIsDarkMode(v => !v)}
+            title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDarkMode ? (
+              // Half moon icon
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
+              </svg>
+            ) : (
+              // Sun icon
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zm7.03-3.34l1.79 1.79 1.79-1.79-1.79-1.79-1.79 1.79zM20 11v2h3v-2h-3zm-2.76-6.16l1.8-1.79-1.79-1.79-1.79 1.79 1.78 1.79zM12 4a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12zM4.34 17.66l-1.79 1.79 1.79 1.79 1.79-1.79-1.79-1.79z"/>
+              </svg>
+            )}
+          </button>
+          <button onClick={handleLogout} className="logout-btn">
+            Logout ({user?.name})
+          </button>
+        </div>
       </header>
       )}
 
