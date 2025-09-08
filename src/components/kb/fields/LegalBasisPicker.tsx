@@ -392,10 +392,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     type="button"
                     variant="destructive"
                     onClick={() => remove(i)}
-                    className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1 mb-2' : 'w-11 mb-2'}`}
+                    className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1 mb-2' : 'flex-1 mb-2'}`}
                   >
                     <Trash2 className="h-4 w-4" />
-                    {isLastInternal && (showAddInternalButton || showInternalSearch) && <span className="ml-2">Delete</span>}
+                    <span className="ml-2">Delete</span>
                   </Button>
                 </div>
               </div>
@@ -435,7 +435,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 <div className="rounded-xl max-h-56 overflow-auto bg-white shadow-sm border">
                   {options.length === 0 && (
                     <div className="p-4 mt-2 text-sm text-muted-foreground text-center">
-                      No matches found
+                      No exact matches for "{query}"
                     </div>
                   )}
                   {options.map((o) => (
@@ -465,6 +465,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       </div>
                     </button>
                   ))}
+                  {options.length > 0 && (
+                    <div className="px-4 py-2 text-xs text-muted-foreground border-t bg-gray-50">
+                      Showing {options.length} entries that might be a match
+                    </div>
+                  )}
                 </div>
               )}
               

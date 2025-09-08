@@ -10,6 +10,11 @@ interface RuleOfCourtFormProps {
 }
 
 export function RuleOfCourtForm({ control }: RuleOfCourtFormProps) {
+  const sanitizeNumberWithPrefix = (raw: string, prefix: string) => {
+    const digits = String(raw || '').replace(/\D+/g, '');
+    return digits ? `${prefix} ${digits}` : `${prefix} `;
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
       {/* Removed header and helper per requirements for rule_of_court */}
@@ -24,6 +29,29 @@ export function RuleOfCourtForm({ control }: RuleOfCourtFormProps) {
                 {...field}
                 placeholder="e.g., Rule 113"
                 className="kb-form-input"
+                onFocus={(e) => {
+                  const v = String(field.value || '');
+                  if (!v || !/^\s*rule\b/i.test(v)) {
+                    const next = 'Rule ';
+                    field.onChange(next);
+                    // Move cursor to end
+                    requestAnimationFrame(() => {
+                      try { e.currentTarget.setSelectionRange(next.length, next.length); } catch {}
+                    });
+                  }
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value || '';
+                  // Always enforce single prefix + digits
+                  const next = sanitizeNumberWithPrefix(raw.replace(/^\s*rule\b\s*/i, ''), 'Rule');
+                  field.onChange(next);
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const pasted = (e.clipboardData || (window as any).clipboardData).getData('text');
+                  const next = sanitizeNumberWithPrefix(pasted.replace(/^\s*rule\b\s*/i, ''), 'Rule');
+                  field.onChange(next);
+                }}
               />
             </FormControl>
             <FormMessage />
@@ -40,8 +68,35 @@ export function RuleOfCourtForm({ control }: RuleOfCourtFormProps) {
             <FormControl>
               <Input
                 {...field}
-                placeholder="e.g., Sec. 5"
+                placeholder="e.g., Section 5"
                 className="kb-form-input"
+                onFocus={(e) => {
+                  const v = String(field.value || '');
+                  if (!v || !/^\s*section\b/i.test(v)) {
+                    const next = 'Section ';
+                    field.onChange(next);
+                    requestAnimationFrame(() => {
+                      try { e.currentTarget.setSelectionRange(next.length, next.length); } catch {}
+                    });
+                  }
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value || '';
+                  const cleaned = raw
+                    .replace(/^\s*sec(t(ion)?)?\.?\b\s*/i, '') // tolerate Sec., Sect., Section prefixes
+                    .replace(/^\s*section\b\s*/i, '');
+                  const next = sanitizeNumberWithPrefix(cleaned, 'Section');
+                  field.onChange(next);
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const pasted = (e.clipboardData || (window as any).clipboardData).getData('text');
+                  const cleaned = pasted
+                    .replace(/^\s*sec(t(ion)?)?\.?\b\s*/i, '')
+                    .replace(/^\s*section\b\s*/i, '');
+                  const next = sanitizeNumberWithPrefix(cleaned, 'Section');
+                  field.onChange(next);
+                }}
               />
             </FormControl>
             <FormMessage />

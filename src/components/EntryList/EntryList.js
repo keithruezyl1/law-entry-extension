@@ -176,6 +176,25 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
     return teamMemberNames[teamMemberId] || `Team Member ${teamMemberId}`;
   };
 
+  // Determine if there are any exact matches for the current query
+  const normalize = (text) => String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const searchTerm = normalize(searchQuery);
+  const hasExactMatch = !!(searchTerm && entries.some(e => {
+    const haystacks = [
+      e.title,
+      e.entry_id,
+      e.canonical_citation,
+      e.section_id,
+      e.law_family,
+      Array.isArray(e.tags) ? e.tags.join(' ') : ''
+    ];
+    return haystacks.some(h => normalize(h) === searchTerm);
+  }));
+
   return (
     <div className="entry-list-container">
       {/* Search and Filters */}
@@ -301,11 +320,21 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
 
       {/* Results Summary */}
       <div className="results-summary">
-        <p>
-          Showing {filteredEntries.length} of {entries.length} entries
-          {searchQuery && ` matching "${searchQuery}"`}
-          {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
-        </p>
+        {searchQuery && !hasExactMatch ? (
+          <>
+            <p style={{ marginBottom: '4px' }}>No exact matches for "{searchQuery}"</p>
+            <p>
+              Showing {filteredEntries.length} of {entries.length} entries that might be a match
+              {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+            </p>
+          </>
+        ) : (
+          <p>
+            Showing {filteredEntries.length} of {entries.length} entries
+            {searchQuery && ` matching "${searchQuery}"`}
+            {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+          </p>
+        )}
       </div>
 
       {/* Entries List */}
