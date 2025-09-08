@@ -42,6 +42,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
   const { control, register, formState: { errors, isValid }, trigger } = form;
   const type = useWatch({ name: 'type', control });
   const legalBases = (useWatch({ name: 'legal_bases', control }) as any[]) || [];
+  const [activeSide, setActiveSide] = React.useState<'legal_bases' | 'related_sections' | null>('legal_bases');
 
   const isRelationsRequired = (entryType: string | undefined) => entryType === 'rights_advisory';
   const relationsRequired = isRelationsRequired(type as any);
@@ -146,23 +147,25 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-              <div className="space-y-3">
+              <div className={`space-y-3 ${activeSide === 'legal_bases' ? 'relations-highlight' : ''}`}>
                 <label className="kb-form-label">Legal Bases</label>
                 <LegalBasisPicker
                   name="legal_bases"
                   control={control}
                   register={register}
                   existingEntries={existingEntries}
+                  onActivate={() => setActiveSide('legal_bases')}
                 />
               </div>
 
-              <div className="space-y-3">
+              <div className={`space-y-3 ${activeSide === 'related_sections' ? 'relations-highlight' : ''}`}>
                 <label className="kb-form-label">Related Sections</label>
                 <LegalBasisPicker
                   name="related_sections"
                   control={control}
                   register={register}
                   existingEntries={existingEntries}
+                  onActivate={() => setActiveSide('related_sections')}
                 />
               </div>
             </div>

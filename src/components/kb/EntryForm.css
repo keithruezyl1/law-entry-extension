@@ -323,6 +323,16 @@
 	box-shadow: 0 8px 25px rgba(0,0,0,0.08);
 }
 
+/* Relations highlight block */
+.relations-highlight {
+	background: rgba(249, 115, 22, 0.08);
+	border-radius: 12px;
+	padding: 12px;
+}
+.dark-mode .relations-highlight {
+	background: rgba(249, 115, 22, 0.12);
+}
+
 .kb-form .stepper button {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }

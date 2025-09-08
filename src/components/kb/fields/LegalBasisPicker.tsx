@@ -14,7 +14,7 @@ interface LegalBasisPickerProps {
   existingEntries?: EntryLite[];
 }
 
-export function LegalBasisPicker({ name, control, register, existingEntries = [] }: LegalBasisPickerProps) {
+export function LegalBasisPicker({ name, control, register, existingEntries = [], onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -309,7 +309,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         <Button
           type="button"
           variant={tab === 'internal' ? 'default' : 'outline'}
-          onClick={() => setTab('internal')}
+          onClick={() => { setTab('internal'); onActivate?.(); }}
           className="h-11 px-7 rounded-xl min-w-[120px]"
         >
           Internal
@@ -317,7 +317,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         <Button
           type="button"
           variant={tab === 'external' ? 'default' : 'outline'}
-          onClick={() => setTab('external')}
+          onClick={() => { setTab('external'); onActivate?.(); }}
           className="h-11 px-7 rounded-xl min-w-[120px]"
         >
           External
