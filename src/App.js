@@ -260,6 +260,24 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     try { localStorage.setItem('app_theme', isDarkMode ? 'dark' : 'light'); } catch (_) {}
   }, [isDarkMode]);
 
+  // Enforce Tagarao (P5) theme behavior:
+  // - Dashboard always dark mode
+  // - Create/Edit form always light mode
+  useEffect(() => {
+    try {
+      if (!user) return;
+      if (!isTagarao(user)) return;
+      const path = (location && location.pathname) || '';
+      const onDashboard = /(^\/dashboard$|^\/$)/.test(path) || path.includes('/dashboard');
+      const onForm = path.includes('/form');
+      if (onDashboard && !isDarkMode) {
+        setIsDarkMode(true);
+      } else if (onForm && isDarkMode) {
+        setIsDarkMode(false);
+      }
+    } catch (_) {}
+  }, [location.pathname, user, isDarkMode]);
+
   // React to verification refresh or progress changes (trigger re-render)
   useEffect(() => {
     const forceRerender = () => setHeaderOpacity((v) => v);
