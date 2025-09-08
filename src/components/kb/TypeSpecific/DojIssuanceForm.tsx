@@ -18,7 +18,7 @@ export function DojIssuanceForm({ control }: DojIssuanceFormProps) {
           name="issuance_no"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-black">Issuance Number</FormLabel>
+              <FormLabel className="mb-2">Issuance Number</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -37,6 +37,7 @@ export function DojIssuanceForm({ control }: DojIssuanceFormProps) {
           control={control}
           name="applicability"
           label="Applicability"
+          className="mb-2"
           placeholder="Enter applicability"
         />
       </div>
@@ -46,6 +47,7 @@ export function DojIssuanceForm({ control }: DojIssuanceFormProps) {
           control={control}
           name="supersedes"
           label="Supersedes"
+          className="mb-2"
           placeholder="Enter superseded issuance"
         />
       </div>

@@ -17,7 +17,7 @@ export function AgencyCircularForm({ control }: AgencyCircularFormProps) {
         name="circular_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Circular Number</FormLabel>
+            <FormLabel className="mb-2">Circular Number</FormLabel>
             <FormControl>
               <Input
                 {...field}
@@ -36,7 +36,7 @@ export function AgencyCircularForm({ control }: AgencyCircularFormProps) {
         name="section_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Section Number</FormLabel>
+            <FormLabel className="mb-2">Section Number</FormLabel>
             <FormControl>
               <Input
                 {...field}

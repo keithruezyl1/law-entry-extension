@@ -134,7 +134,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
 
           {/* Relations Block */}
           <div className="space-y-4">
-            <div>
+            <div className="mt-4">
               <div className="flex items-center justify-between">
                 <h3 className="kb-form-section-title kb-title-compact">Relations</h3>
                 {relationsRequired ? (

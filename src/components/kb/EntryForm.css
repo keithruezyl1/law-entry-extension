@@ -647,12 +647,12 @@
 /* Buttons: keep orange; neutral buttons dark */
 .dark-mode .kb-form .kb-btn-outline {
 	background: #111827;
-	color: #e5e7eb;
-	border-color: #374151;
+	color: #f97316;
+	border-color: #f97316;
 }
 .dark-mode .kb-form .kb-btn-outline:hover {
 	background: #0b1220;
-	border-color: #4b5563;
+	border-color: #fb923c;
 }
 
 /* Generic dark mode buttons inside form (e.g., Add Item) */

@@ -19,7 +19,7 @@ export function RightsAdvisoryForm({ control }: RightsAdvisoryFormProps) {
           name="rights_scope"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-red-500 mb-3">Rights Scope</FormLabel>
+              <FormLabel className="mb-3">Rights Scope</FormLabel>
               <FormControl>
                 <>
                   <Select
@@ -74,7 +74,7 @@ export function RightsAdvisoryForm({ control }: RightsAdvisoryFormProps) {
                   )}
                 </>
               </FormControl>
-              <FormMessage />
+              {/* Suppress min-length warning for custom Other input */}
             </FormItem>
           )}
         />

@@ -18,7 +18,7 @@ export function ExecutiveIssuanceForm({ control }: ExecutiveIssuanceFormProps) {
           name="instrument_no"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-black">Instrument Number</FormLabel>
+              <FormLabel className="mb-2">Instrument Number</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -37,6 +37,7 @@ export function ExecutiveIssuanceForm({ control }: ExecutiveIssuanceFormProps) {
           control={control}
           name="applicability"
           label="Applicability"
+          className="mb-2"
           placeholder="Enter applicability"
         />
       </div>
@@ -46,6 +47,7 @@ export function ExecutiveIssuanceForm({ control }: ExecutiveIssuanceFormProps) {
           control={control}
           name="supersedes"
           label="Supersedes"
+          className="mb-2"
           placeholder="Enter superseded issuance"
         />
       </div>
