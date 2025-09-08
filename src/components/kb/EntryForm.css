@@ -328,11 +328,11 @@
 .relations-cols { position: relative; z-index: 1; }
 .relations-highlight-layer {
 	position: absolute;
-	top: -8px;
-	left: 0;
-	width: 100%;
-	height: calc(100% + 22px);
-	border-radius: 18px;
+	top: -12px;
+	left: -8px;
+	width: calc(100% + 16px);
+	height: calc(100% + 28px);
+	border-radius: 24px;
 	background: rgba(255, 107, 53, 0.14); /* light orange */
 	transition: transform 280ms ease;
 	z-index: 0;
@@ -342,9 +342,9 @@
 .relations-highlight-layer.to-right { transform: translateX(0); }
 @media (min-width: 768px) {
 	.relations-wrapper { overflow: hidden; }
-	.relations-highlight-layer { width: calc(50% - 12px); }
+	.relations-highlight-layer { width: calc(50% - 4px); }
 	.relations-highlight-layer.to-left  { transform: translateX(0); }
-	.relations-highlight-layer.to-right { transform: translateX(calc(100% + 24px)); }
+	.relations-highlight-layer.to-right { transform: translateX(calc(100% + 8px)); }
 }
 
 .kb-form .stepper button {
@@ -680,8 +680,16 @@
 }
 
 /* Make outline buttons appear white in light mode (non-toggled) */
-.kb-form .kb-btn-outline { background: #ffffff; }
-.dark-mode .kb-form .kb-btn-outline { background: #111827; }
+.kb-form .kb-btn-outline { 
+	background: #ffffff !important; 
+	border-color: #f97316 !important;
+	color: #f97316 !important;
+}
+.dark-mode .kb-form .kb-btn-outline { 
+	background: #111827 !important; 
+	border-color: #f97316 !important;
+	color: #f97316 !important;
+}
 
 /* Generic dark mode buttons inside form (e.g., Add Item) */
 .dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout) {

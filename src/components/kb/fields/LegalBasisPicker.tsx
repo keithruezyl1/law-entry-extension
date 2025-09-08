@@ -310,7 +310,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           type="button"
           variant={tab === 'internal' ? 'default' : 'outline'}
           onClick={() => { setTab('internal'); onActivate?.(); }}
-          className={`h-11 px-7 rounded-xl min-w-[120px] ${tab !== 'internal' ? 'bg-white text-orange-600 border-orange-500' : ''}`}
+          className="h-11 px-7 rounded-xl min-w-[120px] kb-btn-outline"
         >
           Internal
         </Button>
@@ -318,7 +318,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           type="button"
           variant={tab === 'external' ? 'default' : 'outline'}
           onClick={() => { setTab('external'); onActivate?.(); }}
-          className={`h-11 px-7 rounded-xl min-w-[120px] ${tab !== 'external' ? 'bg-white text-orange-600 border-orange-500' : ''}`}
+          className="h-11 px-7 rounded-xl min-w-[120px] kb-btn-outline"
         >
           External
         </Button>
@@ -382,7 +382,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                         setShowAddInternalButton(false);
                         setShowInternalSearch(true);
                       }}
-                      className="h-11 rounded-xl flex-1 mb-2"
+                      className="h-11 rounded-xl flex-1 mb-2 kb-btn-outline"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add internal citation
@@ -533,7 +533,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       onClick={() => { 
                         append({ type: 'external', citation: '', url: '', title: '', note: '' });
                       }}
-                      className="h-11 rounded-xl flex-1 mb-2"
+                      className="h-11 rounded-xl flex-1 mb-2 kb-btn-outline"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add external citation
@@ -561,7 +561,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               onClick={() => { 
                 append({ type: 'external', citation: '', url: '', title: '', note: '' });
               }}
-              className="w-full h-11 rounded-xl mt-4"
+              className="w-full h-11 rounded-xl mt-4 kb-btn-outline"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add external citation
