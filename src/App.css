@@ -502,7 +502,7 @@ body {
 @media (min-width: 769px) {
   .App-nav .nav-left .btn-primary {
     position: relative;
-    top: -2px; /* slight raise for alignment */
+    top: -4px; /* slightly higher for better alignment */
   }
 }
 

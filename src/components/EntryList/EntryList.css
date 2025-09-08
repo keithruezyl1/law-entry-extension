@@ -941,6 +941,24 @@
     cursor: pointer !important;
     transition: all 0.2s ease !important;
   }
+
+  /* Dark mode: mobile edit/delete buttons match desktop */
+  .dark-mode .entry-actions button {
+    background: #111827 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+  }
+  .dark-mode .entry-actions .btn-icon-danger,
+  .dark-mode .entry-actions button.btn-icon-danger {
+    color: #f87171 !important;
+    border-color: #f87171 !important;
+  }
+  .dark-mode .entry-actions .btn-icon-danger:hover,
+  .dark-mode .entry-actions button.btn-icon-danger:hover {
+    background: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #ffffff !important;
+  }
   
   /* Mobile badges - positioned absolutely in top right */
   .entry-badges {

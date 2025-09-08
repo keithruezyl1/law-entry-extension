@@ -761,6 +761,11 @@
 .dark-mode .legal-basis-card,
 .dark-mode .related-section-card { background: #111827; border-color: #374151; }
 .dark-mode .basis-title-text { color: #ffffff; }
+/* Ensure internal citation titles are white */
+.dark-mode .basis-title,
+.dark-mode .basis-title *,
+.dark-mode .legal-basis-card .basis-title,
+.dark-mode .related-section-card .basis-title { color: #ffffff; }
 .dark-mode .legal-basis-card:hover,
 .dark-mode .related-section-card:hover { background: #111827; }
 
@@ -786,6 +791,16 @@
 .related-section-card:hover {
   border-color: #dee2e6;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode: keep dark backgrounds on hover */
+.dark-mode .related-section-card.clickable:hover,
+.dark-mode .legal-basis-card.clickable:hover,
+.dark-mode .legal-basis-card:hover,
+.dark-mode .related-section-card:hover {
+  background: #111827;
+  border-color: #4b5563;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .basis-header,
