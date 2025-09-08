@@ -28,6 +28,43 @@
   border-bottom: 1px solid #e0e0e0;
 }
 
+/* Dark mode for entry view modal */
+.dark-mode .entry-view-content {
+  background: #1f2937;
+  box-shadow: none;
+  border: 1px solid #374151;
+}
+.dark-mode .entry-header {
+  background: #1f2937;
+  color: #f9fafb;
+  border-color: #374151;
+}
+.dark-mode .entry-title-section h1 { color: #1a73e8; }
+.dark-mode .entry-id-badge { background: #064e3b; border-color: #34d399; color: #ecfdf5; }
+.dark-mode .info-item { background: #111827; border-color: #374151; }
+.dark-mode .info-item .label { color: #e5e7eb; }
+.dark-mode .info-item .value { color: #9ca3af; }
+.dark-mode .summary-text,
+.dark-mode .text-content,
+.dark-mode .field-group,
+.dark-mode .phase-item,
+.dark-mode .array-item,
+.dark-mode .legal-basis-item,
+.dark-mode .legal-basis-card,
+.dark-mode .related-section-card {
+  background: #111827;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark-mode .url-link { color: #60a5fa; }
+.dark-mode .basis-note, .dark-mode .section-note { background: #0b1220; color: #9ca3af; }
+
+/* Match dashboard icon buttons */
+.dark-mode .entry-actions .btn-icon { background: #111827; border-color: #374151; color: #e5e7eb; }
+.dark-mode .entry-actions .btn-icon:hover { background: #0b1220; border-color: #4b5563; color: #ffffff; }
+.dark-mode .entry-actions .btn-icon-danger { color: #f87171; border-color: #f87171; }
+.dark-mode .entry-actions .btn-icon-danger:hover { background: #dc3545; border-color: #dc3545; color: #ffffff; }
+
 .entry-title-section {
   flex: 1;
 }

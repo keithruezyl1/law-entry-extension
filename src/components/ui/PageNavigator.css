@@ -11,6 +11,13 @@
   margin-top: 1rem;
 }
 
+/* Dark mode pagination */
+.dark-mode .page-navigator {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: none;
+}
+
 .page-info {
   display: flex;
   align-items: center;
@@ -80,6 +87,22 @@
   background: #ff6b35;
   border-color: #ff6b35;
   color: white;
+}
+
+.dark-mode .page-btn {
+  background: #111827;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark-mode .page-btn:hover:not(:disabled) {
+  background: #0b1220;
+  border-color: #4b5563;
+  color: #ffffff;
+}
+.dark-mode .page-btn-active {
+  background: #ff6b35;
+  border-color: #ff6b35;
+  color: #ffffff;
 }
 
 .page-btn-active:hover {

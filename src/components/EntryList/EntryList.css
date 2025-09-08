@@ -12,6 +12,13 @@
   border: 1px solid #e0e0e0;
 }
 
+/* Dark mode container */
+.dark-mode .search-filters {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: none;
+}
+
 .search-section {
   display: flex;
   gap: 1rem;
@@ -56,6 +63,17 @@
 .toggle-filters-btn:hover {
   background: #e9ecef;
   border-color: #adb5bd;
+}
+
+/* Dark mode: show filters button dark */
+.dark-mode .toggle-filters-btn {
+  background: #111827;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark-mode .toggle-filters-btn:hover {
+  background: #0b1220;
+  border-color: #4b5563;
 }
 
 .filter-row {
@@ -490,6 +508,27 @@
   background: #dc3545;
   color: white;
   transform: translateY(-1px);
+}
+
+/* Dark mode: icon buttons dark background */
+.dark-mode .entry-actions .btn-icon {
+  background: #111827;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark-mode .entry-actions .btn-icon:hover {
+  background: #0b1220;
+  border-color: #4b5563;
+  color: #ffffff;
+}
+.dark-mode .entry-actions .btn-icon-danger {
+  color: #f87171; /* red-400 */
+  border-color: #f87171;
+}
+.dark-mode .entry-actions .btn-icon-danger:hover {
+  background: #dc3545; /* turn red with white icon */
+  border-color: #dc3545;
+  color: #ffffff;
 }
 
 /* Responsive adjustments */
