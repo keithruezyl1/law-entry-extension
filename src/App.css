@@ -42,6 +42,11 @@ body {
 .dark-mode .team-member-card p { color: #9ca3af; }
 .dark-mode .progress-count { color: #e5e7eb; }
 
+/* Darker pill backgrounds in dark mode */
+.dark-mode .quota-item.pending { background: #1e293b !important; border-color: #3b82f6 !important; color: #93c5fd !important; }
+.dark-mode .quota-item.completed { background: #052e1a !important; border-color: #16a34a !important; color: #86efac !important; }
+.dark-mode .carryover-item { background: #3a2e04 !important; border-color: #f59e0b !important; color: #fde68a !important; }
+
 /* Entry cards: remove shadow, add grey outline */
 .dark-mode .entry-card {
   background: #1f2937 !important;
@@ -227,7 +232,7 @@ body {
 
 /* Dark mode: progress cards dark grey and totals white */
 .dark-mode .team-member-card {
-  background: #1f2937;
+  background: #243041; /* slightly lighter than before */
   border-color: #374151;
   box-shadow: none;
 }
@@ -253,9 +258,9 @@ body {
   color: white;
   padding: 1rem 2rem;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
+  position: static; /* no longer sticky */
+  top: auto;
+  z-index: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -366,13 +371,16 @@ body {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: #ff6b35; /* orange */
+  background: rgba(255,255,255,0.1); /* match logout */
   color: #ffffff;
   border: 1px solid rgba(255,255,255,0.3); /* match logout */
+  backdrop-filter: blur(10px);
 }
 
 .theme-toggle:hover {
   transform: translateY(-1px);
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.5);
 }
 
 .theme-toggle.theme-toggle--dark {
@@ -488,6 +496,14 @@ body {
   background: #e55a2b !important;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(255, 107, 53, 0.3);
+}
+
+/* Desktop: align Create New Entry with row buttons */
+@media (min-width: 769px) {
+  .App-nav .nav-left .btn-primary {
+    position: relative;
+    top: -2px; /* slight raise for alignment */
+  }
 }
 
 .btn-primary:hover {

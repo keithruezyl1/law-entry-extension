@@ -37,6 +37,16 @@
   box-sizing: border-box;
 }
 
+/* Dark mode: make search background slightly lighter than the panel */
+.dark-mode .search-input {
+  background: #162133;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark-mode .search-input::placeholder {
+  color: #9ca3af;
+}
+
 .search-input:focus {
   outline: none;
   border-color: #ff6b35;
@@ -266,7 +276,7 @@
 
 /* Dark mode: replace shadow with grey outline */
 .dark-mode .entry-card {
-  background: #1f2937 !important;
+  background: #243041 !important; /* slightly lighter card */
   border: 1px solid #6b7280 !important;
   box-shadow: none !important;
 }
@@ -326,7 +336,7 @@
 
 /* Dark mode: keep brand colors */
 .dark-mode .entry-title { color: #1a73e8 !important; }
-.dark-mode .entry-subtitle { color: #10b981 !important; }
+.dark-mode .entry-subtitle { color: #22c55e !important; }
 .dark-mode .entry-team-member { color: #9ca3af !important; }
 
 .entry-subtitle-row {

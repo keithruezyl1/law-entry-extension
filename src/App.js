@@ -985,7 +985,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
       {currentView !== 'form' && (
       <header className="App-header" style={{ 
-        background: `linear-gradient(135deg, rgba(255, 140, 66, ${headerOpacity}) 0%, rgba(255, 107, 53, ${headerOpacity}) 100%)`
+        background: isDarkMode
+          ? `linear-gradient(135deg, rgba(178, 84, 34, ${headerOpacity}) 0%, rgba(153, 61, 28, ${headerOpacity}) 100%)`
+          : `linear-gradient(135deg, rgba(255, 140, 66, ${headerOpacity}) 0%, rgba(255, 107, 53, ${headerOpacity}) 100%)`
       }}>
         <div className="header-left">
           <h1>Civilify Law Entry</h1>
@@ -1409,7 +1411,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                     const isCompleted = currentCount >= quota;
                     
                     return (
-                      <span key={type} className="quota-item" style={{
+                      <span key={type} className={`quota-item ${isCompleted ? 'completed' : 'pending'}`} style={{
                         display: 'inline-block',
                         background: isCompleted ? '#dcfce7' : '#eef2ff', // Light green if completed, light blue if not
                         color: isCompleted ? '#166534' : '#3730a3', // Green text if completed, blue if not
