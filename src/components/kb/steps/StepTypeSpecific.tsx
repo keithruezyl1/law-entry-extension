@@ -146,8 +146,10 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-              <div className={`space-y-3 ${activeSide === 'legal_bases' ? 'relations-highlight' : ''}`}>
+            <div className="relations-wrapper">
+              <div className={`relations-highlight-layer ${activeSide === 'related_sections' ? 'to-right' : 'to-left'}`}></div>
+              <div className="relations-cols grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+              <div className={`space-y-3`}>
                 <label className="kb-form-label">Legal Bases</label>
                 <LegalBasisPicker
                   name="legal_bases"
@@ -158,7 +160,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                 />
               </div>
 
-              <div className={`space-y-3 ${activeSide === 'related_sections' ? 'relations-highlight' : ''}`}>
+              <div className={`space-y-3`}>
                 <label className="kb-form-label">Related Sections</label>
                 <LegalBasisPicker
                   name="related_sections"
@@ -167,6 +169,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   existingEntries={existingEntries}
                   onActivate={() => setActiveSide('related_sections')}
                 />
+              </div>
               </div>
             </div>
           </div>

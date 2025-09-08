@@ -324,13 +324,27 @@
 }
 
 /* Relations highlight block */
-.relations-highlight {
-	background: rgba(249, 115, 22, 0.08);
+.relations-wrapper { position: relative; }
+.relations-cols { position: relative; z-index: 1; }
+.relations-highlight-layer {
+	position: absolute;
+	top: -8px;
+	left: 0;
+	width: 100%;
+	height: calc(100% + 16px);
 	border-radius: 12px;
-	padding: 12px;
+	background: rgba(255, 107, 53, 0.12); /* light orange */
+	transition: transform 280ms ease;
+	z-index: 0;
 }
-.dark-mode .relations-highlight {
-	background: rgba(249, 115, 22, 0.12);
+.dark-mode .relations-highlight-layer { background: rgba(255, 107, 53, 0.18); }
+.relations-highlight-layer.to-left  { transform: translateX(0); }
+.relations-highlight-layer.to-right { transform: translateX(0); }
+@media (min-width: 768px) {
+	.relations-wrapper { overflow: hidden; }
+	.relations-highlight-layer { width: calc(50% - 10px); }
+	.relations-highlight-layer.to-left  { transform: translateX(0); }
+	.relations-highlight-layer.to-right { transform: translateX(calc(100% + 20px)); }
 }
 
 .kb-form .stepper button {
