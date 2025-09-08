@@ -340,8 +340,14 @@ export const useLocalStorage = () => {
 
     // Text search
     if (query && query.trim()) {
-      const searchTermRaw = query.toLowerCase().trim();
-      const searchTerm = searchTermRaw.replace(/[-_]/g, ' ');
+      const normalize = (text) => String(text || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const compact = (text) => normalize(text).replace(/\s+/g, '');
+      const searchTermRaw = normalize(query);
+      const searchTerm = searchTermRaw; // normalized already
 
       // Basic fuzzy helpers (token-level Damerau-Levenshtein with small threshold)
       const tokenize = (s) => s.split(/\s+/).filter(Boolean);
@@ -366,38 +372,200 @@ export const useLocalStorage = () => {
         }
         return dp[al][bl];
       };
-      const fuzzyMatch = (q, h) => {
-        if (!q) return true; if (!h) return false;
+      // Roman numeral conversion functions
+      const romanToNumber = (roman) => {
+        const romanMap = {
+          'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000,
+          'i': 1, 'v': 5, 'x': 10, 'l': 50, 'c': 100, 'd': 500, 'm': 1000
+        };
+        let result = 0;
+        for (let i = 0; i < roman.length; i++) {
+          const current = romanMap[roman[i]];
+          const next = romanMap[roman[i + 1]];
+          if (next && current < next) {
+            result -= current;
+          } else {
+            result += current;
+          }
+        }
+        return result;
+      };
+
+      const numberToRoman = (num) => {
+        const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+        const symbols = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'];
+        let result = '';
+        for (let i = 0; i < values.length; i++) {
+          while (num >= values[i]) {
+            result += symbols[i];
+            num -= values[i];
+          }
+        }
+        return result;
+      };
+
+      const createVariations = (term) => {
+        const variations = new Set([term]);
+        // plural/singular swap
+        if (term.endsWith('s') && term.length > 3) variations.add(term.slice(0, -1));
+        else if (term.length > 2) variations.add(term + 's');
+        
+        // Roman numeral conversions
+        const romanMatch = term.match(/^([IVXLC]+)$/i);
+        if (romanMatch) {
+          const roman = romanMatch[1].toUpperCase();
+          const number = romanToNumber(roman);
+          if (number > 0 && number <= 100) { // reasonable range for legal documents
+            variations.add(number.toString());
+            variations.add(numberToRoman(number));
+          }
+        }
+        
+        // Number to Roman conversion
+        const numberMatch = term.match(/^(\d+)$/);
+        if (numberMatch) {
+          const num = parseInt(numberMatch[1]);
+          if (num > 0 && num <= 100) { // reasonable range for legal documents
+            variations.add(numberToRoman(num));
+          }
+        }
+        
+        // Common legal term variations and typos
+        const map = {
+          right: ['rights'], rights: ['right'],
+          information: ['info'], info: ['information'],
+          section: ['sec', 'sections'], sec: ['section', 'sections'], sections: ['section', 'sec'],
+          article: ['art', 'articles'], art: ['article', 'articles'], articles: ['article', 'art'],
+          constitution: ['const', 'constitutional'], const: ['constitution', 'constitutional'],
+          family: ['families'], families: ['family'],
+          law: ['laws'], laws: ['law'],
+          criminal: ['criminals'], criminals: ['criminal'],
+          prosecution: ['prosecutions'], prosecutions: ['prosecution'],
+          accused: ['accuseds'], accuseds: ['accused'],
+          protection: ['protections'], protections: ['protection'],
+          child: ['children'], children: ['child'],
+          abuse: ['abuses'], abuses: ['abuse'],
+          sexual: ['sexuals'], sexuals: ['sexual'],
+          prostitution: ['prostitutions'], prostitutions: ['prostitution'],
+          environmental: ['environment'], environment: ['environmental'],
+          police: ['policing'], policing: ['police'],
+          mandate: ['mandates'], mandates: ['mandate'],
+          anti: ['against'], against: ['anti'],
+          dumping: ['dumps'], dumps: ['dumping'],
+          measure: ['measures'], measures: ['measure'],
+          ordinance: ['ordinances'], ordinances: ['ordinance'],
+          city: ['cities'], cities: ['city'],
+          manila: ['manila'], // common misspelling
+          philippines: ['philippine'], philippine: ['philippines'],
+          // Common typos
+          lwa: ['law'], // typo for "law"
+          familes: ['families'], // typo for "families"
+          constutition: ['constitution'], // typo for "constitution"
+          crimnal: ['criminal'], // typo for "criminal"
+          procecution: ['prosecution'], // typo for "prosecution"
+          acused: ['accused'], // typo for "accused"
+          protetion: ['protection'], // typo for "protection"
+          enviornmental: ['environmental'], // typo for "environmental"
+          ordiance: ['ordinance'], // typo for "ordinance"
+          manila: ['manila'], // common misspelling
+          phillipines: ['philippines'] // typo for "philippines"
+        };
+        if (map[term]) map[term].forEach(v => variations.add(v));
+        return Array.from(variations);
+      };
+      const fuzzyMatch = (q, hRaw) => {
+        if (!q) return true; if (!hRaw) return false;
+        const h = normalize(hRaw);
+        const hCompact = compact(hRaw);
+        
+        // Direct substring match
         if (h.includes(q)) return true;
+        
+        // Word boundary matching for better partial matches
+        const words = h.split(/\s+/);
+        for (const word of words) {
+          if (word.startsWith(q) || q.startsWith(word)) return true;
+        }
+        
         const qt = tokenize(q);
         const ht = tokenize(h);
-        // If any token pair has edit distance <=1 (short) or <=2 (long), accept
-        for (const qs of qt) {
+        
+        // Check if all query terms have matches (AND logic)
+        const allTermsMatch = qt.every(qs => {
+          const vars = createVariations(qs);
+          return vars.some(v => {
+            // Direct word match
+            if (ht.includes(v)) return true;
+            // Substring match
+            if (h.includes(v) || hCompact.includes(v.replace(/\s+/g, ''))) return true;
+            // Fuzzy match with edit distance
           for (const hs of ht) {
-            const d = dlDistance(qs, hs);
-            if ((qs.length <= 4 && d <= 1) || (qs.length > 4 && d <= 2)) {
+              const d = dlDistance(v, hs);
+              if ((v.length <= 4 && d <= 1) || (v.length > 4 && d <= 2)) {
               return true;
-            }
           }
         }
         return false;
+          });
+        });
+        
+        return allTermsMatch;
       };
 
-      filteredEntries = filteredEntries.filter(entry => {
+      // Score entries for better ranking
+      const scoredEntries = filteredEntries.map(entry => {
         const haystacks = [
-          entry.title,
-          entry.entry_id,
-          entry.summary,
-          entry.text,
-          entry.text_raw,
-          entry.law_family,
-          entry.canonical_citation,
-          entry.section_id,
-          entry.effective_date,
-          Array.isArray(entry.tags) ? entry.tags.join(' ') : ''
-        ].map(v => String(v || '').toLowerCase().replace(/[-_]/g, ' '));
-        return haystacks.some(h => fuzzyMatch(searchTerm, h));
+          { text: entry.title, weight: 10 },
+          { text: entry.entry_id, weight: 8 },
+          { text: entry.law_family, weight: 6 },
+          { text: entry.canonical_citation, weight: 6 },
+          { text: entry.section_id, weight: 5 },
+          { text: entry.summary, weight: 4 },
+          { text: entry.text, weight: 2 },
+          { text: entry.text_raw, weight: 2 },
+          { text: entry.effective_date, weight: 3 },
+          { text: Array.isArray(entry.tags) ? entry.tags.join(' ') : '', weight: 5 }
+        ];
+        
+        let score = 0;
+        let hasMatch = false;
+        
+        for (const { text, weight } of haystacks) {
+          if (!text) continue;
+          
+          const normalizedText = normalize(text);
+          const compactText = compact(text);
+          
+          // Exact match gets highest score
+          if (normalizedText === searchTerm) {
+            score += weight * 3;
+            hasMatch = true;
+          }
+          // Starts with gets high score
+          else if (normalizedText.startsWith(searchTerm)) {
+            score += weight * 2;
+            hasMatch = true;
+          }
+          // Contains gets medium score
+          else if (normalizedText.includes(searchTerm)) {
+            score += weight;
+            hasMatch = true;
+          }
+          // Fuzzy match gets lower score
+          else if (fuzzyMatch(searchTerm, text)) {
+            score += weight * 0.5;
+            hasMatch = true;
+          }
+        }
+        
+        return { entry, score, hasMatch };
       });
+      
+      // Filter and sort by score
+      filteredEntries = scoredEntries
+        .filter(({ hasMatch }) => hasMatch)
+        .sort((a, b) => b.score - a.score)
+        .map(({ entry }) => entry);
     }
 
     // Type filter

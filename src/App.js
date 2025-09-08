@@ -1344,6 +1344,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   flexibleCounts[type] = Math.min(todayEntries[type], originalQuota);
                   console.log(`DEBUG: ${type} - originalQuota: ${originalQuota}, cumulativeReqs: ${cumulativeReqs[type]}, todayEntries: ${todayEntries[type]}, setting flexibleCounts to: ${Math.min(todayEntries[type], originalQuota)}`);
                 }
+
+                // If user exceeded today's original quota for this type, record overflow as carryover (yellow pill)
+                const overflow = Math.max(0, (todayEntries[type] || 0) - (originalQuota || 0));
+                if (overflow > 0) {
+                  carryoverEntries[type] = (carryoverEntries[type] || 0) + overflow;
+                  console.log(`DEBUG: ${type} - overflow carryover added: ${overflow}`);
+                }
               } else {
                 // This entry type is not in today's quota - it's carryover (yellow pill)
                 carryoverEntries[type] = todayEntries[type];

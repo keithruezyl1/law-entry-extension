@@ -74,6 +74,38 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     return normalized.split(' ').filter(term => term.length > 0);
   };
 
+  // Roman numeral conversion functions
+  const romanToNumber = (roman: string): number => {
+    const romanMap: Record<string, number> = {
+      'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000,
+      'i': 1, 'v': 5, 'x': 10, 'l': 50, 'c': 100, 'd': 500, 'm': 1000
+    };
+    let result = 0;
+    for (let i = 0; i < roman.length; i++) {
+      const current = romanMap[roman[i]];
+      const next = romanMap[roman[i + 1]];
+      if (next && current < next) {
+        result -= current;
+      } else {
+        result += current;
+      }
+    }
+    return result;
+  };
+
+  const numberToRoman = (num: number): string => {
+    const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+    const symbols = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'];
+    let result = '';
+    for (let i = 0; i < values.length; i++) {
+      while (num >= values[i]) {
+        result += symbols[i];
+        num -= values[i];
+      }
+    }
+    return result;
+  };
+
   const createSearchVariations = (term: string): string[] => {
     const variations = new Set([term]);
     
@@ -84,23 +116,59 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       variations.add(term + 's'); // Add 's' for plural
     }
     
-    // Handle common word variations
+    // Roman numeral conversions
+    const romanMatch = term.match(/^([IVXLC]+)$/i);
+    if (romanMatch) {
+      const roman = romanMatch[1].toUpperCase();
+      const number = romanToNumber(roman);
+      if (number > 0 && number <= 100) { // reasonable range for legal documents
+        variations.add(number.toString());
+        variations.add(numberToRoman(number));
+      }
+    }
+    
+    // Number to Roman conversion
+    const numberMatch = term.match(/^(\d+)$/);
+    if (numberMatch) {
+      const num = parseInt(numberMatch[1]);
+      if (num > 0 && num <= 100) { // reasonable range for legal documents
+        variations.add(numberToRoman(num));
+      }
+    }
+    
+    // Handle common word variations and typos (same as dashboard search)
     const wordMap: Record<string, string[]> = {
-      'right': ['rights'],
-      'rights': ['right'],
-      'information': ['info'],
-      'info': ['information'],
-      'section': ['sec', 'sections'],
-      'sec': ['section', 'sections'],
-      'sections': ['section', 'sec'],
-      'article': ['art', 'articles'],
-      'art': ['article', 'articles'],
-      'articles': ['article', 'art'],
-      'constitution': ['const'],
-      'const': ['constitution'],
-      'amendment': ['amend', 'amendments'],
-      'amend': ['amendment', 'amendments'],
-      'amendments': ['amendment', 'amend']
+      'right': ['rights'], 'rights': ['right'],
+      'information': ['info'], 'info': ['information'],
+      'section': ['sec', 'sections'], 'sec': ['section', 'sections'], 'sections': ['section', 'sec'],
+      'article': ['art', 'articles'], 'art': ['article', 'articles'], 'articles': ['article', 'art'],
+      'constitution': ['const', 'constitutional'], 'const': ['constitution', 'constitutional'],
+      'family': ['families'], 'families': ['family'],
+      'law': ['laws'], 'laws': ['law'],
+      'criminal': ['criminals'], 'criminals': ['criminal'],
+      'prosecution': ['prosecutions'], 'prosecutions': ['prosecution'],
+      'accused': ['accuseds'], 'accuseds': ['accused'],
+      'protection': ['protections'], 'protections': ['protection'],
+      'child': ['children'], 'children': ['child'],
+      'abuse': ['abuses'], 'abuses': ['abuse'],
+      'sexual': ['sexuals'], 'sexuals': ['sexual'],
+      'prostitution': ['prostitutions'], 'prostitutions': ['prostitution'],
+      'environmental': ['environment'], 'environment': ['environmental'],
+      'police': ['policing'], 'policing': ['police'],
+      'mandate': ['mandates'], 'mandates': ['mandate'],
+      'anti': ['against'], 'against': ['anti'],
+      'dumping': ['dumps'], 'dumps': ['dumping'],
+      'measure': ['measures'], 'measures': ['measure'],
+      'ordinance': ['ordinances'], 'ordinances': ['ordinance'],
+      'city': ['cities'], 'cities': ['city'],
+      'manila': ['manila'],
+      'philippines': ['philippine'], 'philippine': ['philippines'],
+      'amendment': ['amend', 'amendments'], 'amend': ['amendment', 'amendments'], 'amendments': ['amendment', 'amend'],
+      // Common typos
+      'lwa': ['law'], 'familes': ['families'], 'constutition': ['constitution'],
+      'crimnal': ['criminal'], 'procecution': ['prosecution'], 'acused': ['accused'],
+      'protetion': ['protection'], 'enviornmental': ['environmental'], 'ordiance': ['ordinance'],
+      'phillipines': ['philippines']
     };
     
     if (wordMap[term]) {
@@ -135,64 +203,83 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     const tagsJoined = Array.isArray(anyEntry.tags) ? anyEntry.tags.join(' ') : '';
     const lawFamily = anyEntry.law_family || '';
     const citation = anyEntry.canonical_citation || '';
-    const searchableText = normalizeSearchText(
-      `${entry.entry_id} ${entry.title} ${citation} ${lawFamily} ${tagsJoined}`
-    );
     
-    let score = 0;
+    const searchableFields = [
+      { text: entry.title, weight: 10 },
+      { text: entry.entry_id, weight: 8 },
+      { text: lawFamily, weight: 6 },
+      { text: citation, weight: 6 },
+      { text: tagsJoined, weight: 5 }
+    ];
+    
+    let totalScore = 0;
     let matchedTerms = 0;
+    const exactQuery = normalizeSearchText(query);
     
     for (const term of searchTerms) {
       const variations = createSearchVariations(term);
       let termMatched = false;
+      let termScore = 0;
       
-      for (const variation of variations) {
-        if (searchableText.includes(variation)) {
-          score += 1;
+      for (const { text, weight } of searchableFields) {
+        if (!text) continue;
+        
+        const normalizedText = normalizeSearchText(text);
+        
+        // Exact match gets highest score
+        if (normalizedText === exactQuery) {
+          termScore = Math.max(termScore, weight * 3);
           termMatched = true;
-          break;
         }
-        // If not included, allow small typos against individual words in searchable text
-        if (!termMatched) {
-          const words = searchableText.split(' ');
-          for (const w of words) {
-            const dist = editDistance(variation, w);
-            const allowed = variation.length <= 5 ? 1 : 2;
-            if (dist <= allowed) {
-              score += 0.75; // fuzzy bonus
+        // Starts with gets high score
+        else if (normalizedText.startsWith(exactQuery)) {
+          termScore = Math.max(termScore, weight * 2);
+          termMatched = true;
+        }
+        // Contains gets medium score
+        else if (normalizedText.includes(exactQuery)) {
+          termScore = Math.max(termScore, weight);
+          termMatched = true;
+        }
+        // Individual term matching
+        else {
+          for (const variation of variations) {
+            if (normalizedText === variation) {
+              termScore = Math.max(termScore, weight * 2);
               termMatched = true;
-              break;
+            } else if (normalizedText.startsWith(variation)) {
+              termScore = Math.max(termScore, weight * 1.5);
+              termMatched = true;
+            } else if (normalizedText.includes(variation)) {
+              termScore = Math.max(termScore, weight);
+              termMatched = true;
+            } else {
+              // Fuzzy match with edit distance
+              const words = normalizedText.split(' ');
+              for (const w of words) {
+                const dist = editDistance(variation, w);
+                const allowed = variation.length <= 5 ? 1 : 2;
+                if (dist <= allowed) {
+                  termScore = Math.max(termScore, weight * 0.5);
+                  termMatched = true;
+                  break;
+                }
+              }
             }
+            if (termMatched) break;
           }
-          if (termMatched) break;
         }
+        if (termMatched) break;
       }
       
       if (termMatched) {
+        totalScore += termScore;
         matchedTerms++;
       }
     }
     
-    // Bonus for exact phrase match
-    const exactQuery = normalizeSearchText(query);
-    if (searchableText.includes(exactQuery)) {
-      score += 2;
-    }
-    
-    // Bonus for title matches (more important than entry_id)
-    const titleText = normalizeSearchText(entry.title);
-    for (const term of searchTerms) {
-      const variations = createSearchVariations(term);
-      for (const variation of variations) {
-        if (titleText.includes(variation)) {
-          score += 0.5; // Bonus for title matches
-          break;
-        }
-      }
-    }
-    
     // Return 0 if not all terms matched
-    return matchedTerms === searchTerms.length ? score : 0;
+    return matchedTerms === searchTerms.length ? totalScore : 0;
   };
 
   const options = useMemo(() => {
