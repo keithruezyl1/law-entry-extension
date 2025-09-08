@@ -262,14 +262,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   // Enforce Tagarao (P5) theme behavior:
   // - Dashboard always dark mode
-  // - Create/Edit form always light mode
+  // - Create/Edit form always light mode (on /law-entry)
   useEffect(() => {
     try {
       if (!user) return;
       if (!isTagarao(user)) return;
       const path = (location && location.pathname) || '';
       const onDashboard = /(^\/dashboard$|^\/$)/.test(path) || path.includes('/dashboard');
-      const onForm = path.includes('/form');
+      const onForm = path.includes('/law-entry');
       if (onDashboard && !isDarkMode) {
         setIsDarkMode(true);
       } else if (onForm && isDarkMode) {
