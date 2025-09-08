@@ -32,22 +32,20 @@ export function ExecutiveIssuanceForm({ control }: ExecutiveIssuanceFormProps) {
         />
       </div>
       
-      <div className="md:col-span-2">
+      <div className="md:col-span-2 mb-2">
         <StringArray
           control={control}
           name="applicability"
           label="Applicability"
-          className="mb-2"
           placeholder="Enter applicability"
         />
       </div>
       
-      <div className="md:col-span-2">
+      <div className="md:col-span-2 mb-2">
         <StringArray
           control={control}
           name="supersedes"
           label="Supersedes"
-          className="mb-2"
           placeholder="Enter superseded issuance"
         />
       </div>
