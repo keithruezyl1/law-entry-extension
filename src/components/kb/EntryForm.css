@@ -595,14 +595,14 @@
 .dark-mode .kb-form input[type="date"],
 .dark-mode .kb-form select,
 .dark-mode .kb-form textarea {
-	background: #e5e7eb; /* light grey field */
-	border-color: #cbd5e1; /* lighter grey outline */
-	color: #111827; /* black text in fields */
+	background: #111827; /* field dark */
+	border-color: #374151; /* grey outline */
+	color: #e5e7eb; /* white text */
 }
 .dark-mode .kb-form .kb-input::placeholder,
 .dark-mode .kb-form input::placeholder,
 .dark-mode .kb-form textarea::placeholder {
-	color: #4b5563; /* dark grey placeholder */
+	color: #9ca3af; /* dark grey placeholder */
 }
 
 /* Keep greys as greys */
