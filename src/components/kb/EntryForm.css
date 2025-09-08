@@ -619,6 +619,25 @@
 	box-shadow: none;
 }
 
+/* Progress text orange */
+.dark-mode .kb-form .kb-helper-below,
+.dark-mode .kb-form .step-description,
+.dark-mode .kb-form .kb-step-header-content .text-orange,
+.dark-mode .kb-form .kb-step-title { color: #f97316; }
+
+/* Progress bar track */
+.dark-mode .kb-form .progress-track { background: #374151; }
+.dark-mode .kb-form .progress-fill { background: #f97316; }
+
+/* Keep main page title orange in dark mode */
+.dark-mode .kb-form-title { color: #f97316; }
+
+/* Remove darker banner background in step headers */
+.dark-mode .kb-step-header {
+	background: transparent;
+	border-color: #374151;
+}
+
 /* Action bar */
 .dark-mode .kb-action-bar {
 	background: #1f2937;
@@ -634,6 +653,30 @@
 .dark-mode .kb-form .kb-btn-outline:hover {
 	background: #0b1220;
 	border-color: #4b5563;
+}
+
+/* Generic dark mode buttons inside form (e.g., Add Item) */
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout) {
+	background: #111827;
+	border: 1px solid #374151;
+	color: #e5e7eb;
+}
+.dark-mode .kb-form button:not(.kb-btn-primary):hover {
+	background: #0b1220;
+	border-color: #4b5563;
+}
+
+/* Labels white in dark mode */
+.dark-mode .kb-form-label,
+.dark-mode .kb-form .kb-label,
+.dark-mode .kb-form .form-section h3 { color: #ffffff; }
+
+/* Internal citation search inputs */
+.dark-mode .kb-input-search,
+.dark-mode .kb-toggle-row input[type="text"] {
+	background: #111827 !important;
+	border-color: #374151 !important;
+	color: #e5e7eb !important;
 }
 
 /* Dropdown alignment */
