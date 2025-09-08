@@ -27,6 +27,21 @@
   animation: slideIn 0.3s ease-out;
 }
 
+/* Dark mode modal */
+.dark-mode .modal-content {
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+}
+.dark-mode .modal-title { color: #ffffff; }
+.dark-mode .modal-subtitle { color: #9ca3af; }
+.dark-mode .modal-button.cancel { background: #111827; border-color: #374151; color: #e5e7eb; }
+.dark-mode .modal-button.cancel:hover { background: #0b1220; border-color: #4b5563; }
+.dark-mode .modal-option { background: #111827; border-color: #374151; color: #e5e7eb; }
+.dark-mode .modal-option:hover { background: #0b1220; border-color: #4b5563; }
+.dark-mode .modal-option.cancel { background: #6b7280; border-color: #6b7280; color: #ffffff; }
+.dark-mode .modal-option.cancel:hover { background: #4b5563; border-color: #4b5563; }
+
 .modal-title {
   margin: 0 0 0.5rem 0;
   font-size: 1.5rem;
