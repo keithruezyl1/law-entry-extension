@@ -175,8 +175,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showIncompleteEntriesModal, setShowIncompleteEntriesModal] = useState(false);
   const [pendingEntryForModal, setPendingEntryForModal] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showEntrySavedModal, setShowEntrySavedModal] = useState(false);
+  const [savedEntryTitle, setSavedEntryTitle] = useState('');
   const [now, setNow] = useState(new Date());
-  const [showCreationToast, setShowCreationToast] = useState(false);
+  const [isCreatingEntry, setIsCreatingEntry] = useState(false);
+  const [isResumingYes, setIsResumingYes] = useState(false);
+  const [isResumingNo, setIsResumingNo] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isDeletingEntry, setIsDeletingEntry] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     try {
       const saved = localStorage.getItem('app_theme');
@@ -184,14 +190,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     } catch (_) { return false; }
   });
 
-  // Show creation toast when session flag is set AND we're on dashboard
+  // Clear drafts when returning to dashboard (no toast popup)
   useEffect(() => {
     try {
       const flag = sessionStorage.getItem('entryCreated');
       if (flag && location.pathname === '/dashboard') {
-        setShowCreationToast(true);
-        
-        // Additional safety: Clear any remaining drafts when toast appears
+        // Clear any remaining drafts when returning to dashboard
         try {
           localStorage.removeItem('kb_entry_draft');
           localStorage.removeItem('kb_draft');
@@ -205,16 +209,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               localStorage.removeItem(key);
             }
           });
-          console.log('Additional draft clearing on toast appearance');
+          console.log('Draft clearing on dashboard return');
         } catch (e) {
-          console.warn('Failed to clear drafts on toast appearance:', e);
+          console.warn('Failed to clear drafts on dashboard return:', e);
         }
         
-        const timer = setTimeout(() => {
-          setShowCreationToast(false);
-        }, 2000);
         sessionStorage.removeItem('entryCreated');
-        return () => clearTimeout(timer);
       }
     } catch {}
   }, [location.pathname]);
@@ -538,14 +538,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const handleCreateNew = async () => {
     if (!hasPlan) return alert('Plan not loaded.');
     
-    // Check if current user has incomplete entries from yesterday
-    const currentUserIncomplete = incompleteEntries.find(incomplete => 
-      incomplete.personName === user?.name
-    );
-    
-    // Always navigate to form - modal will be shown during form submission if needed
-    setYesterdayMode(false);
-    sessionStorage.removeItem('yesterdayMode');
+    setIsCreatingEntry(true);
+    try {
+      // Check if current user has incomplete entries from yesterday
+      const currentUserIncomplete = incompleteEntries.find(incomplete => 
+        incomplete.personName === user?.name
+      );
+      
+      // Always navigate to form - modal will be shown during form submission if needed
+      setYesterdayMode(false);
+      sessionStorage.removeItem('yesterdayMode');
     sessionStorage.removeItem('yesterdayQuotas');
     
     try {
@@ -564,28 +566,41 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         }
       }
     } catch (_) {}
-    setEditingEntry(null);
-    // Set session storage to indicate user came from dashboard
-    sessionStorage.setItem('cameFromDashboard', 'true');
-    navigate('/law-entry/1');
+      setEditingEntry(null);
+      // Set session storage to indicate user came from dashboard
+      sessionStorage.setItem('cameFromDashboard', 'true');
+      navigate('/law-entry/1');
+    } finally {
+      setIsCreatingEntry(false);
+    }
   };
 
-  const handleResumeYes = () => {
-    setEditingEntry(resumeDraft || null);
-    setShowResumeModal(false);
-    // Set session storage to indicate user came from dashboard
-    sessionStorage.setItem('cameFromDashboard', 'true');
-    navigate('/law-entry/1');
+  const handleResumeYes = async () => {
+    setIsResumingYes(true);
+    try {
+      setEditingEntry(resumeDraft || null);
+      setShowResumeModal(false);
+      // Set session storage to indicate user came from dashboard
+      sessionStorage.setItem('cameFromDashboard', 'true');
+      navigate('/law-entry/1');
+    } finally {
+      setIsResumingYes(false);
+    }
   };
 
-  const handleResumeNo = () => {
-    try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
-    setResumeDraft(null);
-    setShowResumeModal(false);
-    setEditingEntry(null);
-    // Set session storage to indicate user came from dashboard
-    sessionStorage.setItem('cameFromDashboard', 'true');
-    navigate('/law-entry/1');
+  const handleResumeNo = async () => {
+    setIsResumingNo(true);
+    try {
+      try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
+      setResumeDraft(null);
+      setShowResumeModal(false);
+      setEditingEntry(null);
+      // Set session storage to indicate user came from dashboard
+      sessionStorage.setItem('cameFromDashboard', 'true');
+      navigate('/law-entry/1');
+    } finally {
+      setIsResumingNo(false);
+    }
   };
 
   const handleEditEntry = (entryId) => {
@@ -735,7 +750,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         } catch (e) {
           console.warn('Vector upsert error:', e);
         }
-        alert(`Entry "${entryData.title}" has been saved to the database and indexed.`);
+        // Show proper modal instead of browser alert
+        setSavedEntryTitle(entryData.title);
+        setShowEntrySavedModal(true);
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);
@@ -755,6 +772,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const handleDeleteConfirm = async () => {
     if (!entryToDelete) return;
     
+    setIsDeletingEntry(true);
     try {
       // 1) Gather inbound references (entries that cite this entry internally)
       const inbound = entries.filter(e => {
@@ -807,6 +825,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     } catch (err) {
       console.error('Error deleting entry:', err);
       alert('Failed to delete entry. Please try again.');
+    } finally {
+      setIsDeletingEntry(false);
     }
   };
 
@@ -855,10 +875,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setShowLogoutModal(true);
   };
 
-  const handleLogoutConfirm = () => {
-    logout();
-    navigate('/login');
-    setShowLogoutModal(false);
+  const handleLogoutConfirm = async () => {
+    setIsLoggingOut(true);
+    try {
+      logout();
+      navigate('/login');
+      setShowLogoutModal(false);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const handleLogoutCancel = () => {
@@ -988,17 +1013,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   return (
     <div className="App">
-      {/* Creation success toast */}
-      <Toast
-        isOpen={showCreationToast}
-        onClose={() => setShowCreationToast(false)}
-        title="Entry Created"
-        type="success"
-        position="top-right"
-        duration={2000}
-      >
-        <div>Successfully created entry.</div>
-      </Toast>
 
       {currentView !== 'form' && (
       <header className="App-header" style={{ 
@@ -1483,9 +1497,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <button 
             onClick={handleCreateNew} 
             className="btn-primary"
-            disabled={currentView === 'form' || !hasPlan}
+            disabled={currentView === 'form' || !hasPlan || isCreatingEntry}
           >
-            Create New Entry
+            {isCreatingEntry ? 'Loading...' : 'Create New Entry'}
           </button>
         </div>
         
@@ -1640,14 +1654,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <button
             className="modal-button orange-outline"
             onClick={handleResumeYes}
+            disabled={isResumingYes || isResumingNo}
           >
-            Yes, continue inputting
+            {isResumingYes ? 'Loading...' : 'Yes, continue inputting'}
           </button>
           <button
             className="modal-button cancel"
             onClick={handleResumeNo}
+            disabled={isResumingYes || isResumingNo}
           >
-            No, create new entry
+            {isResumingNo ? 'Loading...' : 'No, create new entry'}
           </button>
         </div>
       </Modal>
@@ -1665,8 +1681,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <button
             className="modal-button logout"
             onClick={handleLogoutConfirm}
+            disabled={isLoggingOut}
           >
-            Yes, Logout
+            {isLoggingOut ? 'Logging out...' : 'Yes, Logout'}
           </button>
           <button
             className="modal-button cancel"
@@ -1733,14 +1750,32 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <button
             className="modal-button danger"
             onClick={handleDeleteConfirm}
+            disabled={isDeletingEntry}
           >
-            Yes, Delete
+            {isDeletingEntry ? 'Deleting...' : 'Yes, Delete'}
           </button>
           <button
             className="modal-button cancel"
             onClick={handleDeleteCancel}
           >
             Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {/* Entry Saved Modal */}
+      <Modal
+        isOpen={showEntrySavedModal}
+        onClose={() => setShowEntrySavedModal(false)}
+        title="Entry Saved Successfully!"
+        subtitle={`"${savedEntryTitle}" has been saved to the database and indexed.`}
+      >
+        <div className="modal-buttons">
+          <button
+            className="modal-button orange"
+            onClick={() => setShowEntrySavedModal(false)}
+          >
+            OK
           </button>
         </div>
       </Modal>
