@@ -608,7 +608,7 @@
 
 /* ===================== DARK MODE (Form) ===================== */
 .dark-mode .kb-form {
-	background-color: #0b1220;
+	background-color: #1f2937; /* Changed from #0b1220 to dark grey */
 	color: #f9fafb; /* Default text -> white */
 }
 
@@ -706,6 +706,34 @@
 .dark-mode .kb-form-label,
 .dark-mode .kb-form .kb-label,
 .dark-mode .kb-form .form-section h3 { color: #ffffff; }
+
+/* Progress and Preview cards styling */
+.dark-mode .ds-card {
+	background: #374151 !important; /* Light grey background */
+	border-color: #4b5563 !important;
+}
+
+/* Progress text should be orange in dark mode */
+.dark-mode .ds-card h3 {
+	color: #f97316 !important; /* Orange color for Progress text */
+}
+
+/* Black text should turn white in dark mode cards */
+.dark-mode .ds-card .text-foreground,
+.dark-mode .ds-card .text-gray-900,
+.dark-mode .ds-card .text-gray-800,
+.dark-mode .ds-card .text-gray-700,
+.dark-mode .ds-card .text-gray-600,
+.dark-mode .ds-card .text-gray-500 {
+	color: #ffffff !important;
+}
+
+/* Grey text should stay grey in dark mode cards */
+.dark-mode .ds-card .text-muted-foreground,
+.dark-mode .ds-card .text-gray-400,
+.dark-mode .ds-card .text-gray-300 {
+	color: #9ca3af !important; /* Keep grey text grey */
+}
 
 /* Internal citation search inputs */
 .dark-mode .kb-input-search,
