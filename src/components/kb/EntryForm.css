@@ -710,11 +710,14 @@
 }
 
 /* UI Button component dark mode styling */
-.dark-mode .bg-orange-500 {
+.dark-mode .bg-orange-500,
+.dark-mode .bg-primary {
 	background: #f97316 !important; /* Orange background */
 	color: #ffffff !important; /* White text */
 }
-.dark-mode .bg-orange-500:hover {
+.dark-mode .bg-orange-500:hover,
+.dark-mode .bg-primary:hover,
+.dark-mode .hover\:bg-primary\/90:hover {
 	background: #ea580c !important; /* Darker orange on hover */
 }
 
@@ -723,6 +726,14 @@
 }
 .dark-mode .text-orange-700 {
 	color: #f97316 !important; /* Orange text */
+}
+
+/* UI Button outline variant dark mode styling - match light mode appearance */
+.dark-mode .bg-transparent {
+	background: #374151 !important; /* Grey background instead of transparent */
+}
+.dark-mode .bg-transparent:hover {
+	background: #4b5563 !important; /* Slightly lighter grey on hover */
 }
 
 /* Generic dark mode buttons inside form (e.g., Add Item) */

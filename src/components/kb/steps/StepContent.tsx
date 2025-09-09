@@ -50,6 +50,7 @@ export function StepContent() {
             label="Tags *"
             help="Retrieval hints (e.g., ['arrest','search','traffic'])"
             placeholder="Enter tag"
+            enableTagParsing={true}
           />
           {errors.tags && (
             <p className="text-sm text-red-600 mt-1">{String(errors.tags.message)}</p>

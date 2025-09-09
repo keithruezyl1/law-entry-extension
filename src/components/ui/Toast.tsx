@@ -119,7 +119,7 @@ export const Toast: React.FC<ToastProps> = ({
       aria-live="polite"
       aria-atomic="true"
     >
-      <div className={`bg-white shadow-2xl rounded-xl border border-gray-200 min-w-[380px] max-w-[520px] overflow-hidden toast-container ${getAnimationClass()}`}>
+      <div className={`bg-white dark:bg-gray-800 shadow-2xl rounded-xl border border-gray-200 dark:border-gray-600 min-w-[380px] max-w-[520px] overflow-hidden toast-container ${getAnimationClass()}`}>
         {/* Header with gradient background */}
         <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
@@ -148,7 +148,7 @@ export const Toast: React.FC<ToastProps> = ({
         </div>
         
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 dark:bg-gray-800">
           {children}
         </div>
       </div>
@@ -198,13 +198,13 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
             className="mb-2 last:mb-0"
           >
             {/* Primary line: Entry title with left margin */}
-            <div className="font-medium text-gray-900 text-sm leading-tight mb-0.5 ml-8">
+            <div className="font-medium text-gray-900 dark:text-gray-100 text-sm leading-tight mb-0.5 ml-8">
               {match.title}
             </div>
             
             {/* Secondary line: Citation with reduced margin bottom */}
             {match.canonical_citation && (
-              <div className="text-xs text-gray-600 leading-tight ml-8">
+              <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight ml-8">
                 {match.canonical_citation}
               </div>
             )}
@@ -214,10 +214,10 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       
       {/* Footer with CTA when there are more results */}
       {hasMore && onViewAll && (
-        <div className="mt-4 pt-3 border-t border-amber-200">
+        <div className="mt-4 pt-3 border-t border-amber-200 dark:border-amber-700">
           <button
             onClick={onViewAll}
-            className="w-full text-center text-sm font-medium text-amber-700 hover:text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-1 rounded-md py-2 transition-colors duration-150"
+            className="w-full text-center text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200 dark:focus:ring-amber-600 focus:ring-offset-1 dark:focus:ring-offset-gray-800 rounded-md py-2 transition-colors duration-150"
             aria-label={`View all ${matches.length} matches`}
           >
             View all {matches.length} matches →

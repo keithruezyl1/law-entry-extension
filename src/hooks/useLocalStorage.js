@@ -716,6 +716,82 @@ export const useLocalStorage = () => {
             tags: entry.tags,
             jurisdiction: entry.jurisdiction,
             law_family: entry.law_family,
+            section_id: entry.section_id,
+            status: entry.status || 'active',
+            effective_date: entry.effective_date,
+            amendment_date: entry.amendment_date,
+            source_urls: entry.source_urls,
+            last_reviewed: entry.last_reviewed || new Date().toISOString().split('T')[0],
+            visibility: entry.visibility || { gli: true, cpa: false },
+            offline: entry.offline || { pack_include: false },
+            // Type-specific fields
+            ...(entry.type === 'statute_section' && {
+              elements: entry.elements,
+              penalties: entry.penalties,
+              defenses: entry.defenses,
+              prescriptive_period: entry.prescriptive_period,
+              standard_of_proof: entry.standard_of_proof,
+              related_sections: entry.related_sections,
+              legal_bases: entry.legal_bases
+            }),
+            ...(entry.type === 'rule_of_court' && {
+              rule_no: entry.rule_no,
+              section_no: entry.section_no,
+              triggers: entry.triggers,
+              time_limits: entry.time_limits,
+              required_forms: entry.required_forms,
+              related_sections: entry.related_sections
+            }),
+            ...(entry.type === 'rights_advisory' && {
+              rights_scope: entry.rights_scope,
+              advice_points: entry.advice_points,
+              legal_bases: entry.legal_bases,
+              related_sections: entry.related_sections
+            }),
+            ...(entry.type === 'pnp_sop' && {
+              steps_brief: entry.steps_brief,
+              forms_required: entry.forms_required,
+              failure_states: entry.failure_states,
+              legal_bases: entry.legal_bases
+            }),
+            ...(entry.type === 'incident_checklist' && {
+              incident: entry.incident,
+              phases: entry.phases,
+              forms: entry.forms,
+              handoff: entry.handoff,
+              rights_callouts: entry.rights_callouts
+            }),
+            ...(entry.type === 'agency_circular' && {
+              circular_no: entry.circular_no,
+              section_no: entry.section_no,
+              applicability: entry.applicability,
+              legal_bases: entry.legal_bases,
+              supersedes: entry.supersedes
+            }),
+            ...(entry.type === 'doj_issuance' && {
+              issuance_no: entry.issuance_no,
+              applicability: entry.applicability,
+              legal_bases: entry.legal_bases,
+              supersedes: entry.supersedes
+            }),
+            ...(entry.type === 'executive_issuance' && {
+              instrument_no: entry.instrument_no,
+              applicability: entry.applicability,
+              legal_bases: entry.legal_bases,
+              supersedes: entry.supersedes
+            }),
+            ...(entry.type === 'city_ordinance_section' && {
+              elements: entry.elements,
+              penalties: entry.penalties,
+              defenses: entry.defenses,
+              related_sections: entry.related_sections,
+              legal_bases: entry.legal_bases
+            }),
+            ...(entry.type === 'constitution_provision' && {
+              topics: entry.topics,
+              related_sections: entry.related_sections,
+              jurisprudence: entry.jurisprudence
+            })
           };
           return upsertEntry(payload);
         } catch (e) {
