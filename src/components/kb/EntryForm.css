@@ -668,15 +668,16 @@
 	box-shadow: inset 0 1px 0 #1f2937;
 }
 
-/* Buttons: keep orange; neutral buttons dark */
+/* Buttons: keep orange accents with dark mode appropriate backgrounds */
 .dark-mode .kb-form .kb-btn-outline {
-	background: #111827;
-	color: #f97316;
-	border-color: #f97316;
+	background: #374151 !important; /* Light grey background */
+	color: #f97316 !important; /* Orange text */
+	border-color: #f97316 !important; /* Orange border */
 }
 .dark-mode .kb-form .kb-btn-outline:hover {
-	background: #0b1220;
-	border-color: #fb923c;
+	background: #4b5563 !important; /* Slightly lighter grey on hover */
+	border-color: #fb923c !important; /* Lighter orange border on hover */
+	color: #fb923c !important; /* Lighter orange text on hover */
 }
 
 /* Make outline buttons appear white in light mode (non-toggled) */
@@ -685,27 +686,65 @@
 	border-color: #f97316 !important;
 	color: #f97316 !important;
 }
-.dark-mode .kb-form .kb-btn-outline { 
-	background: #111827 !important; 
-	border-color: #f97316 !important;
-	color: #f97316 !important;
+
+/* Primary buttons - Next button (orange) */
+.dark-mode .kb-form .kb-btn-primary {
+	background: #f97316 !important; /* Orange background */
+	color: #ffffff !important; /* White text */
+	border-color: #f97316 !important; /* Orange border */
+}
+.dark-mode .kb-form .kb-btn-primary:hover {
+	background: #ea580c !important; /* Darker orange on hover */
+	border-color: #ea580c !important;
+}
+
+/* Create Entry button - should be green */
+.dark-mode .kb-form button[type="submit"] {
+	background: #16a34a !important; /* Green background */
+	color: #ffffff !important; /* White text */
+	border-color: #16a34a !important; /* Green border */
+}
+.dark-mode .kb-form button[type="submit"]:hover {
+	background: #15803d !important; /* Darker green on hover */
+	border-color: #15803d !important;
+}
+
+/* UI Button component dark mode styling */
+.dark-mode .bg-orange-500 {
+	background: #f97316 !important; /* Orange background */
+	color: #ffffff !important; /* White text */
+}
+.dark-mode .bg-orange-500:hover {
+	background: #ea580c !important; /* Darker orange on hover */
+}
+
+.dark-mode .border-orange-500 {
+	border-color: #f97316 !important; /* Orange border */
+}
+.dark-mode .text-orange-700 {
+	color: #f97316 !important; /* Orange text */
 }
 
 /* Generic dark mode buttons inside form (e.g., Add Item) */
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout) {
-	background: #111827;
-	border: 1px solid #374151;
-	color: #e5e7eb;
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]) {
+	background: #374151 !important; /* Light grey background */
+	border: 1px solid #4b5563 !important; /* Grey border */
+	color: #e5e7eb !important; /* Light grey text */
 }
-.dark-mode .kb-form button:not(.kb-btn-primary):hover {
-	background: #0b1220;
-	border-color: #4b5563;
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):hover {
+	background: #4b5563 !important; /* Slightly lighter grey on hover */
+	border-color: #6b7280 !important;
 }
 
 /* Labels white in dark mode */
 .dark-mode .kb-form-label,
 .dark-mode .kb-form .kb-label,
 .dark-mode .kb-form .form-section h3 { color: #ffffff; }
+
+/* Amendment text should be white in dark mode */
+.dark-mode .kb-form .text-gray-700 {
+	color: #ffffff !important; /* White text for amendment text */
+}
 
 /* Progress and Preview cards styling */
 .dark-mode .ds-card {
