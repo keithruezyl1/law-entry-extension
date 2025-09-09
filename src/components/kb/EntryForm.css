@@ -743,9 +743,174 @@
 	color: #e5e7eb !important;
 }
 
+/* Comprehensive input field dark mode styling */
+.dark-mode input[type="text"],
+.dark-mode input[type="url"],
+.dark-mode input[type="date"],
+.dark-mode input[type="email"],
+.dark-mode input[type="number"],
+.dark-mode input[type="search"],
+.dark-mode input[type="tel"],
+.dark-mode input[type="password"],
+.dark-mode select,
+.dark-mode textarea {
+	background: #374151 !important; /* Light grey background */
+	border-color: #4b5563 !important; /* Grey border */
+	color: #ffffff !important; /* White text */
+}
+
+.dark-mode input[type="text"]::placeholder,
+.dark-mode input[type="url"]::placeholder,
+.dark-mode input[type="date"]::placeholder,
+.dark-mode input[type="email"]::placeholder,
+.dark-mode input[type="number"]::placeholder,
+.dark-mode input[type="search"]::placeholder,
+.dark-mode input[type="tel"]::placeholder,
+.dark-mode input[type="password"]::placeholder,
+.dark-mode textarea::placeholder {
+	color: #9ca3af !important; /* Light grey placeholders */
+}
+
+/* UI Component dark mode styling (Input, Select, etc.) */
+.dark-mode .bg-background {
+	background-color: #374151 !important;
+}
+
+.dark-mode .border-input {
+	border-color: #4b5563 !important;
+}
+
+.dark-mode .text-muted-foreground {
+	color: #9ca3af !important;
+}
+
+.dark-mode .text-foreground {
+	color: #ffffff !important;
+}
+
+/* Specific styling for UI components with CSS variables */
+.dark-mode [class*="h-11"] {
+	background-color: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode [class*="h-11"]::placeholder {
+	color: #9ca3af !important;
+}
+
+/* Specific styling for inputs with h-11 px-4 classes */
+.dark-mode .h-11 {
+	background: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode .h-11::placeholder {
+	color: #9ca3af !important;
+}
+
+/* UI component inputs (using CSS variables) */
+.dark-mode .bg-background {
+	background: #374151 !important;
+}
+
+.dark-mode .border-input {
+	border-color: #4b5563 !important;
+}
+
+.dark-mode .text-muted-foreground {
+	color: #9ca3af !important;
+}
+
+/* Select dropdowns */
+.dark-mode select {
+	background: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode select option {
+	background: #374151 !important;
+	color: #ffffff !important;
+}
+
+/* Focus states for dark mode inputs */
+.dark-mode input:focus,
+.dark-mode select:focus,
+.dark-mode textarea:focus {
+	border-color: #f97316 !important; /* Orange focus border */
+	box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1) !important;
+}
+
 /* Dropdown alignment */
 .kb-form-select { line-height: 48px; }
 .kb-form-select option { padding: 8px 12px; line-height: 1.4; }
+
+/* Type-specific form components dark mode styling */
+.dark-mode .kb-form .grid input,
+.dark-mode .kb-form .grid select,
+.dark-mode .kb-form .grid textarea {
+	background: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode .kb-form .grid input::placeholder,
+.dark-mode .kb-form .grid textarea::placeholder {
+	color: #9ca3af !important;
+}
+
+/* RightsAdvisoryForm specific styling */
+.dark-mode .kb-form .md\\:col-span-2 input,
+.dark-mode .kb-form .md\\:col-span-2 select {
+	background: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode .kb-form .md\\:col-span-2 input::placeholder {
+	color: #9ca3af !important;
+}
+
+/* FormField components dark mode */
+.dark-mode .kb-form .FormField input,
+.dark-mode .kb-form .FormField select,
+.dark-mode .kb-form .FormField textarea {
+	background: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode .kb-form .FormField input::placeholder,
+.dark-mode .kb-form .FormField textarea::placeholder {
+	color: #9ca3af !important;
+}
+
+/* StringArray components dark mode */
+.dark-mode .kb-form .StringArray input {
+	background: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode .kb-form .StringArray input::placeholder {
+	color: #9ca3af !important;
+}
+
+/* Ensure all form inputs in the kb-form are styled */
+.dark-mode .kb-form input:not([type="checkbox"]):not([type="radio"]),
+.dark-mode .kb-form select,
+.dark-mode .kb-form textarea {
+	background: #374151 !important;
+	border-color: #4b5563 !important;
+	color: #ffffff !important;
+}
+
+.dark-mode .kb-form input:not([type="checkbox"]):not([type="radio"])::placeholder,
+.dark-mode .kb-form textarea::placeholder {
+	color: #9ca3af !important;
+}
 
 
 
