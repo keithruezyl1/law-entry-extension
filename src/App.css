@@ -42,6 +42,11 @@ body {
 .dark-mode .team-member-card p { color: #9ca3af; }
 .dark-mode .progress-count { color: #e5e7eb; }
 
+/* Dashboard date/time text - slightly lighter grey in dark mode */
+.dark-mode .text-gray-600 {
+	color: #d1d5db !important; /* Lighter grey for better visibility */
+}
+
 /* Darker pill backgrounds in dark mode */
 .dark-mode .quota-item.pending { background: #1e293b !important; border-color: #3b82f6 !important; color: #93c5fd !important; }
 .dark-mode .quota-item.completed { background: #052e1a !important; border-color: #16a34a !important; color: #86efac !important; }
