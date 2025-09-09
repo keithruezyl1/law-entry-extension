@@ -1526,29 +1526,11 @@ function TagArray({ control, register, watch }: any) {
   const tags: string[] = (watch('tags') || []).filter((t: string) => t && t.trim().length > 0);
   const [draft, setDraft] = React.useState('');
 
-  const normalize = (s: string) => s.toLowerCase().trim();
-  const splitIntoTags = (s: string) =>
-    normalize(s)
-      .replace(/[_]+/g, ' ')
-      .split(/\s+/)
-      .filter(Boolean);
-
-  const addTags = (raw: string) => {
-    const candidates = splitIntoTags(raw);
-    if (candidates.length === 0) return;
-    const existing = new Set(tags.map(normalize));
-    candidates.forEach((t) => {
-      if (!existing.has(t)) {
-        append(t);
-        existing.add(t);
-      }
-    });
-  };
-
   const addFromDraft = () => {
-    if (!draft.trim()) return;
-    addTags(draft);
+    const value = draft.trim();
+    if (!value) return;
     setDraft('');
+    append(value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1566,13 +1548,6 @@ function TagArray({ control, register, watch }: any) {
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
-        onPaste={(e) => {
-          const text = e.clipboardData.getData('text');
-          if (text && /[\s_]/.test(text)) {
-            e.preventDefault();
-            addTags(text);
-          }
-        }}
       />
       {Array.isArray(tags) && tags.filter((t) => t && t.trim().length > 0).length > 0 && (
         <div className="flex flex-wrap gap-2 kb-chip-list">

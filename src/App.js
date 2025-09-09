@@ -890,10 +890,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       setPendingEntryForModal(null);
       setShowIncompleteEntriesModal(false);
       
-      // Navigate back to dashboard after a short delay
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 100);
+      // Navigation to dashboard will happen after success modal auto-closes (3 seconds)
     }
   };
 
@@ -908,16 +905,18 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setShowIncompleteEntriesModal(true);
   };
 
-  // Auto-close success modal after 2 seconds
+  // Auto-close success modal after 3 seconds and navigate to dashboard
   useEffect(() => {
     if (showSuccessModal) {
       const timer = setTimeout(() => {
         setShowSuccessModal(false);
-      }, 2000);
+        // Navigate to dashboard after success modal closes
+        navigate('/dashboard');
+      }, 3000);
       
       return () => clearTimeout(timer);
     }
-  }, [showSuccessModal]);
+  }, [showSuccessModal, navigate]);
 
   const handleClearOptionSelect = (option) => {
     setClearOption(option);
@@ -1718,7 +1717,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             disabled
             style={{ opacity: 0.6, cursor: 'not-allowed' }}
           >
-            Auto-closing in 2 seconds...
+            Auto-closing in 3 seconds...
           </button>
         </div>
       </Modal>
