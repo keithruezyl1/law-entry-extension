@@ -260,23 +260,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     try { localStorage.setItem('app_theme', isDarkMode ? 'dark' : 'light'); } catch (_) {}
   }, [isDarkMode]);
 
-  // Enforce Tagarao (P5) theme behavior:
-  // - Dashboard always dark mode
-  // - Create/Edit form always light mode (on /law-entry)
-  useEffect(() => {
-    try {
-      if (!user) return;
-      if (!isTagarao(user)) return;
-      const path = (location && location.pathname) || '';
-      const onDashboard = /(^\/dashboard$|^\/$)/.test(path) || path.includes('/dashboard');
-      const onForm = path.includes('/law-entry');
-      if (onDashboard && !isDarkMode) {
-        setIsDarkMode(true);
-      } else if (onForm && isDarkMode) {
-        setIsDarkMode(false);
-      }
-    } catch (_) {}
-  }, [location.pathname, user, isDarkMode]);
+  // Note: Removed force dark mode for P5/Tagarao - users can now choose their preferred theme
 
   // React to verification refresh or progress changes (trigger re-render)
   useEffect(() => {
@@ -930,18 +914,31 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setShowIncompleteEntriesModal(true);
   };
 
-  // Auto-close success modal after 3 seconds and navigate to dashboard
+  // Auto-close success modal after 5 seconds and navigate to dashboard
   useEffect(() => {
     if (showSuccessModal) {
       const timer = setTimeout(() => {
         setShowSuccessModal(false);
         // Navigate to dashboard after success modal closes
         navigate('/dashboard');
-      }, 3000);
+      }, 5000);
       
       return () => clearTimeout(timer);
     }
   }, [showSuccessModal, navigate]);
+
+  // Auto-close entry saved modal after 5 seconds and navigate to dashboard
+  useEffect(() => {
+    if (showEntrySavedModal) {
+      const timer = setTimeout(() => {
+        setShowEntrySavedModal(false);
+        // Navigate to dashboard after entry saved modal closes
+        navigate('/dashboard');
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showEntrySavedModal, navigate]);
 
   const handleClearOptionSelect = (option) => {
     setClearOption(option);
@@ -1734,7 +1731,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             disabled
             style={{ opacity: 0.6, cursor: 'not-allowed' }}
           >
-            Auto-closing in 3 seconds...
+            Auto-closing in 5 seconds...
           </button>
         </div>
       </Modal>
@@ -1766,16 +1763,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       {/* Entry Saved Modal */}
       <Modal
         isOpen={showEntrySavedModal}
-        onClose={() => setShowEntrySavedModal(false)}
+        onClose={() => {}} // Prevent closing until auto-close
         title="Entry Saved Successfully!"
         subtitle={`"${savedEntryTitle}" has been saved to the database and indexed.`}
       >
         <div className="modal-buttons">
           <button
             className="modal-button orange"
-            onClick={() => setShowEntrySavedModal(false)}
+            disabled
+            style={{ opacity: 0.6, cursor: 'not-allowed' }}
           >
-            OK
+            Auto-closing in 5 seconds...
           </button>
         </div>
       </Modal>

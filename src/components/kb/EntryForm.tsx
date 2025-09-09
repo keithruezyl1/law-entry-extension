@@ -881,7 +881,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Dispatch event to refresh progress display
     window.dispatchEvent(new Event('refresh-progress'));
     
-    navigate('/dashboard');
+    // Navigation will be handled by the success modal in App.js
   };
 
   // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
