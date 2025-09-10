@@ -382,6 +382,16 @@ updated_at: string      // ISO timestamp (auto-generated)
 - **No manual input required:** The embedding field is populated automatically during import
 - **Search enhancement:** Embeddings allow the system to find related entries based on semantic meaning, not just exact text matches
 
+### **Import-Specific Field Handling**
+- **Created By:** Automatically set to the logged-in user's information
+  - `created_by`: Uses the logged-in user's ID (e.g., 5 for Tagarao)
+  - `created_by_name`: Uses the logged-in user's name (e.g., "Tagarao")
+- **Verification Status:** All imported entries are automatically marked as unverified
+  - `verified`: Set to `false`
+  - `verified_at`: Set to `null`
+  - `verified_by`: Set to `null`
+- **No manual input required:** These fields are automatically populated during import
+
 ### **Jurisdiction Validation**
 - Must be "PH" for national constitution
 - If other jurisdiction, must be title-cased (e.g., "Quezon City", "Cavite")
@@ -573,8 +583,13 @@ updated_at: string      // ISO timestamp (auto-generated)
 7. **Jurisprudence format** - Use array of strings with full case citations and descriptions
 8. **Related sections format** - Use type: "internal" with entry_id for constitution provisions
 9. **Legal bases format** - Use type: "external" with citation, url, title, note for external documents
-10. **Missing created_by** - Include team member ID (e.g., 5 for Tagarao)
-11. **Vector embeddings** - Do not include embedding field; system generates automatically on import
+10. **Auto-populated fields** - Do not include these fields; system populates automatically on import:
+    - `embedding` - Vector embedding for semantic search
+    - `created_by` - Logged-in user's ID
+    - `created_by_name` - Logged-in user's name
+    - `verified` - Set to false for all imports
+    - `verified_at` - Set to null for all imports
+    - `verified_by` - Set to null for all imports
 
 ### **Validation Errors:**
 - Check browser console for specific error messages
@@ -586,8 +601,7 @@ updated_at: string      // ISO timestamp (auto-generated)
 - Check that jurisprudence is array of strings with full case citations
 - Verify related_sections use type: "internal" with entry_id for constitution provisions
 - Verify legal_bases use type: "external" with citation, url, title, note for external documents
-- Ensure created_by field includes valid team member ID
-- Do not include embedding field - it's auto-generated on import
+- Do not include auto-populated fields - they're set automatically on import
 
 ---
 
@@ -662,8 +676,13 @@ When generating constitution provision entries with GPT or similar AI tools, use
 8. **Dates must be ISO format** - Use "1987-02-02T00:00:00.000Z" format for dates
 9. **URLs must be complete** - Start with http:// or https://
 10. **Status must be valid enum** - "active", "amended", "repealed", "draft", "approved", "published"
-11. **Vector embeddings auto-generated** - Do not include embedding field; system generates automatically on import
-12. **Created by field required** - Use team member ID (e.g., 5 for Tagarao)
+11. **Auto-populated fields** - Do not include these fields; system populates automatically on import:
+    - `embedding` - Vector embedding for semantic search
+    - `created_by` - Logged-in user's ID
+    - `created_by_name` - Logged-in user's name
+    - `verified` - Set to false for all imports
+    - `verified_at` - Set to null for all imports
+    - `verified_by` - Set to null for all imports
 
 ---
 

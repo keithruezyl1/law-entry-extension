@@ -174,6 +174,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showIncompleteEntriesModal, setShowIncompleteEntriesModal] = useState(false);
   const [pendingEntryForModal, setPendingEntryForModal] = useState(null);
+  const [showImportSuccessModal, setShowImportSuccessModal] = useState(false);
+  const [importedCount, setImportedCount] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showEntrySavedModal, setShowEntrySavedModal] = useState(false);
   const [savedEntryTitle, setSavedEntryTitle] = useState('');
@@ -828,14 +830,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     }
   };
 
-  const handleImport = (event) => {
+  const handleImport = async (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
-          const importedCount = importEntries(e.target.result);
-          alert(`Successfully imported ${importedCount} entries.`);
+          const count = await importEntries(e.target.result, user);
+          setImportedCount(count);
+          setShowImportSuccessModal(true);
         } catch (err) {
           console.error('Error importing entries:', err);
           alert('Failed to import entries. Please check the file format.');
@@ -1689,6 +1692,23 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             onClick={handleLogoutCancel}
           >
             Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {/* Import Success Modal */}
+      <Modal
+        isOpen={showImportSuccessModal}
+        onClose={() => setShowImportSuccessModal(false)}
+        title="Import Successful!"
+        subtitle={`Successfully imported ${importedCount} ${importedCount === 1 ? 'entry' : 'entries'}.`}
+      >
+        <div className="modal-buttons">
+          <button
+            className="modal-button success"
+            onClick={() => setShowImportSuccessModal(false)}
+          >
+            Hell Yeah! 🎉
           </button>
         </div>
       </Modal>

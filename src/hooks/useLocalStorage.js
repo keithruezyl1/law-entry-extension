@@ -696,7 +696,7 @@ export const useLocalStorage = () => {
   };
 
   // Import entries
-  const importEntries = async (jsonData) => {
+  const importEntries = async (jsonData, userInfo = null) => {
     try {
       const parsed = JSON.parse(jsonData);
       const list = Array.isArray(parsed) ? parsed : [parsed];
@@ -736,6 +736,12 @@ export const useLocalStorage = () => {
             last_reviewed: entry.last_reviewed || new Date().toISOString().split('T')[0],
             visibility: entry.visibility || { gli: true, cpa: false },
             offline: entry.offline || { pack_include: false },
+            // Import-specific fields
+            created_by: userInfo?.personId || userInfo?.person_id || entry.created_by || 5,
+            created_by_name: userInfo?.name || userInfo?.displayName || entry.created_by_name || 'Imported User',
+            verified: false, // All imported entries are marked as unverified
+            verified_at: null,
+            verified_by: null,
             // Type-specific fields
             ...(entry.type === 'statute_section' && {
               elements: entry.elements,

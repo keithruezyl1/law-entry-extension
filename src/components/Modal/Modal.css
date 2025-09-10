@@ -155,6 +155,15 @@
   color: white;
 }
 
+.modal-button.success {
+  background: #28a745;
+  color: white;
+}
+
+.modal-button.success:hover {
+  background: #218838;
+}
+
 .modal-button.cancel:active,
 .modal-button.cancel.active {
   background: #ff6b35;
