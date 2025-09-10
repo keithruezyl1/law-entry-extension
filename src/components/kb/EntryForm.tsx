@@ -182,14 +182,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   
   // Explicit mode detection
   // Check if this is an imported entry (has entry_id but no id field) vs existing entry (has id field)
+  // Also check if we're on a /law-entry/ URL (create mode) vs /entry/ID/edit URL (edit mode)
+  const isOnCreateUrl = window.location.pathname.startsWith('/law-entry/');
   const isImportedEntry = entry && entry.entry_id && !(entry as any).id;
-  const isEditMode = !!entry && !isImportedEntry;
-  const isCreateMode = !entry || isImportedEntry;
+  const isEditMode = !!entry && !isImportedEntry && !isOnCreateUrl;
+  const isCreateMode = !entry || isImportedEntry || isOnCreateUrl;
   
   console.log('EntryForm mode detection:', {
     isEditMode,
     isCreateMode,
     isImportedEntry,
+    isOnCreateUrl,
+    currentUrl: window.location.pathname,
     entryId: entry?.entry_id || (entry as any)?.id,
     entryType: entry?.type,
     hasIdField: !!(entry as any)?.id
@@ -805,13 +809,25 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     setCurrentStep((s) => {
       const next = Math.min(steps[steps.length - 1].id, s + 1);
       // Update URL - check if we're in edit mode (but not for imported entries)
+      console.log('Navigation debug:', {
+        hasEntry: !!entry,
+        isImportedEntry,
+        isOnCreateUrl,
+        currentUrl: window.location.pathname,
+        entryId: entry?.entry_id,
+        hasIdField: !!(entry as any)?.id,
+        next
+      });
+      
       if (entry && !isImportedEntry) {
         // We're editing an existing entry, maintain edit URL structure
         // Use entry_id instead of id to avoid TypeScript issues
         const entryId = (entry as any).id || entry.entry_id;
+        console.log('Navigating to edit mode:', `/entry/${entryId}/edit?step=${next}`);
         navigate(`/entry/${entryId}/edit?step=${next}`);
       } else {
         // We're creating a new entry (including imported entries), use regular form URL
+        console.log('Navigating to create mode:', `/law-entry/${next}`);
         navigate(`/law-entry/${next}`);
       }
       // Scroll after state updates on next tick
@@ -841,13 +857,25 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     setCurrentStep((s) => {
       const prev = Math.max(1, s - 1);
       // Update URL - check if we're in edit mode (but not for imported entries)
+      console.log('goPrev Navigation debug:', {
+        hasEntry: !!entry,
+        isImportedEntry,
+        isOnCreateUrl,
+        currentUrl: window.location.pathname,
+        entryId: entry?.entry_id,
+        hasIdField: !!(entry as any)?.id,
+        prev
+      });
+      
       if (entry && !isImportedEntry) {
         // We're editing an existing entry, maintain edit URL structure
         // Use entry_id instead of id to avoid TypeScript issues
         const entryId = (entry as any).id || entry.entry_id;
+        console.log('goPrev Navigating to edit mode:', `/entry/${entryId}/edit?step=${prev}`);
         navigate(`/entry/${entryId}/edit?step=${prev}`);
       } else {
         // We're creating a new entry (including imported entries), use regular form URL
+        console.log('goPrev Navigating to create mode:', `/law-entry/${prev}`);
         navigate(`/law-entry/${prev}`);
       }
       setTimeout(scrollToCardTop, 0);
