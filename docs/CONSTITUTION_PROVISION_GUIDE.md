@@ -9,21 +9,25 @@ This guide is specifically designed for creating **Constitution Provision** entr
 ### **📝 Base Fields (Required for All Entries)**
 
 ```javascript
-entry_id: string          // Auto-generated stable ID (e.g., "CONST-Art3Sec12-123456")
+entry_id: string          // Auto-generated stable ID (e.g., "CONST-1987Constitution,BillofRights-Article 3, Section 14(2)-663202")
 type: "constitution_provision"  // Always "constitution_provision"
-title: string            // Human-readable label (e.g., "Protection Against Unreasonable Searches")
+title: string            // Human-readable label (e.g., "Right to a Speedy Trial")
 jurisdiction: string     // Usually "PH" for national constitution
-law_family: string       // "1987 Constitution" or "Philippine Constitution"
-section_id?: string      // Article/Section (e.g., "Article 3 Section 12", "Article 3 Section 2")
-canonical_citation: string // Formal cite (e.g., "1987 Constitution, Article 3 Section 12")
+law_family: string       // "1987 Constitution, Bill of Rights" or "1987 Constitution"
+section_id?: string      // Article/Section (e.g., "Article 3, Section 14(2)", "Article 3 Section 12")
+canonical_citation: string // Formal cite (e.g., "1987 Constitution, Article 3, Section 14(2)")
 status: string           // "active" | "amended" | "repealed" | "draft" | "approved" | "published"
-effective_date: string   // ISO date (usually "1987-02-02" for 1987 Constitution)
+effective_date: string   // ISO date (usually "1987-02-02T00:00:00.000Z" for 1987 Constitution)
 amendment_date?: string  // ISO date (only if status = "amended")
 summary: string          // 1-3 sentence neutral synopsis
 text: string            // Clean, normalized constitutional text
 source_urls: string[]   // Official sources (at least 1 required)
-tags: string[]          // Retrieval hints (e.g., ["arrest", "search", "privacy"])
+tags: string[]          // Retrieval hints (e.g., ["speedy", "trial", "due", "process", "presumption", "of", "innocence"])
 last_reviewed: string    // ISO date (auto-set to current date for new entries)
+created_by: number       // Team member ID (e.g., 5 for Tagarao)
+created_at: string       // ISO timestamp (auto-generated)
+updated_at: string       // ISO timestamp (auto-generated)
+embedding: string        // Vector embedding (auto-generated for imported entries)
 ```
 
 ### **🔒 Access Control**
@@ -37,20 +41,30 @@ visibility: {
 
 ### **📜 Constitution-Specific Fields**
 ```javascript
-topics: string[]              // Required: constitutional topics/themes
-jurisprudence: string[]       // Optional: key Supreme Court cases (array of strings, not objects)
+topics: string[]              // Required: constitutional topics/themes (e.g., ["criminal justice", "due process", "judicial efficiency", "rights of the accused"])
+jurisprudence: string[]       // Optional: key Supreme Court cases (array of strings with full case citations)
 legal_bases: object[]         // Optional: legal bases with full details (Step 4)
 related_sections: object[]    // Optional: related constitutional sections with full details (Step 4)
 ```
 
-### **📋 Citation Format for External References (related_sections & legal_bases)**
+### **📋 Citation Format for References (related_sections & legal_bases)**
 ```javascript
+// External references (legal_bases)
 {
-  "type": "external",         // Always "external" for constitution provisions
-  "citation": "string",       // Full citation text
+  "type": "external",         // For external legal documents
+  "citation": "string",       // Full citation text (e.g., "Republic Act No. 8493 (1998)")
   "url": "string",           // Complete URL
-  "title": "string",         // Document title
+  "title": "string",         // Document title (e.g., "Speedy Trial Act of 1998")
   "note": "string"           // Short description
+}
+
+// Internal references (related_sections)
+{
+  "type": "internal",         // For related constitution provisions
+  "entry_id": "string",       // Entry ID of related provision
+  "title": "string",         // Title of related provision
+  "url": "string",           // URL to constitution text
+  "note": "string"           // Description of relationship
 }
 ```
 
@@ -58,69 +72,109 @@ related_sections: object[]    // Optional: related constitutional sections with 
 
 ## 📚 Constitution Provision Examples
 
-### **Example 1: Bill of Rights - Search and Seizure**
+### **Example 1: Bill of Rights - Right to a Speedy Trial**
 
 ```json
 {
-  "entry_id": "CONST-Art3Sec2-123456",
+  "entry_id": "CONST-1987Constitution,BillofRights-Article 3, Section 14(2)-663202",
   "type": "constitution_provision",
-  "title": "Protection Against Unreasonable Searches and Seizures",
+  "title": "Right to a Speedy Trial",
+  "canonical_citation": "1987 Constitution, Article 3, Section 14(2)",
+  "summary": "The accused in a criminal case is guaranteed the right to a speedy, impartial, and public trial. This safeguard prevents undue delay, protects the presumption of innocence, and upholds due process.",
+  "text": "In all criminal prosecutions, the accused shall be presumed innocent until the contrary is proved, and shall enjoy the right to be heard by himself and counsel, to be informed of the nature and cause of the accusation against him, to have a speedy, impartial, and public trial, to meet the witnesses face to face, and to have compulsory process to secure the attendance of witnesses and the production of evidence in his behalf.",
+  "tags": [
+    "speedy",
+    "trial",
+    "due",
+    "process",
+    "presumption",
+    "of",
+    "innocence",
+    "innocent",
+    "rights",
+    "the",
+    "accused"
+  ],
   "jurisdiction": "PH",
-  "law_family": "1987 Constitution",
-  "section_id": "Article 3 Section 2",
-  "canonical_citation": "1987 Constitution, Article 3 Section 2",
+  "law_family": "1987 Constitution, Bill of Rights",
+  "created_by": 5,
+  "created_at": "2025-09-08T16:49:01.692Z",
+  "updated_at": "2025-09-08T16:49:01.696Z",
+  "section_id": "Article 3, Section 14(2)",
   "status": "active",
-  "effective_date": "1987-02-02",
-  "summary": "Constitutional protection against unreasonable searches and seizures, requiring probable cause and judicial warrant.",
-  "text": "The right of the people to be secure in their persons, houses, papers, and effects against unreasonable searches and seizures of whatever nature and for any purpose shall be inviolable, and no search warrant or warrant of arrest shall issue except upon probable cause to be determined personally by the judge after examination under oath or affirmation of the complainant and the witnesses he may produce, and particularly describing the place to be searched and the persons or things to be seized.",
+  "effective_date": "1987-02-02T00:00:00.000Z",
+  "amendment_date": null,
+  "last_reviewed": "2025-09-08T00:00:00.000Z",
+  "visibility": {
+    "cpa": true,
+    "gli": true
+  },
   "source_urls": [
     "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
-    "https://www.lawphil.net/consti/cons1987.html"
+    "https://lawphil.net/consti/cons1987.html"
   ],
-  "tags": ["search", "seizure", "warrant", "privacy", "probable_cause"],
-  "last_reviewed": "2024-01-15",
-  "visibility": {
-    "gli": true,
-    "cpa": true
-  },
-  "topics": ["search", "seizure", "privacy", "warrant", "probable_cause"],
+  "topics": [
+    "criminal justice",
+    "due process",
+    "judicial efficiency",
+    "rights of the accused"
+  ],
   "jurisprudence": [
-    "People v. Marti, GR 81561, 1991",
-    "People v. Doria, GR 125299, 1999",
-    "People v. Chua Ho San, GR 128222, 2001"
+    "Tatad v. Sandiganbayan, G.R. No. 72335, 1988 — Inordinate delay in preliminary investigation violates right to speedy trial.",
+    "People v. Sandiganbayan (Third Division), G.R. No. 232197-98, 2018 — Right to speedy trial requires balancing test between state interests and rights of the accused.",
+    "Perez v. People, G.R. No. 164763, 2009 — Dismissal warranted when delay in prosecution is unjustified."
   ],
   "legal_bases": [
     {
+      "url": "https://lawphil.net/statutes/repacts/ra1998/ra_8493_1998.html",
+      "note": "Implements specific timeframes for criminal proceedings.",
       "type": "external",
-      "citation": "1987 Constitution, Article 3 Section 2",
-      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
-      "title": "Protection Against Unreasonable Searches and Seizures",
-      "note": "Primary constitutional basis for search and seizure protections"
+      "title": "Speedy Trial Act of 1998",
+      "citation": "Republic Act No. 8493 (1998)"
+    },
+    {
+      "url": "https://lawphil.net/courts/rules/rc_1989p1.html#RULE_119",
+      "note": "Provides procedural rules on the conduct of criminal trials.",
+      "type": "external",
+      "title": "Rule 119 – Trial",
+      "citation": "Rule 119, Rules of Court of the Philippines"
+    },
+    {
+      "url": "https://lawphil.net/statutes/presdecs/pd1978/pd_1606_1978.html",
+      "note": "Governs criminal trials for graft and corruption cases involving public officials.",
+      "type": "external",
+      "title": "Sandiganbayan Law",
+      "citation": "Presidential Decree No. 1606 (1978), as amended"
     }
   ],
   "related_sections": [
     {
-      "type": "external",
-      "citation": "1987 Constitution, Article 3 Section 3",
       "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
-      "title": "Privacy of Communication and Correspondence",
-      "note": "Constitutional protection of privacy in communications"
+      "note": "Protects individuals from deprivation of life, liberty, or property without due process of law and ensures equal protection under the laws.",
+      "type": "internal",
+      "title": "Right to Due Process of Law",
+      "entry_id": "CONST-1987Constitution,BillofRights-Article III, Section 1-670979"
     },
     {
-      "type": "external",
-      "citation": "1987 Constitution, Article 3 Section 12",
-      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "url": "https://lawphil.net/consti/cons1987.html",
+      "note": "Provides for the rights of any person under investigation for the commission of an offense, including the right to remain silent, the right to counsel, and the inadmissibility of confessions obtained in violation of these rights.",
+      "type": "internal",
       "title": "Rights of Persons Under Custodial Investigation",
-      "note": "Constitutional rights during police investigation"
+      "entry_id": "CONST-1987PhilippineConstitution–BillofRights-Art. III, Sec. 12-617772"
     },
     {
-      "type": "external",
-      "citation": "1987 Constitution, Article 3 Section 14",
-      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
-      "title": "Right to Due Process",
-      "note": "Fundamental due process protections"
+      "url": "https://lawphil.net/consti/cons1987.html",
+      "note": "All persons, except those charged with offenses punishable by reclusion perpetua when evidence of guilt is strong, shall be bailable before conviction by sufficient sureties, or released on recognizance as may be provided by law.",
+      "type": "internal",
+      "title": "Right to Bail",
+      "entry_id": "CONST-1987PhilippineConstitution–BillofRights-Article III, Sec. 13-367017"
     }
-  ]
+  ],
+  "created_by_name": "Tagarao",
+  "verified_at": null,
+  "verified": null,
+  "verified_by": null,
+  "id": "CONST-1987Constitution,BillofRights-Article 3, Section 14(2)-663202"
 }
 ```
 
@@ -261,33 +315,32 @@ related_sections: object[]    // Optional: related constitutional sections with 
 ## ⚠️ Critical Validation Requirements
 
 ### **Entry ID Generation**
-- **Format:** `CONST-{SectionID}-{6-digit-timestamp}`
-- **Examples:** `CONST-Art3Sec2-123456`, `CONST-Art3Sec12-789012`
-- **Auto-generated:** The system generates this automatically based on section_id and timestamp
-- **Validation:** Must match pattern `/^CONST-[A-Za-z0-9]+-\d{6}$/`
+- **Format:** `CONST-{LawFamily}-{SectionID}-{6-digit-timestamp}`
+- **Examples:** `CONST-1987Constitution,BillofRights-Article 3, Section 14(2)-663202`
+- **Auto-generated:** The system generates this automatically based on law_family, section_id and timestamp
+- **Validation:** Must match pattern `/^CONST-[A-Za-z0-9,() ]+-\d{6}$/`
 
 #### **How Auto-Generation Works:**
 The system automatically generates entry IDs using this process:
 
 1. **Prefix:** Always starts with `CONST-` for constitution provisions
-2. **Section ID:** Extracted from the `section_id` field:
-   - `"Article 3 Section 2"` → `"Art3Sec2"`
-   - `"Article 3 Section 12"` → `"Art3Sec12"`
-   - `"Article 2 Section 1"` → `"Art2Sec1"`
-3. **Timestamp:** Last 6 digits of current timestamp (milliseconds since epoch)
+2. **Law Family:** Extracted from the `law_family` field:
+   - `"1987 Constitution, Bill of Rights"` → `"1987Constitution,BillofRights"`
+3. **Section ID:** Extracted from the `section_id` field:
+   - `"Article 3, Section 14(2)"` → `"Article 3, Section 14(2)"`
+4. **Timestamp:** Last 6 digits of current timestamp (milliseconds since epoch)
    - Example: `1705123456789` → `"234567"`
-4. **Final Format:** `CONST-{SectionID}-{6-digit-timestamp}`
+5. **Final Format:** `CONST-{LawFamily}-{SectionID}-{6-digit-timestamp}`
 
 #### **Generation Examples:**
 ```javascript
-// Input section_id: "Article 3 Section 2"
-// Generated entry_id: "CONST-Art3Sec2-123456"
+// Input law_family: "1987 Constitution, Bill of Rights"
+// Input section_id: "Article 3, Section 14(2)"
+// Generated entry_id: "CONST-1987Constitution,BillofRights-Article 3, Section 14(2)-663202"
 
-// Input section_id: "Article 3 Section 12" 
-// Generated entry_id: "CONST-Art3Sec12-789012"
-
-// Input section_id: "Article 2 Section 1"
-// Generated entry_id: "CONST-Art2Sec1-456789"
+// Input law_family: "1987 Constitution"
+// Input section_id: "Article 3 Section 12"
+// Generated entry_id: "CONST-1987Constitution-Article 3 Section 12-789012"
 ```
 
 #### **Important Notes:**
@@ -299,25 +352,35 @@ The system automatically generates entry IDs using this process:
 ### **Required Fields (Validation Will Fail Without These)**
 ```javascript
 // These fields are REQUIRED and will cause validation errors if missing:
-entry_id: string          // Auto-generated, must follow CONST-{SectionID}-{timestamp} format
+entry_id: string          // Auto-generated, must follow CONST-{LawFamily}-{SectionID}-{timestamp} format
 type: "constitution_provision"  // Must be exactly this string
 title: string            // Must be at least 3 characters
 jurisdiction: string     // Must be "PH" or valid jurisdiction name
-law_family: string       // Must be at least 1 character
+law_family: string       // Must be at least 1 character (e.g., "1987 Constitution, Bill of Rights")
 canonical_citation: string // Must be at least 1 character
 status: string           // Must be one of: "active", "amended", "repealed", "draft", "approved", "published"
-effective_date: string   // Must be YYYY-MM-DD format
+effective_date: string   // Must be ISO date format (e.g., "1987-02-02T00:00:00.000Z")
 summary: string          // Must be at least 1 character
 text: string            // Must be at least 1 character
 source_urls: string[]   // Must have at least 1 valid URL
 tags: string[]          // Must have at least 1 tag
-last_reviewed: string    // Must be YYYY-MM-DD format
+last_reviewed: string    // Must be ISO date format (e.g., "2025-09-08T00:00:00.000Z")
 topics: string[]        // Must have at least 1 topic (constitution_provision specific)
+created_by: number      // Team member ID (e.g., 5 for Tagarao)
+created_at: string      // ISO timestamp (auto-generated)
+updated_at: string      // ISO timestamp (auto-generated)
 ```
 
 ### **Cross-Field Validation Rules**
 - If `status` is "amended", then `amendment_date` is required
 - All URLs in `source_urls` must be valid URLs (start with http:// or https://)
+
+### **Vector Embeddings for Imported Entries**
+- **Auto-generated:** When entries are imported via JSON, the system automatically generates vector embeddings
+- **Purpose:** Enables semantic search and AI-powered retrieval functionality
+- **Format:** Large array of floating-point numbers (e.g., `[0.018105285,0.03040041,0.0018285423,...]`)
+- **No manual input required:** The embedding field is populated automatically during import
+- **Search enhancement:** Embeddings allow the system to find related entries based on semantic meaning, not just exact text matches
 
 ### **Jurisdiction Validation**
 - Must be "PH" for national constitution
@@ -502,23 +565,29 @@ topics: string[]        // Must have at least 1 topic (constitution_provision sp
 
 ### **Common Issues:**
 1. **Missing required fields** - Ensure all base fields are included (see Critical Validation Requirements above)
-2. **Invalid dates** - Use YYYY-MM-DD format (e.g., "1987-02-02")
+2. **Invalid dates** - Use ISO format (e.g., "1987-02-02T00:00:00.000Z")
 3. **Invalid URLs** - Ensure URLs start with http:// or https://
 4. **Empty arrays** - Required arrays (source_urls, tags, topics) cannot be empty
-5. **Incorrect entry_id** - Follow the CONST-{SectionID}-{6-digit-timestamp} format
-6. **Roman numerals** - Use "Article 3 Section 12" instead of "Art. III, Sec. 12"
-9. **Jurisprudence format** - Use array of strings, not objects with citation/url/title/note
-10. **Related sections and legal_bases format** - Use objects with type: "external", citation, url, title, note
+5. **Incorrect entry_id** - Follow the CONST-{LawFamily}-{SectionID}-{6-digit-timestamp} format
+6. **Roman numerals** - Use "Article 3, Section 14(2)" instead of "Art. III, Sec. 14(2)"
+7. **Jurisprudence format** - Use array of strings with full case citations and descriptions
+8. **Related sections format** - Use type: "internal" with entry_id for constitution provisions
+9. **Legal bases format** - Use type: "external" with citation, url, title, note for external documents
+10. **Missing created_by** - Include team member ID (e.g., 5 for Tagarao)
+11. **Vector embeddings** - Do not include embedding field; system generates automatically on import
 
 ### **Validation Errors:**
 - Check browser console for specific error messages
 - Verify JSON syntax is correct
 - Ensure all required fields are present (see Critical Validation Requirements)
 - Confirm all URLs are valid and complete
-- Check date formats (YYYY-MM-DD)
+- Check date formats (ISO format: "1987-02-02T00:00:00.000Z")
 - Confirm topics array has at least one item
-- Check that jurisprudence is array of strings, not objects
-- Verify related_sections and legal_bases use correct object format with type: "external", citation, url, title, note
+- Check that jurisprudence is array of strings with full case citations
+- Verify related_sections use type: "internal" with entry_id for constitution provisions
+- Verify legal_bases use type: "external" with citation, url, title, note for external documents
+- Ensure created_by field includes valid team member ID
+- Do not include embedding field - it's auto-generated on import
 
 ---
 
@@ -529,49 +598,56 @@ When generating constitution provision entries with GPT or similar AI tools, use
 
 ```json
 {
-  "entry_id": "CONST-{SectionID}-{6-digit-timestamp}",
+  "entry_id": "CONST-{LawFamily}-{SectionID}-{6-digit-timestamp}",
   "type": "constitution_provision",
   "title": "Descriptive Title of the Constitutional Right",
-  "jurisdiction": "PH",
-  "law_family": "1987 Constitution",
-  "section_id": "Article X Section Y",
-  "canonical_citation": "1987 Constitution, Article X Section Y",
-  "status": "active",
-  "effective_date": "1987-02-02",
+  "canonical_citation": "1987 Constitution, Article X, Section Y",
   "summary": "1-3 sentence neutral summary of the constitutional provision",
   "text": "Exact constitutional text without modification",
+  "tags": ["relevant", "tags", "for", "search"],
+  "jurisdiction": "PH",
+  "law_family": "1987 Constitution, Bill of Rights",
+  "created_by": 5,
+  "section_id": "Article X, Section Y",
+  "status": "active",
+  "effective_date": "1987-02-02T00:00:00.000Z",
+  "amendment_date": null,
+  "last_reviewed": "2025-01-10T00:00:00.000Z",
+  "visibility": {
+    "cpa": true,
+    "gli": true
+  },
   "source_urls": [
     "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
-    "https://www.lawphil.net/consti/cons1987.html"
+    "https://lawphil.net/consti/cons1987.html"
   ],
-  "tags": ["relevant", "tags", "for", "search"],
-  "last_reviewed": "2024-01-15",
-  "visibility": {
-    "gli": true,
-    "cpa": true
-  },
   "topics": ["required", "topics", "array"],
   "jurisprudence": [
-    "Case Name, GR Number, Year"
+    "Case Name, G.R. No. XXXXX, Year — Brief description of case relevance."
   ],
   "legal_bases": [
     {
       "type": "external",
-      "citation": "1987 Constitution, Article X Section Y",
-      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "citation": "Republic Act No. XXXX (Year)",
+      "url": "https://lawphil.net/statutes/...",
       "title": "Document Title",
       "note": "Brief description of legal basis"
     }
   ],
   "related_sections": [
     {
-      "type": "external",
-      "citation": "1987 Constitution, Article X Section Y",
+      "type": "internal",
+      "entry_id": "CONST-1987Constitution,BillofRights-Article X, Section Y-123456",
+      "title": "Related Constitutional Provision Title",
       "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
-      "title": "Document Title",
       "note": "Brief description of relationship"
     }
-  ]
+  ],
+  "created_by_name": "Tagarao",
+  "verified_at": null,
+  "verified": null,
+  "verified_by": null,
+  "id": "CONST-{LawFamily}-{SectionID}-{6-digit-timestamp}"
 }
 ```
 
@@ -579,13 +655,15 @@ When generating constitution provision entries with GPT or similar AI tools, use
 1. **Always include ALL required fields** - Missing any will cause validation failure
 2. **Use exact constitutional text** - Do not paraphrase or summarize
 3. **Topics array is REQUIRED** - Must have at least one topic
-4. **pack_priority must be number** - Use 1, 2, or 3 (not "1", "2", "3")
-5. **Jurisprudence is array of strings** - Not objects with citation/url/title/note
-6. **Related sections and legal_bases use type: "external"** - Always use this format with citation, url, title, and note
-7. **Entry ID format** - CONST-{SectionID}-{6-digit-timestamp} (auto-generated by system)
-8. **Dates must be YYYY-MM-DD** - No other format accepted
+4. **Jurisprudence is array of strings** - Include full case citations with brief descriptions
+5. **Related sections use type: "internal"** - For constitution provisions, use internal references with entry_id
+6. **Legal bases use type: "external"** - For external legal documents, use external references
+7. **Entry ID format** - CONST-{LawFamily}-{SectionID}-{6-digit-timestamp} (auto-generated by system)
+8. **Dates must be ISO format** - Use "1987-02-02T00:00:00.000Z" format for dates
 9. **URLs must be complete** - Start with http:// or https://
 10. **Status must be valid enum** - "active", "amended", "repealed", "draft", "approved", "published"
+11. **Vector embeddings auto-generated** - Do not include embedding field; system generates automatically on import
+12. **Created by field required** - Use team member ID (e.g., 5 for Tagarao)
 
 ---
 
