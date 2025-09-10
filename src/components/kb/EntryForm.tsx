@@ -2029,6 +2029,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           maxDisplay={5}
         />
         
+        {/* Debug info for duplicate detection */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="fixed top-4 right-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs z-50 max-w-xs">
+            <div>Duplicates: {nearDuplicates?.length || 0}</div>
+            <div>Searching: {searchingDupes ? 'Yes' : 'No'}</div>
+            <div>Title: {title || 'None'}</div>
+            <div>Form Populated: {formPopulated ? 'Yes' : 'No'}</div>
+            <div>Is Imported: {isImportedEntry ? 'Yes' : 'No'}</div>
+            <div>On Create URL: {isOnCreateUrl ? 'Yes' : 'No'}</div>
+          </div>
+        )}
+        
         {/* Debug button for testing duplicate detection */}
         {process.env.NODE_ENV === 'development' && (
           <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
@@ -2038,16 +2050,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 console.log('🧪 Testing duplicate detection with sample data');
                 setNearDuplicates([
                   {
-                    title: "Test Entry 1",
-                    canonical_citation: "Test Citation 1",
-                    entry_id: "test-1",
-                    similarity: 0.8
+                    title: "Libel - Test Match 1",
+                    canonical_citation: "RPC Article 353",
+                    entry_id: "test-libel-1",
+                    similarity: 0.95
                   },
                   {
-                    title: "Test Entry 2", 
-                    canonical_citation: "Test Citation 2",
-                    entry_id: "test-2",
-                    similarity: 0.7
+                    title: "Libel - Test Match 2", 
+                    canonical_citation: "RPC Article 353",
+                    entry_id: "test-libel-2",
+                    similarity: 0.87
                   }
                 ]);
               }}
@@ -2109,6 +2121,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               className="bg-purple-500 text-white px-3 py-1 rounded text-xs"
             >
               Manual Duplicate Check
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                console.log('🔍 Force triggering duplicate detection...');
+                // Force trigger by updating a form field
+                const currentTitle = methods.getValues('title');
+                setValue('title', currentTitle + ' ');
+                setTimeout(() => setValue('title', currentTitle), 10);
+              }}
+              className="bg-orange-500 text-white px-3 py-1 rounded text-xs"
+            >
+              Force Trigger
             </button>
           </div>
         )}
