@@ -196,6 +196,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const isEditMode = !!entry && !isImportedEntry && !isOnCreateUrl;
   const isCreateMode = !entry || isImportedEntry || isOnCreateUrl;
   
+  // Reduced logging for performance
+  if (process.env.NODE_ENV === 'development') {
   console.log('EntryForm mode detection:', {
     isEditMode,
     isCreateMode,
@@ -209,14 +211,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     entryType: entry?.type,
     hasIdField: !!(entry as any)?.id
   });
-  
-  console.log('EntryForm received entry prop:', entry);
-  console.log('EntryForm is editing:', isEditMode);
-  console.log('EntryForm entry prop:', entry);
-  console.log('EntryForm entry visibility:', entry?.visibility);
-  console.log('EntryForm entry source_urls:', entry?.source_urls);
-  console.log('EntryForm entry tags:', entry?.tags);
-  console.log('EntryForm entry summary:', entry?.summary);
+  }
   
   const navigate = useNavigate();
   const { step } = useParams();
@@ -428,11 +423,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Load draft data or reset form when entry prop changes
   useEffect(() => {
     if (entry) {
+      if (process.env.NODE_ENV === 'development') {
       console.log('Resetting form with entry data:', entry);
-      console.log('Entry topics:', (entry as any)?.topics);
-      console.log('Entry jurisprudence:', (entry as any)?.jurisprudence);
-      console.log('Entry legal_bases:', (entry as any)?.legal_bases);
-      console.log('Entry related_sections:', (entry as any)?.related_sections);
+      }
       
       // Create a comprehensive reset object with all fields
       // Normalize helpers for edit mode
@@ -543,11 +536,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         related_sections: normalizeRelations((entry as any)?.related_sections),
       };
       
+      if (process.env.NODE_ENV === 'development') {
       console.log('Comprehensive reset data:', resetData);
-      console.log('Reset data topics:', resetData.topics);
-      console.log('Reset data jurisprudence:', resetData.jurisprudence);
-      console.log('Reset data legal_bases:', resetData.legal_bases);
-      console.log('Reset data related_sections:', resetData.related_sections);
+      }
       methods.reset(resetData as any);
       
       // Set amendment state for edit mode
@@ -559,7 +550,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const importedData = sessionStorage.getItem('importedEntryData');
         if (importedData) {
           const parsed = JSON.parse(importedData);
+          if (process.env.NODE_ENV === 'development') {
           console.log('Loading imported data for new entry:', parsed);
+          }
           
           // Use the same normalization logic as the entry prop
           const normalizeDate = (d: any): any => {
@@ -662,13 +655,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             related_sections: normalizeRelations(parsed?.related_sections),
           };
           
+          if (process.env.NODE_ENV === 'development') {
           console.log('Resetting form with imported data:', resetData);
+          }
           methods.reset(resetData as any);
           setFormPopulated(true);
           
           // Also trigger duplicate detection immediately for imported entries
           setTimeout(() => {
-            console.log('🔍 Manually triggering duplicate detection for imported entry');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔍 Manually triggering duplicate detection for imported entry');
+            }
             const currentValues = methods.getValues() as any;
             const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
             
@@ -678,7 +675,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 .join(' ');
               const q = `${idTokens}`.trim();
               
-              console.log('🔍 Manual duplicate detection query:', q);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🔍 Manual duplicate detection query:', q);
+              }
               
               // Trigger the duplicate detection by updating the form values
               // This will cause the main useEffect to run
@@ -698,7 +697,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const draftData = localStorage.getItem('kb_entry_draft');
         if (draftData) {
           const parsed = JSON.parse(draftData);
+          if (process.env.NODE_ENV === 'development') {
           console.log('Loading draft data for new entry:', parsed);
+          }
           
           // Merge draft data with defaults, preserving user input
           const mergedData = {
@@ -755,7 +756,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             related_sections: parsed.related_sections || [],
           };
           
+          if (process.env.NODE_ENV === 'development') {
           console.log('Merged draft data with defaults:', mergedData);
+          }
           methods.reset(mergedData as any);
           
           // Show notification that draft was loaded (CREATE MODE ONLY)
@@ -830,7 +833,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         setIsAutoSaving(true);
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
+        if (process.env.NODE_ENV === 'development') {
         console.log('Auto-saved draft before moving to next step');
+        }
         setTimeout(() => setIsAutoSaving(false), 1000);
       } catch (e) {
         console.error('Failed to auto-save draft:', e);
@@ -881,7 +886,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         setIsAutoSaving(true);
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        console.log('Auto-saved draft before moving to previous step');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Auto-saved draft before moving to previous step');
+        }
         setTimeout(() => setIsAutoSaving(false), 1000);
       } catch (e) {
         console.error('Failed to auto-save draft:', e);
@@ -956,7 +963,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         setIsAutoSaving(true);
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        console.log('Auto-saved draft on form change');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Auto-saved draft on form change');
+        }
         setTimeout(() => setIsAutoSaving(false), 1000);
       } catch (e) {
         console.error('Failed to auto-save draft on form change:', e);
@@ -970,7 +979,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         setIsAutoSaving(true);
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        console.log('Auto-saved draft on interval');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Auto-saved draft on interval');
+        }
         setTimeout(() => setIsAutoSaving(false), 1000);
       } catch (e) {
         console.error('Failed to auto-save draft on interval:', e);
@@ -1177,35 +1188,43 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Disabled when editing existing entries to avoid confusion
   useEffect(() => {
     // Don't run duplicate detection when editing existing entries
+    if (process.env.NODE_ENV === 'development') {
     console.log('🔍 Duplicate detection check:', { 
       hasEntry: !!entry, 
       entryId: entry?.entry_id || (entry as any)?.id,
       isEditMode,
-      isCreateMode,
-      isImportedEntry,
-      isOnCreateUrl,
-      formPopulated,
-      title: title || 'no title',
-      lawFamily: lawFamily || 'no law family',
-      currentUrl: window.location.pathname
-    });
+        isCreateMode,
+        isImportedEntry,
+        isOnCreateUrl,
+        formPopulated,
+        title: title || 'no title',
+        lawFamily: lawFamily || 'no law family',
+        currentUrl: window.location.pathname
+      });
+    }
     
     // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
     // For imported entries or new entries, we should always run duplicate detection
     if (entry && (entry as any).id && !isOnCreateUrl) {
-      console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
+      }
       setNearDuplicates([]);
       return;
     }
     
     // If we have an entry but we're on a create URL, this is likely an imported entry or new entry
     if (entry && isOnCreateUrl) {
-      console.log('🔍 Entry found on create URL - treating as imported/new entry, enabling duplicate detection');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Entry found on create URL - treating as imported/new entry, enabling duplicate detection');
+      }
     }
     
     // If we don't have an entry at all, this is a new entry
     if (!entry) {
-      console.log('🔍 No entry prop - treating as new entry, enabling duplicate detection');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 No entry prop - treating as new entry, enabling duplicate detection');
+      }
     }
     
     const idTokens = [title, lawFamily, sectionId, citation, effectiveDate]
@@ -1213,25 +1232,31 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       .join(' ');
     const q = `${idTokens}`.trim();
     
-    console.log('🔍 Duplicate detection query generation:', {
-      title: title || 'no title',
-      lawFamily: lawFamily || 'no law family',
-      sectionId: sectionId || 'no section id',
-      citation: citation || 'no citation',
-      effectiveDate: effectiveDate || 'no date',
-      idTokens: idTokens,
-      query: q
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Duplicate detection query generation:', {
+        title: title || 'no title',
+        lawFamily: lawFamily || 'no law family',
+        sectionId: sectionId || 'no section id',
+        citation: citation || 'no citation',
+        effectiveDate: effectiveDate || 'no date',
+        idTokens: idTokens,
+        query: q
+      });
+    }
     
     if (!q) {
-      console.log('🔍 No query generated, clearing duplicates');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 No query generated, clearing duplicates');
+      }
       setNearDuplicates([]);
       return;
     }
     
     // Clear duplicates if title is too short (less than 3 characters)
     if (title && title.length < 3) {
-      console.log('🔍 Title too short, clearing duplicates');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Title too short, clearing duplicates');
+      }
       setNearDuplicates([]);
       return;
     }
@@ -1240,14 +1265,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const t = setTimeout(async () => {
       try {
         setSearchingDupes(true);
-        console.log('🔍 Starting semantic search with query:', q);
-        console.log('🔍 Existing entries count:', existingEntries.length);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Starting semantic search with query:', q);
+          console.log('🔍 Existing entries count:', existingEntries.length);
+        }
         
         // ask for more results, then filter client-side by a threshold
         const resp = await semanticSearch(q, 10);
-        console.log('🔍 Semantic search response:', resp);
-        console.log('🔍 Semantic search success:', resp.success);
-        console.log('🔍 Semantic search results count:', resp.results?.length || 0);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Semantic search response:', resp);
+          console.log('🔍 Semantic search success:', resp.success);
+          console.log('🔍 Semantic search results count:', resp.results?.length || 0);
+        }
         
         if (!cancelled) {
           // If semantic search fails or returns no results, try a fallback text search
@@ -1255,7 +1284,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           if (resp.success && resp.results && resp.results.length > 0) {
             resultsRaw = resp.results;
           } else {
-            console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
+            }
             // Fallback: simple text search through existing entries
             const searchTerm = q.toLowerCase();
             resultsRaw = existingEntries
@@ -1274,7 +1305,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 similarity: 0.5 // Default similarity for text matches
               }))
               .slice(0, 10);
-            console.log('🔍 Fallback text search results:', resultsRaw.length);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔍 Fallback text search results:', resultsRaw.length);
+            }
           }
           // Smart stopwords - filter out only the most generic words
           const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','at','by','with','from','into','during','including','until','against','among','throughout','despite','towards','upon']);
@@ -1327,15 +1360,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           // resultsRaw is now set above with fallback logic
           
           // Debug logging
-          console.log('🔍 Duplicate detection processing:', {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Duplicate detection processing:', {
             query: q,
             resultsCount: resultsRaw.length,
             title: title,
             type: type,
             results: resultsRaw.slice(0, 3) // Show first 3 results for debugging
           });
-          
-          console.log('🔍 About to filter results with enhanced matching logic...');
+            
+            console.log('🔍 About to filter results with enhanced matching logic...');
+          }
           
           const filtered = resultsRaw.filter((r: any) => {
             const sim = Number(r.similarity || r.score || 0);
@@ -1556,23 +1591,27 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               legalBasesMatch || relatedSectionsMatch || jurisprudenceMatch || topicsMatch || formsMatch;
             
             // Debug logging for enhanced matching
-            console.log('Enhanced duplicate detection result:', {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Enhanced duplicate detection result:', {
               title: candidateTitle,
               similarity: sim,
               tokenOverlap: tokOverlap,
-              exactMatches: { exactSection, exactCitation, exactDate, exactJurisdiction, exactLawFamily, exactViolationCode, exactViolationName },
-              enhancedMatches: { 
-                dateRangeMatch, tagOverlap, summarySimilarity, textSimilarity, fineAmountMatch, penaltyElementsMatch,
-                legalBasesMatch, relatedSectionsMatch, jurisprudenceMatch, topicsMatch, formsMatch
-              },
+                exactMatches: { exactSection, exactCitation, exactDate, exactJurisdiction, exactLawFamily, exactViolationCode, exactViolationName },
+                enhancedMatches: { 
+                  dateRangeMatch, tagOverlap, summarySimilarity, textSimilarity, fineAmountMatch, penaltyElementsMatch,
+                  legalBasesMatch, relatedSectionsMatch, jurisprudenceMatch, topicsMatch, formsMatch
+                },
               shouldShow
             });
+            }
             
             return shouldShow;
           });
           
-          console.log('🔍 Filtered duplicates:', filtered.length);
-          console.log('🔍 Final duplicate matches:', filtered);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Filtered duplicates:', filtered.length);
+            console.log('🔍 Final duplicate matches:', filtered);
+          }
           setNearDuplicates(filtered);
         }
       } catch (error) {
@@ -1591,17 +1630,21 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
   // Debug logging for duplicate detection
   useEffect(() => {
-    console.log('🔍 Duplicate detection state:', { 
-      nearDuplicates: nearDuplicates?.length || 0, 
-      isOpen: nearDuplicates && nearDuplicates.length > 0,
-      matches: nearDuplicates || []
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Duplicate detection state:', { 
+        nearDuplicates: nearDuplicates?.length || 0, 
+        isOpen: nearDuplicates && nearDuplicates.length > 0,
+        matches: nearDuplicates || []
+      });
+    }
   }, [nearDuplicates]);
 
   // Trigger duplicate detection when form is populated with imported data
   useEffect(() => {
     if (formPopulated) {
-      console.log('🔍 Form populated with imported data, triggering duplicate detection');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Form populated with imported data, triggering duplicate detection');
+      }
       // Reset the flag
       setFormPopulated(false);
       
@@ -1611,9 +1654,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const currentValues = methods.getValues() as any;
         const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
         
-        console.log('🔍 Current form values for duplicate detection:', {
-          title, law_family, section_id, canonical_citation, effective_date, type
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Current form values for duplicate detection:', {
+            title, law_family, section_id, canonical_citation, effective_date, type
+          });
+        }
         
         // Trigger duplicate detection with current values
         const idTokens = [title, law_family, section_id, canonical_citation, effective_date]
@@ -1621,17 +1666,23 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           .join(' ');
         const q = `${idTokens}`.trim();
         
-        console.log('🔍 Generated query for duplicate detection:', q);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Generated query for duplicate detection:', q);
+        }
         
         if (q && title && title.length >= 3) {
           // Run the same duplicate detection logic
           const runDuplicateDetection = async () => {
             try {
               setSearchingDupes(true);
-              console.log('🔍 Running duplicate detection for imported entry with query:', q);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🔍 Running duplicate detection for imported entry with query:', q);
+              }
               
               const resp = await semanticSearch(q, 10);
-              console.log('🔍 Semantic search response for imported entry:', resp);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🔍 Semantic search response for imported entry:', resp);
+              }
             
             if (resp.success && resp.results && resp.results.length > 0) {
               // Use the same filtering logic as the main duplicate detection
@@ -1914,7 +1965,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 return shouldShow;
               });
               
-              console.log('🔍 Duplicate detection results for imported entry:', filtered.length);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🔍 Duplicate detection results for imported entry:', filtered.length);
+              }
               setNearDuplicates(filtered);
             } else {
               // Try fallback text search
@@ -1936,7 +1989,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 }))
                 .slice(0, 10);
               
-              console.log('🔍 Fallback text search results for imported entry:', resultsRaw.length);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🔍 Fallback text search results for imported entry:', resultsRaw.length);
+              }
               setNearDuplicates(resultsRaw);
             }
           } catch (error) {
@@ -1949,7 +2004,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         
           runDuplicateDetection();
         } else {
-          console.log('🔍 Query too short or missing title for duplicate detection');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Query too short or missing title for duplicate detection');
+          }
         }
       }, 100); // Small delay to ensure form is fully populated
     }
