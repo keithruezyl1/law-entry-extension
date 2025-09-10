@@ -188,7 +188,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Check if this is an imported entry by looking for importedEntryData in sessionStorage
   const hasImportedData = sessionStorage.getItem('importedEntryData') !== null;
   // For imported entries: they have entry_id but no id field AND we have imported data in sessionStorage
-  const isImportedEntry = entry && entry.entry_id && !(entry as any).id && hasImportedData;
+  // OR they're on a create URL with an entry (which means they were imported)
+  const isImportedEntry = (entry && entry.entry_id && !(entry as any).id && hasImportedData) || (entry && isOnCreateUrl);
   // Prioritize URL pattern over entry properties for mode detection
   // If we're on a /law-entry/ URL, we're always in create mode (including imported entries)
   // If we're on a /entry/ID/edit URL, we're in edit mode (unless it's an imported entry)
@@ -664,6 +665,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           console.log('Resetting form with imported data:', resetData);
           methods.reset(resetData as any);
           setFormPopulated(true);
+          
+          // Also trigger duplicate detection immediately for imported entries
+          setTimeout(() => {
+            console.log('🔍 Manually triggering duplicate detection for imported entry');
+            const currentValues = methods.getValues() as any;
+            const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
+            
+            if (title && title.length >= 3) {
+              const idTokens = [title, law_family, section_id, canonical_citation, effective_date]
+                .filter(Boolean)
+                .join(' ');
+              const q = `${idTokens}`.trim();
+              
+              console.log('🔍 Manual duplicate detection query:', q);
+              
+              // Trigger the duplicate detection by updating the form values
+              // This will cause the main useEffect to run
+              setValue('title', title + ' '); // Add a space to trigger change
+              setTimeout(() => setValue('title', title), 10); // Remove the space
+            }
+          }, 200);
+          
           return;
         }
       } catch (e) {
@@ -1159,28 +1182,56 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       entryId: entry?.entry_id || (entry as any)?.id,
       isEditMode,
       isCreateMode,
+      isImportedEntry,
+      isOnCreateUrl,
       formPopulated,
       title: title || 'no title',
-      lawFamily: lawFamily || 'no law family'
+      lawFamily: lawFamily || 'no law family',
+      currentUrl: window.location.pathname
     });
     
-    if (entry && !isImportedEntry) {
-      console.log('✅ Disabling duplicate detection for existing entry (not imported)');
+    // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
+    // For imported entries or new entries, we should always run duplicate detection
+    if (entry && (entry as any).id && !isOnCreateUrl) {
+      console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
       setNearDuplicates([]);
       return;
+    }
+    
+    // If we have an entry but we're on a create URL, this is likely an imported entry or new entry
+    if (entry && isOnCreateUrl) {
+      console.log('🔍 Entry found on create URL - treating as imported/new entry, enabling duplicate detection');
+    }
+    
+    // If we don't have an entry at all, this is a new entry
+    if (!entry) {
+      console.log('🔍 No entry prop - treating as new entry, enabling duplicate detection');
     }
     
     const idTokens = [title, lawFamily, sectionId, citation, effectiveDate]
       .filter(Boolean)
       .join(' ');
     const q = `${idTokens}`.trim();
+    
+    console.log('🔍 Duplicate detection query generation:', {
+      title: title || 'no title',
+      lawFamily: lawFamily || 'no law family',
+      sectionId: sectionId || 'no section id',
+      citation: citation || 'no citation',
+      effectiveDate: effectiveDate || 'no date',
+      idTokens: idTokens,
+      query: q
+    });
+    
     if (!q) {
+      console.log('🔍 No query generated, clearing duplicates');
       setNearDuplicates([]);
       return;
     }
     
     // Clear duplicates if title is too short (less than 3 characters)
     if (title && title.length < 3) {
+      console.log('🔍 Title too short, clearing duplicates');
       setNearDuplicates([]);
       return;
     }
@@ -1190,10 +1241,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       try {
         setSearchingDupes(true);
         console.log('🔍 Starting semantic search with query:', q);
+        console.log('🔍 Existing entries count:', existingEntries.length);
         
         // ask for more results, then filter client-side by a threshold
         const resp = await semanticSearch(q, 10);
         console.log('🔍 Semantic search response:', resp);
+        console.log('🔍 Semantic search success:', resp.success);
+        console.log('🔍 Semantic search results count:', resp.results?.length || 0);
         
         if (!cancelled) {
           // If semantic search fails or returns no results, try a fallback text search
@@ -1273,13 +1327,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           // resultsRaw is now set above with fallback logic
           
           // Debug logging
-          console.log('Duplicate detection:', {
+          console.log('🔍 Duplicate detection processing:', {
             query: q,
             resultsCount: resultsRaw.length,
             title: title,
             type: type,
             results: resultsRaw.slice(0, 3) // Show first 3 results for debugging
           });
+          
+          console.log('🔍 About to filter results with enhanced matching logic...');
           
           const filtered = resultsRaw.filter((r: any) => {
             const sim = Number(r.similarity || r.score || 0);
@@ -1515,7 +1571,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             return shouldShow;
           });
           
-          console.log('Filtered duplicates:', filtered.length);
+          console.log('🔍 Filtered duplicates:', filtered.length);
+          console.log('🔍 Final duplicate matches:', filtered);
           setNearDuplicates(filtered);
         }
       } catch (error) {
@@ -1949,10 +2006,52 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 console.log('🔍 Form populated flag:', formPopulated);
                 console.log('🔍 Is imported entry:', isImportedEntry);
                 console.log('🔍 Near duplicates:', nearDuplicates);
+                console.log('🔍 Is on create URL:', isOnCreateUrl);
+                console.log('🔍 Current URL:', window.location.pathname);
               }}
               className="bg-green-500 text-white px-3 py-1 rounded text-xs"
             >
               Debug Form
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                console.log('🔍 Manually triggering duplicate detection...');
+                const currentValues = methods.getValues() as any;
+                const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
+                
+                if (title && title.length >= 3) {
+                  const idTokens = [title, law_family, section_id, canonical_citation, effective_date]
+                    .filter(Boolean)
+                    .join(' ');
+                  const q = `${idTokens}`.trim();
+                  
+                  console.log('🔍 Manual duplicate detection query:', q);
+                  
+                  try {
+                    setSearchingDupes(true);
+                    const resp = await semanticSearch(q, 10);
+                    console.log('🔍 Manual semantic search response:', resp);
+                    
+                    if (resp.success && resp.results && resp.results.length > 0) {
+                      console.log('🔍 Found results, setting as duplicates');
+                      setNearDuplicates(resp.results.slice(0, 5));
+                    } else {
+                      console.log('🔍 No results found');
+                      setNearDuplicates([]);
+                    }
+                  } catch (error) {
+                    console.error('🔍 Manual duplicate detection error:', error);
+                  } finally {
+                    setSearchingDupes(false);
+                  }
+                } else {
+                  console.log('🔍 Title too short for duplicate detection');
+                }
+              }}
+              className="bg-purple-500 text-white px-3 py-1 rounded text-xs"
+            >
+              Manual Duplicate Check
             </button>
           </div>
         )}
