@@ -7,7 +7,7 @@ import { PageNavigator } from '../ui/PageNavigator';
 // import { getAllTags } from '../../data/tags';
 import './EntryList.css';
 
-const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries, teamMemberNames = {} }) => {
+const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportEntry, searchEntries, teamMemberNames = {} }) => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [entryStack, setEntryStack] = useState([]); // stack of previously opened entries
   // Listen for requests to open an entry detail (from EntryView link clicks)
@@ -449,6 +449,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEnt
               onDeleteEntry(selectedEntry.id);
               setSelectedEntry(null);
             }}
+            onExport={() => onExportEntry(selectedEntry)}
             teamMemberNames={teamMemberNames}
           />
         </div>

@@ -281,7 +281,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   })();
 
   // Get entries from useLocalStorage hook
-  const { entries, loading, error, addEntry, updateEntry, deleteEntry, getEntryById, getEntryByEntryId, searchEntries, exportEntries, importEntries, clearAllEntries, getStorageStats, getAllTeamProgress, getYesterdayTeamProgress, updateProgressForEntry, checkDailyCompletion } = useLocalStorage();
+  const { entries, loading, error, addEntry, updateEntry, deleteEntry, getEntryById, getEntryByEntryId, searchEntries, exportEntries, exportSingleEntry, importEntries, clearAllEntries, getStorageStats, getAllTeamProgress, getYesterdayTeamProgress, updateProgressForEntry, checkDailyCompletion } = useLocalStorage();
 
   // Function to check incomplete entries from yesterday
   const checkIncompleteEntries = useCallback(() => {
@@ -1556,6 +1556,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           onViewEntry={handleViewEntry}
           onEditEntry={handleEditEntry}
           onDeleteEntry={handleDeleteEntry}
+          onExportEntry={exportSingleEntry}
           searchEntries={searchEntries}
           teamMemberNames={teamMemberNames}
         />
@@ -1579,6 +1580,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             entry={getEntryById(selectedEntryId)}
             onEdit={() => handleEditEntry(selectedEntryId)}
             onDelete={() => handleDeleteEntry(selectedEntryId)}
+            onExport={() => exportSingleEntry(getEntryById(selectedEntryId))}
             teamMemberNames={teamMemberNames}
           />
         )}

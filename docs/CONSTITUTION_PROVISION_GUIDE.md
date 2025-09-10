@@ -14,9 +14,9 @@ type: "constitution_provision"  // Always "constitution_provision"
 title: string            // Human-readable label (e.g., "Protection Against Unreasonable Searches")
 jurisdiction: string     // Usually "PH" for national constitution
 law_family: string       // "1987 Constitution" or "Philippine Constitution"
-section_id?: string      // Article/Section (e.g., "Art. III, Sec. 12", "Art. III, Sec. 2")
-canonical_citation: string // Formal cite (e.g., "1987 Constitution, Art. III, Sec. 12")
-status: string           // "active" | "amended" | "repealed" (usually "active")
+section_id?: string      // Article/Section (e.g., "Article 3 Section 12", "Article 3 Section 2")
+canonical_citation: string // Formal cite (e.g., "1987 Constitution, Article 3 Section 12")
+status: string           // "active" | "amended" | "repealed" | "draft" | "approved" | "published"
 effective_date: string   // ISO date (usually "1987-02-02" for 1987 Constitution)
 amendment_date?: string  // ISO date (only if status = "amended")
 summary: string          // 1-3 sentence neutral synopsis
@@ -34,20 +34,24 @@ visibility: {
 }
 ```
 
-### **📱 Offline Pack Settings**
-```javascript
-offline: {
-  pack_include: boolean,    // Include in offline pack (usually true)
-  pack_category: "rights",  // Usually "rights" for constitution
-  pack_priority: "1"        // "1", "2", or "3" (usually "1" for fundamental rights)
-}
-```
 
 ### **📜 Constitution-Specific Fields**
 ```javascript
 topics: string[]              // Required: constitutional topics/themes
-related_sections: string[]    // Optional: related constitutional sections
-jurisprudence: string[]       // Optional: key Supreme Court cases
+jurisprudence: string[]       // Optional: key Supreme Court cases (array of strings, not objects)
+legal_bases: object[]         // Optional: legal bases with full details (Step 4)
+related_sections: object[]    // Optional: related constitutional sections with full details (Step 4)
+```
+
+### **📋 Citation Format for External References (related_sections & legal_bases)**
+```javascript
+{
+  "type": "external",         // Always "external" for constitution provisions
+  "citation": "string",       // Full citation text
+  "url": "string",           // Complete URL
+  "title": "string",         // Document title
+  "note": "string"           // Short description
+}
 ```
 
 ---
@@ -58,13 +62,13 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
 
 ```json
 {
-  "entry_id": "CONST-Art3Sec2-20240115",
+  "entry_id": "CONST-Art3Sec2-123456",
   "type": "constitution_provision",
   "title": "Protection Against Unreasonable Searches and Seizures",
   "jurisdiction": "PH",
   "law_family": "1987 Constitution",
-  "section_id": "Art. III, Sec. 2",
-  "canonical_citation": "1987 Constitution, Art. III, Sec. 2",
+  "section_id": "Article 3 Section 2",
+  "canonical_citation": "1987 Constitution, Article 3 Section 2",
   "status": "active",
   "effective_date": "1987-02-02",
   "summary": "Constitutional protection against unreasonable searches and seizures, requiring probable cause and judicial warrant.",
@@ -79,20 +83,43 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
     "gli": true,
     "cpa": true
   },
-  "offline": {
-    "pack_include": true,
-    "pack_category": "rights",
-    "pack_priority": "1"
-  },
   "topics": ["search", "seizure", "privacy", "warrant", "probable_cause"],
-  "related_sections": [
-    "1987 Constitution, Art. III, Sec. 3 (Privacy of Communication)",
-    "1987 Constitution, Art. III, Sec. 12 (Custodial Investigation)"
-  ],
   "jurisprudence": [
     "People v. Marti, GR 81561, 1991",
     "People v. Doria, GR 125299, 1999",
     "People v. Chua Ho San, GR 128222, 2001"
+  ],
+  "legal_bases": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 2",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Protection Against Unreasonable Searches and Seizures",
+      "note": "Primary constitutional basis for search and seizure protections"
+    }
+  ],
+  "related_sections": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 3",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Privacy of Communication and Correspondence",
+      "note": "Constitutional protection of privacy in communications"
+    },
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 12",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Rights of Persons Under Custodial Investigation",
+      "note": "Constitutional rights during police investigation"
+    },
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 14",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Right to Due Process",
+      "note": "Fundamental due process protections"
+    }
   ]
 }
 ```
@@ -101,13 +128,13 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
 
 ```json
 {
-  "entry_id": "CONST-Art3Sec12-20240115",
+  "entry_id": "CONST-Art3Sec12-123456",
   "type": "constitution_provision",
   "title": "Rights of Persons Under Custodial Investigation",
-  "jurisdiction": "PH",
+  "jurisdiction": "PH Philippines (PH)",
   "law_family": "1987 Constitution",
-  "section_id": "Art. III, Sec. 12",
-  "canonical_citation": "1987 Constitution, Art. III, Sec. 12",
+  "section_id": "Article 3 Section 12",
+  "canonical_citation": "1987 Constitution, Article 3 Section 12",
   "status": "active",
   "effective_date": "1987-02-02",
   "summary": "Constitutional rights that apply when a person is under investigation for the commission of an offense, including the right to remain silent and to counsel.",
@@ -122,20 +149,43 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
     "gli": true,
     "cpa": true
   },
-  "offline": {
-    "pack_include": true,
-    "pack_category": "rights",
-    "pack_priority": "1"
-  },
   "topics": ["custodial", "investigation", "counsel", "silence", "waiver"],
-  "related_sections": [
-    "1987 Constitution, Art. III, Sec. 13 (Right to Bail)",
-    "1987 Constitution, Art. III, Sec. 14 (Right to Due Process)"
-  ],
   "jurisprudence": [
     "People v. Galit, GR 51770, 1982",
     "People v. Andan, GR 116437, 1997",
     "People v. Rapeza, GR 169431, 2006"
+  ],
+  "legal_bases": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 12",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Rights of Persons Under Custodial Investigation",
+      "note": "Primary constitutional basis for custodial investigation rights"
+    }
+  ],
+  "related_sections": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 13",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Right to Bail",
+      "note": "Constitutional right to bail for most offenses"
+    },
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 14",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Right to Due Process",
+      "note": "Fundamental due process protections in legal proceedings"
+    },
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 2",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Protection Against Unreasonable Searches and Seizures",
+      "note": "Constitutional protection during searches and arrests"
+    }
   ]
 }
 ```
@@ -144,13 +194,13 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
 
 ```json
 {
-  "entry_id": "CONST-Art3Sec13-20240115",
+  "entry_id": "CONST-Art3Sec13-123456",
   "type": "constitution_provision",
   "title": "Right to Bail",
   "jurisdiction": "PH",
   "law_family": "1987 Constitution",
-  "section_id": "Art. III, Sec. 13",
-  "canonical_citation": "1987 Constitution, Art. III, Sec. 13",
+  "section_id": "Article 3 Section 13",
+  "canonical_citation": "1987 Constitution, Article 3 Section 13",
   "status": "active",
   "effective_date": "1987-02-02",
   "summary": "Constitutional right to bail for all persons except those charged with capital offenses when evidence of guilt is strong.",
@@ -165,23 +215,114 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
     "gli": true,
     "cpa": true
   },
-  "offline": {
-    "pack_include": true,
-    "pack_category": "rights",
-    "pack_priority": "1"
-  },
   "topics": ["bail", "release", "capital_offense", "recognizance", "excessive_bail"],
-  "related_sections": [
-    "1987 Constitution, Art. III, Sec. 12 (Custodial Investigation)",
-    "1987 Constitution, Art. III, Sec. 15 (Writ of Habeas Corpus)"
-  ],
   "jurisprudence": [
     "People v. Honrada, GR 119123, 1996",
     "People v. Cabral, GR 188329, 2010",
     "People v. Temporada, GR 173473, 2008"
+  ],
+  "legal_bases": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 13",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Right to Bail",
+      "note": "Primary constitutional basis for bail rights"
+    }
+  ],
+  "related_sections": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 12",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Rights of Persons Under Custodial Investigation",
+      "note": "Constitutional rights during police investigation and arrest"
+    },
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 15",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Writ of Habeas Corpus",
+      "note": "Constitutional protection against unlawful detention"
+    },
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article 3 Section 14",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Right to Due Process",
+      "note": "Fundamental due process protections in legal proceedings"
+    }
   ]
 }
 ```
+
+---
+
+## ⚠️ Critical Validation Requirements
+
+### **Entry ID Generation**
+- **Format:** `CONST-{SectionID}-{6-digit-timestamp}`
+- **Examples:** `CONST-Art3Sec2-123456`, `CONST-Art3Sec12-789012`
+- **Auto-generated:** The system generates this automatically based on section_id and timestamp
+- **Validation:** Must match pattern `/^CONST-[A-Za-z0-9]+-\d{6}$/`
+
+#### **How Auto-Generation Works:**
+The system automatically generates entry IDs using this process:
+
+1. **Prefix:** Always starts with `CONST-` for constitution provisions
+2. **Section ID:** Extracted from the `section_id` field:
+   - `"Article 3 Section 2"` → `"Art3Sec2"`
+   - `"Article 3 Section 12"` → `"Art3Sec12"`
+   - `"Article 2 Section 1"` → `"Art2Sec1"`
+3. **Timestamp:** Last 6 digits of current timestamp (milliseconds since epoch)
+   - Example: `1705123456789` → `"234567"`
+4. **Final Format:** `CONST-{SectionID}-{6-digit-timestamp}`
+
+#### **Generation Examples:**
+```javascript
+// Input section_id: "Article 3 Section 2"
+// Generated entry_id: "CONST-Art3Sec2-123456"
+
+// Input section_id: "Article 3 Section 12" 
+// Generated entry_id: "CONST-Art3Sec12-789012"
+
+// Input section_id: "Article 2 Section 1"
+// Generated entry_id: "CONST-Art2Sec1-456789"
+```
+
+#### **Important Notes:**
+- **Don't manually set entry_id** - Let the system generate it automatically
+- **Unique per entry** - The timestamp ensures uniqueness even for same section
+- **Validation required** - Must match the regex pattern for system acceptance
+- **Case sensitive** - Section ID extraction preserves original casing
+
+### **Required Fields (Validation Will Fail Without These)**
+```javascript
+// These fields are REQUIRED and will cause validation errors if missing:
+entry_id: string          // Auto-generated, must follow CONST-{SectionID}-{timestamp} format
+type: "constitution_provision"  // Must be exactly this string
+title: string            // Must be at least 3 characters
+jurisdiction: string     // Must be "PH" or valid jurisdiction name
+law_family: string       // Must be at least 1 character
+canonical_citation: string // Must be at least 1 character
+status: string           // Must be one of: "active", "amended", "repealed", "draft", "approved", "published"
+effective_date: string   // Must be YYYY-MM-DD format
+summary: string          // Must be at least 1 character
+text: string            // Must be at least 1 character
+source_urls: string[]   // Must have at least 1 valid URL
+tags: string[]          // Must have at least 1 tag
+last_reviewed: string    // Must be YYYY-MM-DD format
+topics: string[]        // Must have at least 1 topic (constitution_provision specific)
+```
+
+### **Cross-Field Validation Rules**
+- If `status` is "amended", then `amendment_date` is required
+- All URLs in `source_urls` must be valid URLs (start with http:// or https://)
+
+### **Jurisdiction Validation**
+- Must be "PH" for national constitution
+- If other jurisdiction, must be title-cased (e.g., "Quezon City", "Cavite")
+- Must match pattern: `/^[A-Za-zÀ-ÿ]+(?:[-' ]+[A-Za-zÀ-ÿ]+)*(?: City| Province)?$/`
 
 ---
 
@@ -238,13 +379,13 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
 ## 🔗 Essential Source URLs
 
 ### **Primary Sources:**
-- `https://www.officialgazette.gov.ph/constitutions/1987-constitution/`
-- `https://www.lawphil.net/consti/cons1987.html`
+- `https://www.officialgazette.gov.ph/constitutions/1987-constitution/` - Official Gazette of the Philippines - 1987 Constitution
+- `https://www.lawphil.net/consti/cons1987.html` - LawPhil.net - 1987 Constitution Text
 
 ### **Additional Resources:**
-- `https://www.supremecourt.gov.ph/` (Supreme Court decisions)
-- `https://www.chanrobles.com/` (Legal database)
-- `https://www.lawphil.net/` (Philippine legal resources)
+- `https://www.supremecourt.gov.ph/` - Supreme Court of the Philippines - Court decisions and jurisprudence
+- `https://www.chanrobles.com/` - Chan Robles Virtual Law Library - Comprehensive legal database
+- `https://www.lawphil.net/` - LawPhil.net - Philippine legal resources and case law
 
 ---
 
@@ -257,7 +398,7 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
   - ✅ "Protection Against Unreasonable Searches and Seizures"
   - ✅ "Rights of Persons Under Custodial Investigation"
   - ✅ "Right to Bail"
-  - ❌ "Article III Section 2"
+  - ❌ "Article 3 Section 2"
   - ❌ "Constitutional Provision"
 
 ### **Summary Guidelines:**
@@ -278,6 +419,19 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
 - Use 3-8 relevant tags
 - Include both specific and general terms
 - Examples: `["search", "seizure", "warrant", "privacy", "probable_cause"]`
+
+### **Citation Guidelines:**
+- All citations must be external references
+- Provide at least 3 citations for both related_sections and jurisprudence
+- Each citation must include:
+  - **citation**: Full citation text
+  - **url**: Complete URL (no shortcuts)
+  - **title**: Document title
+  - **note**: Short description (1-2 sentences)
+- Use full text for all URLs - no abbreviated links
+- Examples:
+  - ✅ `"https://www.officialgazette.gov.ph/constitutions/1987-constitution/"`
+  - ❌ `"www.officialgazette.gov.ph"` or `"Official Gazette"`
 
 ---
 
@@ -347,18 +501,91 @@ jurisprudence: string[]       // Optional: key Supreme Court cases
 ## 🔧 Troubleshooting
 
 ### **Common Issues:**
-1. **Missing required fields** - Ensure all base fields are included
-2. **Invalid dates** - Use YYYY-MM-DD format
+1. **Missing required fields** - Ensure all base fields are included (see Critical Validation Requirements above)
+2. **Invalid dates** - Use YYYY-MM-DD format (e.g., "1987-02-02")
 3. **Invalid URLs** - Ensure URLs start with http:// or https://
-4. **Empty arrays** - Required arrays cannot be empty
-5. **Incorrect entry_id** - Follow the CONST-Art3Sec12-YYYYMMDD format
+4. **Empty arrays** - Required arrays (source_urls, tags, topics) cannot be empty
+5. **Incorrect entry_id** - Follow the CONST-{SectionID}-{6-digit-timestamp} format
+6. **Roman numerals** - Use "Article 3 Section 12" instead of "Art. III, Sec. 12"
+9. **Jurisprudence format** - Use array of strings, not objects with citation/url/title/note
+10. **Related sections and legal_bases format** - Use objects with type: "external", citation, url, title, note
 
 ### **Validation Errors:**
 - Check browser console for specific error messages
 - Verify JSON syntax is correct
-- Ensure all required fields are present
-- Confirm all URLs are valid
-- Check date formats
+- Ensure all required fields are present (see Critical Validation Requirements)
+- Confirm all URLs are valid and complete
+- Check date formats (YYYY-MM-DD)
+- Confirm topics array has at least one item
+- Check that jurisprudence is array of strings, not objects
+- Verify related_sections and legal_bases use correct object format with type: "external", citation, url, title, note
+
+---
+
+## 🤖 GPT Usage Instructions
+
+### **For AI/GPT Generation:**
+When generating constitution provision entries with GPT or similar AI tools, use this exact template:
+
+```json
+{
+  "entry_id": "CONST-{SectionID}-{6-digit-timestamp}",
+  "type": "constitution_provision",
+  "title": "Descriptive Title of the Constitutional Right",
+  "jurisdiction": "PH",
+  "law_family": "1987 Constitution",
+  "section_id": "Article X Section Y",
+  "canonical_citation": "1987 Constitution, Article X Section Y",
+  "status": "active",
+  "effective_date": "1987-02-02",
+  "summary": "1-3 sentence neutral summary of the constitutional provision",
+  "text": "Exact constitutional text without modification",
+  "source_urls": [
+    "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+    "https://www.lawphil.net/consti/cons1987.html"
+  ],
+  "tags": ["relevant", "tags", "for", "search"],
+  "last_reviewed": "2024-01-15",
+  "visibility": {
+    "gli": true,
+    "cpa": true
+  },
+  "topics": ["required", "topics", "array"],
+  "jurisprudence": [
+    "Case Name, GR Number, Year"
+  ],
+  "legal_bases": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article X Section Y",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Document Title",
+      "note": "Brief description of legal basis"
+    }
+  ],
+  "related_sections": [
+    {
+      "type": "external",
+      "citation": "1987 Constitution, Article X Section Y",
+      "url": "https://www.officialgazette.gov.ph/constitutions/1987-constitution/",
+      "title": "Document Title",
+      "note": "Brief description of relationship"
+    }
+  ]
+}
+```
+
+### **Critical GPT Instructions:**
+1. **Always include ALL required fields** - Missing any will cause validation failure
+2. **Use exact constitutional text** - Do not paraphrase or summarize
+3. **Topics array is REQUIRED** - Must have at least one topic
+4. **pack_priority must be number** - Use 1, 2, or 3 (not "1", "2", "3")
+5. **Jurisprudence is array of strings** - Not objects with citation/url/title/note
+6. **Related sections and legal_bases use type: "external"** - Always use this format with citation, url, title, and note
+7. **Entry ID format** - CONST-{SectionID}-{6-digit-timestamp} (auto-generated by system)
+8. **Dates must be YYYY-MM-DD** - No other format accepted
+9. **URLs must be complete** - Start with http:// or https://
+10. **Status must be valid enum** - "active", "amended", "repealed", "draft", "approved", "published"
 
 ---
 

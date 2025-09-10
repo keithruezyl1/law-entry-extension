@@ -683,6 +683,18 @@ export const useLocalStorage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const exportSingleEntry = (entry) => {
+    if (!entry) return;
+    const dataStr = JSON.stringify([entry], null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${entry.entry_id}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Import entries
   const importEntries = async (jsonData) => {
     try {
@@ -972,7 +984,7 @@ export const useLocalStorage = () => {
   return {
     entries, loading, error, addEntry, updateEntry, deleteEntry,
     getEntryById, getEntryByEntryId, searchEntries, getEntriesByType,
-    getOfflinePackEntries, exportEntries, importEntries, clearAllEntries,
+    getOfflinePackEntries, exportEntries, exportSingleEntry, importEntries, clearAllEntries,
     getStorageStats, getTeamMemberProgress, getAllTeamProgress, resetDailyQuotas,
     updateTeamProgress, decrementTeamProgress, getYesterdayTeamProgress, checkDailyCompletion
   };
