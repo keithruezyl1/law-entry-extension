@@ -771,6 +771,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         setShowEntrySavedModal(true);
         setImportedEntryData(null); // Clear imported data after successful save
         sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
+        sessionStorage.removeItem('cameFromDashboard'); // Clear dashboard access flag
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);
@@ -879,6 +880,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           if (result.success) {
             // Store the imported data in sessionStorage and redirect to form
             sessionStorage.setItem('importedEntryData', JSON.stringify(result.data));
+            // Set the cameFromDashboard flag to allow access to the form
+            sessionStorage.setItem('cameFromDashboard', 'true');
             navigate('/law-entry/1'); // Go to step 1 (start from beginning)
           } else {
             // Show error
@@ -1045,6 +1048,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const handleBackToList = () => {
     setImportedEntryData(null); // Clear imported data
     sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
+    sessionStorage.removeItem('cameFromDashboard'); // Clear dashboard access flag
     navigate('/dashboard');
   };
 
