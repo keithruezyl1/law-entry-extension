@@ -181,14 +181,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const { user } = useAuth();
   
   // Explicit mode detection
-  const isEditMode = !!entry;
-  const isCreateMode = !entry;
+  // Check if this is an imported entry (has entry_id but no id field) vs existing entry (has id field)
+  const isImportedEntry = entry && entry.entry_id && !(entry as any).id;
+  const isEditMode = !!entry && !isImportedEntry;
+  const isCreateMode = !entry || isImportedEntry;
   
   console.log('EntryForm mode detection:', {
     isEditMode,
     isCreateMode,
+    isImportedEntry,
     entryId: entry?.entry_id || (entry as any)?.id,
-    entryType: entry?.type
+    entryType: entry?.type,
+    hasIdField: !!(entry as any)?.id
   });
   
   console.log('EntryForm received entry prop:', entry);
@@ -454,6 +458,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           // Handle external entries with title but no citation (for related_sections)
           if (it.type === 'external' && it.title && !it.citation) {
             return { ...it, citation: it.title };
+          }
+          // Clean up external entries - remove entry_id field if it's null or empty
+          if (it.type === 'external') {
+            const { entry_id, ...cleanEntry } = it;
+            return cleanEntry;
           }
           // Legacy 'topic' -> new 'title'
           if (it.topic && !it.title) {

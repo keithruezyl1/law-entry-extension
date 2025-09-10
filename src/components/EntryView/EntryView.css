@@ -841,8 +841,8 @@
 .basis-topic-pill {
   background: #f59e0b;
   color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
+  padding: 1.1875rem 1.6875rem; /* Extended by 15px (0.9375rem) on all sides */
+  border-radius: 25px; /* More round-edged */
   font-size: 0.75rem;
   font-weight: 600;
 }
