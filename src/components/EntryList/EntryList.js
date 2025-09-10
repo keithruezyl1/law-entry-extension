@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { fetchEntryById } from '../../services/kbApi';
 import { getEntryTypeOptions } from '../../data/entryTypes';
 import { getJurisdictionOptions } from '../../data/jurisdictions';
@@ -7,7 +7,7 @@ import { PageNavigator } from '../ui/PageNavigator';
 // import { getAllTags } from '../../data/tags';
 import './EntryList.css';
 
-const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportEntry, searchEntries, teamMemberNames = {} }) => {
+const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, searchEntries, teamMemberNames = {} }) => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [entryStack, setEntryStack] = useState([]); // stack of previously opened entries
   // Listen for requests to open an entry detail (from EntryView link clicks)
@@ -85,8 +85,12 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
       };
     }
   }, [selectedEntry, entryStack]);
+  console.log('EntryList received entries:', entries);
+  console.log('EntryList entries length:', entries.length);
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [customJurisdiction, setCustomJurisdiction] = useState('');
   const [filters, setFilters] = useState({
@@ -99,27 +103,52 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 20; // Increased from 10 to 20 for better performance
+
+  // Debounce search query to improve performance
+  useEffect(() => {
+    if (searchQuery !== debouncedSearchQuery) {
+      setIsSearching(true);
+    }
+    
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setIsSearching(false);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, debouncedSearchQuery]);
 
   const entryTypeOptions = getEntryTypeOptions();
   const jurisdictionOptions = getJurisdictionOptions();
   // const allTags = getAllTags();
 
   const filteredEntries = useMemo(() => {
-    const filtered = searchEntries(searchQuery, filters);
+    console.log('EntryList filtering with:', { debouncedSearchQuery, filters, teamMemberNames });
+    console.log('Team member names object:', teamMemberNames);
+    console.log('Team member names keys:', Object.keys(teamMemberNames));
+    const filtered = searchEntries(debouncedSearchQuery, filters);
+    console.log('Filtered entries:', filtered);
+    console.log('Filtered entries length:', filtered.length);
     return filtered;
-  }, [searchQuery, filters, searchEntries, teamMemberNames]);
+  }, [debouncedSearchQuery, filters, searchEntries, teamMemberNames]);
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedEntries = filteredEntries.slice(startIndex, endIndex);
+  // Calculate pagination with memoization
+  const paginationData = useMemo(() => {
+    const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedEntries = filteredEntries.slice(startIndex, endIndex);
+    
+    return { totalPages, startIndex, endIndex, paginatedEntries };
+  }, [filteredEntries, currentPage, itemsPerPage]);
+  
+  const { totalPages, paginatedEntries } = paginationData;
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filters]);
+  }, [debouncedSearchQuery, filters]);
 
   // Ensure current page is valid when total pages change
   useEffect(() => {
@@ -141,7 +170,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
     }
   };
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       type: 'all',
       jurisdiction: 'all',
@@ -150,8 +179,9 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
       team_member_id: 'all'
     });
     setSearchQuery('');
+    setDebouncedSearchQuery('');
     setCustomJurisdiction('');
-  };
+  }, []);
 
   const getEntryTypeLabel = (type) => {
     const option = entryTypeOptions.find(opt => opt.value === type);
@@ -170,36 +200,47 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   };
 
   // Determine if there are any exact matches for the current query
-  const normalize = (text) => String(text || '')
+  const normalize = useCallback((text) => String(text || '')
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim();
-  const searchTerm = normalize(searchQuery);
-  const hasExactMatch = !!(searchTerm && entries.some(e => {
-    const haystacks = [
-      e.title,
-      e.entry_id,
-      e.canonical_citation,
-      e.section_id,
-      e.law_family,
-      Array.isArray(e.tags) ? e.tags.join(' ') : ''
-    ];
-    return haystacks.some(h => normalize(h) === searchTerm);
-  }));
+    .trim(), []);
+  
+  const searchTerm = normalize(debouncedSearchQuery);
+  const hasExactMatch = useMemo(() => {
+    if (!searchTerm) return true;
+    return entries.some(e => {
+      const haystacks = [
+        e.title,
+        e.entry_id,
+        e.canonical_citation,
+        e.section_id,
+        e.law_family,
+        Array.isArray(e.tags) ? e.tags.join(' ') : ''
+      ];
+      return haystacks.some(h => normalize(h) === searchTerm);
+    });
+  }, [searchTerm, entries, normalize]);
 
   return (
     <div className="entry-list-container">
       {/* Search and Filters */}
       <div className="search-filters">
         <div className="search-section">
-          <input
-            type="text"
-            placeholder="Search entries by title, ID, content, or tags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
+          <div className="search-input-container">
+            <input
+              type="text"
+              placeholder="Search entries by title, ID, content, or tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+            {isSearching && (
+              <div className="search-loading-indicator">
+                <div className="spinner"></div>
+              </div>
+            )}
+          </div>
           <button 
             onClick={() => setShowFilters(!showFilters)} 
             className="toggle-filters-btn"
@@ -313,9 +354,9 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
 
       {/* Results Summary */}
       <div className="results-summary">
-        {searchQuery && !hasExactMatch ? (
+        {debouncedSearchQuery && !hasExactMatch ? (
           <>
-            <p style={{ marginBottom: '4px' }}>No exact matches for "{searchQuery}"</p>
+            <p style={{ marginBottom: '4px' }}>No exact matches for "{debouncedSearchQuery}"</p>
             <p>
               Showing {filteredEntries.length} of {entries.length} entries that might be a match
               {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
@@ -324,7 +365,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
         ) : (
           <p>
             Showing {filteredEntries.length} of {entries.length} entries
-            {searchQuery && ` matching "${searchQuery}"`}
+            {debouncedSearchQuery && ` matching "${debouncedSearchQuery}"`}
             {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
           </p>
         )}
@@ -442,7 +483,6 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
               onDeleteEntry(selectedEntry.id);
               setSelectedEntry(null);
             }}
-            onExport={() => onExportEntry(selectedEntry)}
             teamMemberNames={teamMemberNames}
           />
         </div>

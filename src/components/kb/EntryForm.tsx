@@ -1184,9 +1184,39 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const t = setTimeout(async () => {
       try {
         setSearchingDupes(true);
+        console.log('🔍 Starting semantic search with query:', q);
+        
         // ask for more results, then filter client-side by a threshold
         const resp = await semanticSearch(q, 10);
+        console.log('🔍 Semantic search response:', resp);
+        
         if (!cancelled) {
+          // If semantic search fails or returns no results, try a fallback text search
+          let resultsRaw = [];
+          if (resp.success && resp.results && resp.results.length > 0) {
+            resultsRaw = resp.results;
+          } else {
+            console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
+            // Fallback: simple text search through existing entries
+            const searchTerm = q.toLowerCase();
+            resultsRaw = existingEntries
+              .filter(entry => {
+                const searchableText = [
+                  entry.title,
+                  (entry as any).canonical_citation,
+                  (entry as any).section_id,
+                  (entry as any).law_family,
+                  (entry as any).summary
+                ].filter(Boolean).join(' ').toLowerCase();
+                return searchableText.includes(searchTerm);
+              })
+              .map(entry => ({
+                ...entry,
+                similarity: 0.5 // Default similarity for text matches
+              }))
+              .slice(0, 10);
+            console.log('🔍 Fallback text search results:', resultsRaw.length);
+          }
           // Smart stopwords - filter out only the most generic words
           const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','at','by','with','from','into','during','including','until','against','among','throughout','despite','towards','upon']);
           const tokenize = (s: string) => String(s || '')
@@ -1213,7 +1243,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             return inter / Math.min(A.size, B.size);
           };
 
-          const resultsRaw = (resp.success ? (resp.results || []) : []);
+          // resultsRaw is now set above with fallback logic
           
           // Debug logging
           console.log('Duplicate detection:', {
@@ -1244,13 +1274,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             const shouldShow = 
               exactSection || exactCitation || exactDate ||
               // High semantic similarity (very likely duplicate)
-              sim >= 0.8 ||
+              sim >= 0.7 || // Lowered from 0.8 to 0.7
               // Good semantic similarity with decent token overlap
-              (sim >= 0.6 && tokOverlap >= 0.3) ||
+              (sim >= 0.5 && tokOverlap >= 0.2) || // Lowered thresholds
               // Same type with good token overlap (potential duplicate)
-              (sameType && tokOverlap >= 0.4 && sim >= 0.5) ||
+              (sameType && tokOverlap >= 0.3 && sim >= 0.4) || // Lowered thresholds
               // High token overlap (very similar wording)
-              tokOverlap >= 0.55;
+              tokOverlap >= 0.4; // Lowered from 0.55 to 0.4
             
             // Debug logging for each result
             console.log('Result:', {
@@ -1267,14 +1297,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           console.log('Filtered duplicates:', filtered.length);
           setNearDuplicates(filtered);
         }
-      } catch (_) {
-        if (!cancelled) setNearDuplicates([]);
+      } catch (error) {
+        console.error('❌ Error in duplicate detection:', error);
+        if (!cancelled) {
+          setNearDuplicates([]);
+          // Show a toast or notification about the error
+          console.warn('Duplicate detection failed, but continuing with form creation');
+        }
       } finally {
         if (!cancelled) setSearchingDupes(false);
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [title, lawFamily, sectionId, citation, effectiveDate]);
+  }, [title, lawFamily, sectionId, citation, effectiveDate, type]);
+
+  // Debug logging for duplicate detection
+  useEffect(() => {
+    console.log('🔍 Duplicate detection state:', { 
+      nearDuplicates: nearDuplicates?.length || 0, 
+      isOpen: nearDuplicates && nearDuplicates.length > 0,
+      matches: nearDuplicates || []
+    });
+  }, [nearDuplicates]);
 
   // (Relations helper components were removed; using dedicated picker in Step 4)
 
@@ -1292,6 +1336,33 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           matches={nearDuplicates || []}
           maxDisplay={5}
         />
+        
+        {/* Debug button for testing duplicate detection */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            type="button"
+            onClick={() => {
+              console.log('🧪 Testing duplicate detection with sample data');
+              setNearDuplicates([
+                {
+                  title: "Test Entry 1",
+                  canonical_citation: "Test Citation 1",
+                  entry_id: "test-1",
+                  similarity: 0.8
+                },
+                {
+                  title: "Test Entry 2", 
+                  canonical_citation: "Test Citation 2",
+                  entry_id: "test-2",
+                  similarity: 0.7
+                }
+              ]);
+            }}
+            className="fixed bottom-4 right-4 bg-blue-500 text-white px-3 py-1 rounded text-xs z-50"
+          >
+            Test Duplicates
+          </button>
+        )}
         <div className="kb-form-container">
           <header className="kb-form-header mb-6">
             <div>

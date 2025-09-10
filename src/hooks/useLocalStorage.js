@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { upsertEntry, deleteEntryVector } from '../services/vectorApi';
 import { fetchAllEntriesFromDb } from '../services/kbApi';
 import { updateProgressForEntry } from '../lib/plan/progressStore';
@@ -335,187 +335,61 @@ export const useLocalStorage = () => {
     return entries.find(entry => entry.entry_id === entryId);
   };
 
-  // Search entries
-  const searchEntries = (query, filters = {}) => {
+  // Optimized search entries with memoization
+  const searchEntries = useMemo(() => {
+    // Create a memoized search function
+    const memoizedSearch = (query, filters = {}) => {
     let filteredEntries = [...entries];
 
     // Text search
     if (query && query.trim()) {
-      const normalize = (text) => String(text || '')
+        // Fast normalization - single pass
+        const normalize = (text) => {
+          if (!text) return '';
+          return String(text)
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
-      const compact = (text) => normalize(text).replace(/\s+/g, '');
-      const searchTermRaw = normalize(query);
-      const searchTerm = searchTermRaw; // normalized already
-
-      // Basic fuzzy helpers (token-level Damerau-Levenshtein with small threshold)
-      const tokenize = (s) => s.split(/\s+/).filter(Boolean);
-      const dlDistance = (a, b) => {
-        const al = a.length, bl = b.length;
-        if (!al) return bl; if (!bl) return al;
-        const dp = Array.from({ length: al + 1 }, () => new Array(bl + 1).fill(0));
-        for (let i = 0; i <= al; i++) dp[i][0] = i;
-        for (let j = 0; j <= bl; j++) dp[0][j] = j;
-        for (let i = 1; i <= al; i++) {
-          for (let j = 1; j <= bl; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            dp[i][j] = Math.min(
-              dp[i - 1][j] + 1,
-              dp[i][j - 1] + 1,
-              dp[i - 1][j - 1] + cost
-            );
-            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-              dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + cost);
-            }
-          }
-        }
-        return dp[al][bl];
-      };
-      // Roman numeral conversion functions
-      const romanToNumber = (roman) => {
-        const romanMap = {
-          'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000,
-          'i': 1, 'v': 5, 'x': 10, 'l': 50, 'c': 100, 'd': 500, 'm': 1000
         };
-        let result = 0;
-        for (let i = 0; i < roman.length; i++) {
-          const current = romanMap[roman[i]];
-          const next = romanMap[roman[i + 1]];
-          if (next && current < next) {
-            result -= current;
-          } else {
-            result += current;
-          }
-        }
-        return result;
-      };
-
-      const numberToRoman = (num) => {
-        const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
-        const symbols = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'];
-        let result = '';
-        for (let i = 0; i < values.length; i++) {
-          while (num >= values[i]) {
-            result += symbols[i];
-            num -= values[i];
-          }
-        }
-        return result;
-      };
-
-      const createVariations = (term) => {
-        const variations = new Set([term]);
-        // plural/singular swap
-        if (term.endsWith('s') && term.length > 3) variations.add(term.slice(0, -1));
-        else if (term.length > 2) variations.add(term + 's');
         
-        // Roman numeral conversions
-        const romanMatch = term.match(/^([IVXLC]+)$/i);
-        if (romanMatch) {
-          const roman = romanMatch[1].toUpperCase();
-          const number = romanToNumber(roman);
-          if (number > 0 && number <= 100) { // reasonable range for legal documents
-            variations.add(number.toString());
-            variations.add(numberToRoman(number));
-          }
-        }
+        const searchTerm = normalize(query);
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
         
-        // Number to Roman conversion
-        const numberMatch = term.match(/^(\d+)$/);
-        if (numberMatch) {
-          const num = parseInt(numberMatch[1]);
-          if (num > 0 && num <= 100) { // reasonable range for legal documents
-            variations.add(numberToRoman(num));
-          }
-        }
-        
-        // Common legal term variations and typos
-        const map = {
-          right: ['rights'], rights: ['right'],
-          information: ['info'], info: ['information'],
-          section: ['sec', 'sections'], sec: ['section', 'sections'], sections: ['section', 'sec'],
-          article: ['art', 'articles'], art: ['article', 'articles'], articles: ['article', 'art'],
-          constitution: ['const', 'constitutional'], const: ['constitution', 'constitutional'],
-          family: ['families'], families: ['family'],
-          law: ['laws'], laws: ['law'],
-          criminal: ['criminals'], criminals: ['criminal'],
-          prosecution: ['prosecutions'], prosecutions: ['prosecution'],
-          accused: ['accuseds'], accuseds: ['accused'],
-          protection: ['protections'], protections: ['protection'],
-          child: ['children'], children: ['child'],
-          abuse: ['abuses'], abuses: ['abuse'],
-          sexual: ['sexuals'], sexuals: ['sexual'],
-          prostitution: ['prostitutions'], prostitutions: ['prostitution'],
-          environmental: ['environment'], environment: ['environmental'],
-          police: ['policing'], policing: ['police'],
-          mandate: ['mandates'], mandates: ['mandate'],
-          anti: ['against'], against: ['anti'],
-          dumping: ['dumps'], dumps: ['dumping'],
-          measure: ['measures'], measures: ['measure'],
-          ordinance: ['ordinances'], ordinances: ['ordinance'],
-          city: ['cities'], cities: ['city'],
-          manila: ['manila'], // common misspelling
-          philippines: ['philippine'], philippine: ['philippines'],
-          // Common typos
-          lwa: ['law'], // typo for "law"
-          familes: ['families'], // typo for "families"
-          constutition: ['constitution'], // typo for "constitution"
-          crimnal: ['criminal'], // typo for "criminal"
-          procecution: ['prosecution'], // typo for "prosecution"
-          acused: ['accused'], // typo for "accused"
-          protetion: ['protection'], // typo for "protection"
-          enviornmental: ['environmental'], // typo for "environmental"
-          ordiance: ['ordinance'], // typo for "ordinance"
-          manila: ['manila'], // common misspelling
-          phillipines: ['philippines'] // typo for "philippines"
-        };
-        if (map[term]) map[term].forEach(v => variations.add(v));
-        return Array.from(variations);
-      };
-      const fuzzyMatch = (q, hRaw) => {
-        if (!q) return true; if (!hRaw) return false;
-        const h = normalize(hRaw);
-        const hCompact = compact(hRaw);
-        
-        // Direct substring match
-        if (h.includes(q)) return true;
-        
-        // Word boundary matching for better partial matches
-        const words = h.split(/\s+/);
+        // Fast simple fuzzy matching - no complex algorithms
+        const simpleFuzzyMatch = (text, query) => {
+          if (!text || !query) return false;
+          const normalized = normalize(text);
+          
+          // Exact match
+          if (normalized === query) return true;
+          
+          // Starts with
+          if (normalized.startsWith(query)) return true;
+          
+          // Contains
+          if (normalized.includes(query)) return true;
+          
+          // Word boundary matching
+          const words = normalized.split(/\s+/);
         for (const word of words) {
-          if (word.startsWith(q) || q.startsWith(word)) return true;
-        }
-        
-        const qt = tokenize(q);
-        const ht = tokenize(h);
-        
-        // Check if all query terms have matches (AND logic)
-        const allTermsMatch = qt.every(qs => {
-          const vars = createVariations(qs);
-          return vars.some(v => {
-            // Direct word match
-            if (ht.includes(v)) return true;
-            // Substring match
-            if (h.includes(v) || hCompact.includes(v.replace(/\s+/g, ''))) return true;
-            // Fuzzy match with edit distance
-          for (const hs of ht) {
-              const d = dlDistance(v, hs);
-              if ((v.length <= 4 && d <= 1) || (v.length > 4 && d <= 2)) {
-              return true;
+            if (word.startsWith(query) || query.startsWith(word)) return true;
           }
-        }
+          
+          // Multi-word matching (all words must be found)
+          if (searchWords.length > 1) {
+            return searchWords.every(word => 
+              normalized.includes(word) || 
+              words.some(w => w.startsWith(word) || word.startsWith(w))
+            );
+          }
+          
         return false;
-          });
-        });
-        
-        return allTermsMatch;
       };
 
-      // Score entries for better ranking
+        // Fast scoring system - much simpler than the complex fuzzy matching
       const scoredEntries = filteredEntries.map(entry => {
-        const haystacks = [
+          const searchFields = [
           { text: entry.title, weight: 10 },
           { text: entry.entry_id, weight: 8 },
           { text: entry.law_family, weight: 6 },
@@ -531,11 +405,10 @@ export const useLocalStorage = () => {
         let score = 0;
         let hasMatch = false;
         
-        for (const { text, weight } of haystacks) {
+          for (const { text, weight } of searchFields) {
           if (!text) continue;
           
           const normalizedText = normalize(text);
-          const compactText = compact(text);
           
           // Exact match gets highest score
           if (normalizedText === searchTerm) {
@@ -552,8 +425,8 @@ export const useLocalStorage = () => {
             score += weight;
             hasMatch = true;
           }
-          // Fuzzy match gets lower score
-          else if (fuzzyMatch(searchTerm, text)) {
+            // Simple fuzzy match gets lower score
+            else if (simpleFuzzyMatch(text, searchTerm)) {
             score += weight * 0.5;
             hasMatch = true;
           }
@@ -642,6 +515,9 @@ export const useLocalStorage = () => {
 
     return filteredEntries;
   };
+    
+    return memoizedSearch;
+  }, [entries]);
 
   // Get entries by type
   const getEntriesByType = (type) => {
