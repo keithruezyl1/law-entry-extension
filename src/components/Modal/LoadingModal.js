@@ -1,7 +1,7 @@
 import React from 'react';
 import './Modal.css';
 
-const LoadingModal = ({ isOpen, message = "Processing..." }) => {
+const LoadingModal = ({ isOpen, message = "Processing...", subtitle = "Please wait..." }) => {
   if (!isOpen) return null;
 
   return (
@@ -11,7 +11,7 @@ const LoadingModal = ({ isOpen, message = "Processing..." }) => {
           <div className="modal-spinner"></div>
         </div>
         <h2 className="modal-title">{message}</h2>
-        <p className="modal-subtitle">Please wait while we process your import...</p>
+        <p className="modal-subtitle">{subtitle}</p>
       </div>
     </div>
   );

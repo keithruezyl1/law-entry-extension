@@ -1777,12 +1777,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       <LoadingModal
         isOpen={showImportLoadingModal}
         message="Importing Entry..."
+        subtitle="Please wait while we process your import..."
       />
 
       {/* Update Loading Modal */}
       <LoadingModal
         isOpen={isUpdatingEntry}
         message="Updating Entry..."
+        subtitle="Please wait while we update your entry..."
       />
 
       {/* Import Success Modal */}
