@@ -724,6 +724,10 @@ export const useLocalStorage = () => {
       const upserts = toAdd.map((entry) => {
         try {
           if (!entry || !entry.entry_id) return Promise.resolve({ success: false, error: 'missing entry_id' });
+          
+          // Log the entry being processed for debugging
+          console.log('Processing entry:', entry.entry_id, 'Type:', entry.type);
+          
           const payload = {
             entry_id: entry.entry_id,
             type: entry.type,
@@ -741,9 +745,10 @@ export const useLocalStorage = () => {
             source_urls: entry.source_urls,
             last_reviewed: entry.last_reviewed || new Date().toISOString().split('T')[0],
             visibility: entry.visibility || { gli: true, cpa: false },
-            // Import-specific fields
-            created_by: userInfo?.personId || userInfo?.person_id || (entry.created_by && entry.created_by !== 0 ? entry.created_by : 5),
-            created_by_name: userInfo?.name || userInfo?.displayName || entry.created_by_name || 'Imported User',
+            // Import-specific fields - use same logic as EntryForm.tsx
+            created_by: userInfo?.personId ? Number(String(userInfo.personId).replace('P','')) : (entry.created_by && entry.created_by !== 0 ? entry.created_by : 5),
+            created_by_name: userInfo?.name || userInfo?.username || entry.created_by_name || 'Imported User',
+            created_by_username: userInfo?.username,
             verified: false, // All imported entries are marked as unverified
             verified_at: null,
             verified_by: null,
@@ -816,8 +821,11 @@ export const useLocalStorage = () => {
               jurisprudence: entry.jurisprudence
             })
           };
-          return upsertEntry(payload);
+          const result = await upsertEntry(payload);
+          console.log('Upsert result for', entry.entry_id, ':', result);
+          return result;
         } catch (e) {
+          console.error('Error processing entry', entry.entry_id, ':', e);
           return Promise.resolve({ success: false, error: String(e?.message || e) });
         }
       });
