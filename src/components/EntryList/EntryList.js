@@ -85,8 +85,6 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
       };
     }
   }, [selectedEntry, entryStack]);
-  console.log('EntryList received entries:', entries);
-  console.log('EntryList entries length:', entries.length);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -108,12 +106,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   // const allTags = getAllTags();
 
   const filteredEntries = useMemo(() => {
-    console.log('EntryList filtering with:', { searchQuery, filters, teamMemberNames });
-    console.log('Team member names object:', teamMemberNames);
-    console.log('Team member names keys:', Object.keys(teamMemberNames));
     const filtered = searchEntries(searchQuery, filters);
-    console.log('Filtered entries:', filtered);
-    console.log('Filtered entries length:', filtered.length);
     return filtered;
   }, [searchQuery, filters, searchEntries, teamMemberNames]);
 

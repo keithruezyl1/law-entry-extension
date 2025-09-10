@@ -598,32 +598,15 @@ export const useLocalStorage = () => {
       
       return true;
     });
-    console.log('Filtered entries after verified filter:', filteredEntries.length);
   }
 
       // Team member filter
   if (filters.team_member_id && filters.team_member_id !== 'all') {
-    console.log('Team member filter active:', filters.team_member_id);
-    console.log('Available entries with created_by:', filteredEntries.map(e => ({ 
-      id: e.entry_id, 
-      created_by: e.created_by,
-      created_by_type: typeof e.created_by,
-      team_member_id: e.team_member_id,
-      created_by_name: e.created_by_name,
-      created_by_username: e.created_by_username
-    })));
-    console.log('Filter team member type:', typeof filters.team_member_id);
     filteredEntries = filteredEntries.filter(entry => {
       // Primary match: created_by field (1-5)
       const entryCreatedBy = entry.created_by;
       const filterTeamMember = filters.team_member_id;
       
-      console.log('Comparing:', { 
-        entryCreatedBy, 
-        filterTeamMember, 
-        entryType: typeof entryCreatedBy, 
-        filterType: typeof filterTeamMember
-      });
       
       // Match by created_by field (the main field in DB)
       const matchesCreatedBy = String(entryCreatedBy) === String(filterTeamMember);
@@ -638,11 +621,9 @@ export const useLocalStorage = () => {
       const matchesUsername = entryCreatedByUsername && String(entryCreatedByUsername).toLowerCase() === String(filterTeamMember).toLowerCase();
       
       const isMatch = matchesCreatedBy || matchesId || matchesName || matchesUsername;
-      console.log('Match results:', { matchesCreatedBy, matchesId, matchesName, matchesUsername, isMatch });
       
       return isMatch;
     });
-    console.log('Filtered entries after team member filter:', filteredEntries.length);
   }
 
     // Tags filter

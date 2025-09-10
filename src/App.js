@@ -493,8 +493,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     dbTeamMembers.forEach(member => {
       names[member.id] = member.name;
     });
-    console.log('Team member names created:', names);
-    console.log('dbTeamMembers:', dbTeamMembers);
     return names;
   }, [dbTeamMembers]);
 
@@ -1361,7 +1359,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // Store original quotas before carryover adjustments for display purposes
             const originalQuotas = { ...cumulativeReqs };
-            console.log('DEBUG: Original quotas before carryover:', originalQuotas);
             
             // Subtract excess entries from previous days from current day's quota
             Object.keys(allPreviousEntries).forEach(type => {
@@ -1387,7 +1384,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                   const excess = previousEntries - totalPreviousQuota;
                   const oldQuota = cumulativeReqs[type];
                   cumulativeReqs[type] = Math.max(0, cumulativeReqs[type] - excess);
-                  console.log(`DEBUG: Carryover for ${type} - previousEntries: ${previousEntries}, totalPreviousQuota: ${totalPreviousQuota}, excess: ${excess}, oldQuota: ${oldQuota}, newQuota: ${cumulativeReqs[type]}`);
                 }
               }
             });
@@ -1407,8 +1403,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             });
             
             // Count entries that match quota types
-            console.log('DEBUG: todayEntries:', todayEntries);
-            console.log('DEBUG: cumulativeReqs after carryover:', cumulativeReqs);
             
             // First, handle entry types that have entries today
             Object.keys(todayEntries).forEach(type => {
@@ -1419,23 +1413,19 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 if (cumulativeReqs[type] === 0) {
                   // Adjusted quota is 0, meaning we completed the quota via carryover
                   flexibleCounts[type] = originalQuota;
-                  console.log(`DEBUG: ${type} - originalQuota: ${originalQuota}, cumulativeReqs: ${cumulativeReqs[type]}, todayEntries: ${todayEntries[type]}, setting flexibleCounts to: ${originalQuota}`);
                 } else {
                   // Show progress against the original quota
                   flexibleCounts[type] = Math.min(todayEntries[type], originalQuota);
-                  console.log(`DEBUG: ${type} - originalQuota: ${originalQuota}, cumulativeReqs: ${cumulativeReqs[type]}, todayEntries: ${todayEntries[type]}, setting flexibleCounts to: ${Math.min(todayEntries[type], originalQuota)}`);
                 }
 
                 // If user exceeded today's original quota for this type, record overflow as carryover (yellow pill)
                 const overflow = Math.max(0, (todayEntries[type] || 0) - (originalQuota || 0));
                 if (overflow > 0) {
                   carryoverEntries[type] = (carryoverEntries[type] || 0) + overflow;
-                  console.log(`DEBUG: ${type} - overflow carryover added: ${overflow}`);
                 }
               } else {
                 // This entry type is not in today's quota - it's carryover (yellow pill)
                 carryoverEntries[type] = todayEntries[type];
-                console.log(`DEBUG: ${type} - not in today's quota, adding to carryover: ${todayEntries[type]}`);
               }
             });
             
@@ -1447,11 +1437,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
                 if (cumulativeReqs[type] === 0) {
                   // Adjusted quota is 0, meaning we completed the quota via carryover
                   flexibleCounts[type] = originalQuota;
-                  console.log(`DEBUG: ${type} - no entries today, but quota satisfied via carryover, setting flexibleCounts to: ${originalQuota}`);
                 } else {
                   // Show 0 progress against the original quota
                   flexibleCounts[type] = 0;
-                  console.log(`DEBUG: ${type} - no entries today, showing 0 progress`);
                 }
               }
             });
