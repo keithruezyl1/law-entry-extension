@@ -167,6 +167,22 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       return null;
     }
   });
+
+  // Ensure imported data is maintained during navigation
+  useEffect(() => {
+    if (currentView === 'form' && !importedEntryData) {
+      try {
+        const stored = sessionStorage.getItem('importedEntryData');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setImportedEntryData(parsed);
+          console.log('Restored imported data from sessionStorage:', parsed);
+        }
+      } catch (e) {
+        console.error('Failed to restore imported data:', e);
+      }
+    }
+  }, [currentView, importedEntryData]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearModalStep, setClearModalStep] = useState(1);
@@ -1599,6 +1615,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <>
             {console.log('Rendering EntryForm with editingEntry:', editingEntry)}
             {console.log('Rendering EntryForm with importedEntryData:', importedEntryData)}
+            {console.log('Rendering EntryForm with final entry prop:', editingEntry || importedEntryData)}
+            {console.log('Current URL:', window.location.href)}
             <EntryForm
               entry={editingEntry || importedEntryData}
               existingEntries={entries}
