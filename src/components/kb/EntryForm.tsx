@@ -208,13 +208,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   
   // Get step from URL params or query string (for edit mode)
   const getInitialStep = () => {
-    // For new entries: /law-entry/:step - use URL param directly
-    if (!entry && step) {
+    // For new entries and imported entries: /law-entry/:step - use URL param directly
+    if ((!entry || isImportedEntry) && step) {
       return parseInt(step);
     }
     
     // For edit mode: /entry/:id/edit?step=X - use query string
-    if (entry) {
+    if (entry && !isImportedEntry) {
       const urlParams = new URLSearchParams(window.location.search);
       const queryStep = urlParams.get('step');
       if (queryStep) {
@@ -537,7 +537,124 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       // Set amendment state for edit mode
       setHasAmendment(!!entry.amendment_date);
     } else if (isCreateMode) {
-      // Only try to load draft data for new entries (CREATE MODE ONLY)
+      // Try to load draft data for new entries (CREATE MODE ONLY)
+      // First check for imported data in sessionStorage
+      try {
+        const importedData = sessionStorage.getItem('importedEntryData');
+        if (importedData) {
+          const parsed = JSON.parse(importedData);
+          console.log('Loading imported data for new entry:', parsed);
+          
+          // Use the same normalization logic as the entry prop
+          const normalizeDate = (d: any): any => {
+            if (!d) return null;
+            if (typeof d === 'string') {
+              if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+              const dt = new Date(d);
+              return isNaN(dt.getTime()) ? null : dt.toISOString().slice(0, 10);
+            }
+            if (d instanceof Date) return d.toISOString().slice(0, 10);
+            return null;
+          };
+
+          const normalizeStringArray = (val: any): string[] => {
+            if (Array.isArray(val)) return val.filter((v) => typeof v === 'string');
+            if (val == null || val === '') return [];
+            if (typeof val === 'string') return [val];
+            return [];
+          };
+
+          const normalizeRelations = (arr: any[] | undefined) => {
+            if (!Array.isArray(arr)) return [] as any[];
+            return arr.map((it) => {
+              if (!it) return it;
+              if (typeof it === 'string') {
+                return { type: 'internal', entry_id: it };
+              }
+              if (!it.type && it.entry_id) {
+                return { ...it, type: 'internal' };
+              }
+              if (it.type === 'external' && it.entry_id && !it.citation) {
+                return { ...it, citation: it.entry_id, entry_id: undefined };
+              }
+              if (it.type === 'external' && it.title && !it.citation) {
+                return { ...it, citation: it.title };
+              }
+              if (it.type === 'external') {
+                const { entry_id, ...cleanEntry } = it;
+                return cleanEntry;
+              }
+              if (it.topic && !it.title) {
+                const { topic, ...rest } = it;
+                return { ...rest, title: topic };
+              }
+              return it;
+            });
+          };
+
+          const resetData = {
+            type: parsed.type || 'statute_section',
+            entry_id: parsed.entry_id || '',
+            title: parsed.title || '',
+            jurisdiction: parsed.jurisdiction || 'PH',
+            law_family: parsed.law_family || '',
+            section_id: parsed.section_id || '',
+            canonical_citation: parsed.canonical_citation || '',
+            status: parsed.status || '',
+            effective_date: normalizeDate(parsed.effective_date) || new Date().toISOString().slice(0, 10),
+            amendment_date: normalizeDate(parsed.amendment_date),
+            summary: parsed.summary || '',
+            text: parsed.text || '',
+            source_urls: parsed.source_urls && parsed.source_urls.length > 0 ? parsed.source_urls : [''],
+            tags: parsed.tags || [],
+            last_reviewed: normalizeDate(parsed.last_reviewed) || new Date().toISOString().slice(0, 10),
+            visibility: { gli: true, cpa: true },
+            // Type-specific fields
+            elements: normalizeStringArray(parsed?.elements),
+            penalties: normalizeStringArray(parsed?.penalties),
+            defenses: normalizeStringArray(parsed?.defenses),
+            prescriptive_period: parsed?.prescriptive_period || null,
+            standard_of_proof: parsed?.standard_of_proof || '',
+            rule_no: parsed?.rule_no || '',
+            section_no: parsed?.section_no || '',
+            triggers: normalizeStringArray(parsed?.triggers),
+            time_limits: normalizeStringArray(parsed?.time_limits),
+            required_forms: normalizeStringArray(parsed?.required_forms),
+            circular_no: parsed?.circular_no || '',
+            applicability: normalizeStringArray(parsed?.applicability),
+            issuance_no: parsed?.issuance_no || '',
+            instrument_no: parsed?.instrument_no || '',
+            supersedes: normalizeRelations(parsed?.supersedes),
+            steps_brief: normalizeStringArray(parsed?.steps_brief),
+            forms_required: normalizeStringArray(parsed?.forms_required),
+            failure_states: normalizeStringArray(parsed?.failure_states),
+            violation_code: parsed?.violation_code || '',
+            violation_name: parsed?.violation_name || '',
+            license_action: parsed?.license_action || '',
+            fine_schedule: Array.isArray(parsed?.fine_schedule) ? parsed?.fine_schedule : [],
+            apprehension_flow: normalizeStringArray(parsed?.apprehension_flow),
+            incident: parsed?.incident || '',
+            phases: Array.isArray(parsed?.phases) ? parsed?.phases : [],
+            forms: normalizeStringArray(parsed?.forms),
+            handoff: normalizeStringArray(parsed?.handoff),
+            rights_callouts: normalizeStringArray(parsed?.rights_callouts),
+            rights_scope: parsed?.rights_scope || '',
+            advice_points: normalizeStringArray(parsed?.advice_points),
+            topics: normalizeStringArray(parsed?.topics),
+            jurisprudence: normalizeStringArray(parsed?.jurisprudence),
+            legal_bases: normalizeRelations(parsed?.legal_bases),
+            related_sections: normalizeRelations(parsed?.related_sections),
+          };
+          
+          console.log('Resetting form with imported data:', resetData);
+          methods.reset(resetData as any);
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to load imported data:', e);
+      }
+      
+      // Fallback to regular draft data
       try {
         const draftData = localStorage.getItem('kb_entry_draft');
         if (draftData) {
@@ -668,8 +785,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
     
-    // Auto-save draft before moving to next step
-    if (!entry) {
+    // Auto-save draft before moving to next step (for new entries and imported entries)
+    if (!entry || isImportedEntry) {
       try {
         setIsAutoSaving(true);
         const draft = getValues();
@@ -704,8 +821,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   };
 
   const goPrev = () => {
-    // Auto-save draft before moving to previous step
-    if (!entry) {
+    // Auto-save draft before moving to previous step (for new entries and imported entries)
+    if (!entry || isImportedEntry) {
       try {
         setIsAutoSaving(true);
         const draft = getValues();

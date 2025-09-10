@@ -881,7 +881,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           if (result.success) {
             // Store the imported data in sessionStorage and redirect to form
             sessionStorage.setItem('importedEntryData', JSON.stringify(result.data));
-            navigate('/law-entry/4'); // Go to step 4 (review step)
+            navigate('/law-entry/1'); // Go to step 1 (start from beginning)
           } else {
             // Show error
             alert(`Import failed: ${result.error}`);
