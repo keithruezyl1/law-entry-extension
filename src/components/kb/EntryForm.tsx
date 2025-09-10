@@ -1011,7 +1011,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         return it;
       });
     };
-
+    
     const sanitized: Entry = {
       ...data,
       source_urls: (data as any).source_urls?.filter((u: string) => !!u && u.trim().length > 0) || [],
@@ -1295,14 +1295,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         <div className="kb-form-container">
           <header className="kb-form-header mb-6">
             <div>
-              <h1 className="kb-form-title">{entry ? 'Edit Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
-              <p className="kb-form-subtitle">{entry ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
-              {!entry && (
+              <h1 className="kb-form-title">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
+              <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
+              {!isEditMode && (
                 <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
               )}
             </div>
             {/* Auto-saving indicator */}
-            {!entry && isAutoSaving && (
+            {!isEditMode && isAutoSaving && (
               <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
                 <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                 <span>Auto-saving...</span>

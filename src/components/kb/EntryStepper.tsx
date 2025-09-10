@@ -39,7 +39,7 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
           <div className="flex items-center gap-3 mb-4">
             <h3 className="font-semibold text-primary text-lg">Progress</h3>
           </div>
-          <ul className="space-y-5">
+          <ul className="space-y-7">
             {steps.map((step) => {
               const active = currentStep === step.id;
               const complete = currentStep > step.id;
@@ -48,7 +48,7 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
                 <li
                   key={step.id}
                   className={cn(
-                    "flex items-center gap-4 rounded-token px-4 py-3 my-2 cursor-pointer transition-all duration-200 ring-0",
+                    "flex items-center gap-5 rounded-token px-4 py-3 my-2 cursor-pointer transition-all duration-200 ring-0",
                     active && "bg-primary/10 outline-none",
                     complete && "opacity-90",
                     !active && !complete && "hover:bg-muted/60"
@@ -62,7 +62,7 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
                   )}>
                     {icon}
                   </div>
-                  <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex-1 min-w-0 space-y-1 min-h-10 flex flex-col justify-center">
                     <div className={cn(
                       "text-sm font-semibold leading-tight truncate",
                       active ? "text-primary" : "text-foreground"
