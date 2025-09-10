@@ -409,6 +409,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   useEffect(() => {
     if (entry) {
       console.log('Resetting form with entry data:', entry);
+      console.log('Entry topics:', (entry as any)?.topics);
+      console.log('Entry jurisprudence:', (entry as any)?.jurisprudence);
+      console.log('Entry legal_bases:', (entry as any)?.legal_bases);
+      console.log('Entry related_sections:', (entry as any)?.related_sections);
       
       // Create a comprehensive reset object with all fields
       // Normalize helpers for edit mode
@@ -446,6 +450,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           // Legacy external stored under entry_id
           if (it.type === 'external' && it.entry_id && !it.citation) {
             return { ...it, citation: it.entry_id, entry_id: undefined };
+          }
+          // Handle external entries with title but no citation (for related_sections)
+          if (it.type === 'external' && it.title && !it.citation) {
+            return { ...it, citation: it.title };
           }
           // Legacy 'topic' -> new 'title'
           if (it.topic && !it.title) {
@@ -511,6 +519,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       };
       
       console.log('Comprehensive reset data:', resetData);
+      console.log('Reset data topics:', resetData.topics);
+      console.log('Reset data jurisprudence:', resetData.jurisprudence);
+      console.log('Reset data legal_bases:', resetData.legal_bases);
+      console.log('Reset data related_sections:', resetData.related_sections);
       methods.reset(resetData as any);
       
       // Set amendment state for edit mode
