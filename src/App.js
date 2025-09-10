@@ -157,6 +157,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [currentView] = useState(initialView);
   const [selectedEntryId, setSelectedEntryId] = useState(initialEntryId);
   const [editingEntry, setEditingEntry] = useState(null);
+  
+  // Check for imported data in sessionStorage
+  const [importedEntryData, setImportedEntryData] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('importedEntryData');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [showConfetti, setShowConfetti] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearModalStep, setClearModalStep] = useState(1);
@@ -178,7 +188,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showImportSuccessModal, setShowImportSuccessModal] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
   const [showImportLoadingModal, setShowImportLoadingModal] = useState(false);
-  const [importedEntryData, setImportedEntryData] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showEntrySavedModal, setShowEntrySavedModal] = useState(false);
   const [savedEntryTitle, setSavedEntryTitle] = useState('');
@@ -743,6 +752,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         setSavedEntryTitle(entryData.title);
         setShowEntrySavedModal(true);
         setImportedEntryData(null); // Clear imported data after successful save
+        sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);
@@ -849,8 +859,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           setShowImportLoadingModal(false);
           
           if (result.success) {
-            // Store the imported data and redirect to form
-            setImportedEntryData(result.data);
+            // Store the imported data in sessionStorage and redirect to form
+            sessionStorage.setItem('importedEntryData', JSON.stringify(result.data));
             navigate('/law-entry/4'); // Go to step 4 (review step)
           } else {
             // Show error
@@ -1016,6 +1026,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   const handleBackToList = () => {
     setImportedEntryData(null); // Clear imported data
+    sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
     navigate('/dashboard');
   };
 
@@ -1587,8 +1598,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         {currentView === 'form' && (
           <>
             {console.log('Rendering EntryForm with editingEntry:', editingEntry)}
+            {console.log('Rendering EntryForm with importedEntryData:', importedEntryData)}
             <EntryForm
-              entry={editingEntry || importedData}
+              entry={editingEntry || importedEntryData}
               existingEntries={entries}
               onSave={handleSaveEntry}
               onCancel={handleBackToList}
