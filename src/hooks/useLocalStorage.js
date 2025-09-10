@@ -709,12 +709,17 @@ export const useLocalStorage = () => {
         return { success: false, error: 'Invalid entry format' };
       }
       
-      // Check if entry already exists
-      const existing = await fetchAllEntriesFromDb();
-      const existingIds = new Set((existing || []).map((e) => e.entry_id));
-      
-      if (existingIds.has(entry.entry_id)) {
-        return { success: false, error: `Entry with ID "${entry.entry_id}" already exists` };
+      // Check if entry already exists (optional - don't block import if API fails)
+      try {
+        const existing = await fetchAllEntriesFromDb();
+        const existingIds = new Set((existing || []).map((e) => e.entry_id));
+        
+        if (existingIds.has(entry.entry_id)) {
+          return { success: false, error: `Entry with ID "${entry.entry_id}" already exists` };
+        }
+      } catch (err) {
+        console.warn('Could not check for existing entries, proceeding with import:', err);
+        // Continue with import even if duplicate check fails
       }
       
       // Prepare the entry data for form population
@@ -729,6 +734,17 @@ export const useLocalStorage = () => {
         verified_at: null,
         verified_by: null,
       };
+      
+      // Clear all existing drafts and replace with imported entry
+      try {
+        localStorage.removeItem('kb_entry_draft');
+        localStorage.removeItem('kb_draft');
+        localStorage.removeItem('kb_drafts');
+        localStorage.setItem('kb_entry_draft', JSON.stringify(formData));
+        console.log('Cleared all existing drafts and set imported entry as new draft');
+      } catch (e) {
+        console.error('Failed to clear/set draft:', e);
+      }
       
       console.log('Import successful, returning form data:', formData);
       return { success: true, data: formData };

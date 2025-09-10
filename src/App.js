@@ -432,13 +432,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           setEditingEntry(entry);
         }
         setSelectedEntryId(initialEntryId);
+      } else if (importedEntryData) {
+        // If no entry found but we have imported data, that's fine - we're creating a new entry
+        console.log('No existing entry found, but imported data available for new entry creation');
+        setSelectedEntryId(null);
       } else {
-        // Entry not found, redirect to dashboard
-        console.log('Entry not found, redirecting to dashboard');
+        // Entry not found and no imported data, redirect to dashboard
+        console.log('Entry not found and no imported data, redirecting to dashboard');
         navigate('/dashboard');
       }
     }
-  }, [initialEntryId, currentView, isEditing, getEntryById, navigate, entries, loading]);
+  }, [initialEntryId, currentView, isEditing, getEntryById, navigate, entries, loading, importedEntryData]);
 
   const stats = getStorageStats();
   const teamProgress = getAllTeamProgress();
