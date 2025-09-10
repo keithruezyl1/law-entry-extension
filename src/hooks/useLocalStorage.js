@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { upsertEntry, deleteEntryVector } from '../services/vectorApi';
 import { fetchAllEntriesFromDb } from '../services/kbApi';
 import { updateProgressForEntry } from '../lib/plan/progressStore';
+import { toISODate, getPlanDate } from '../lib/plan/planLoader';
 
 const STORAGE_KEY = 'law_entries';
 const TEAM_PROGRESS_KEY = 'team_progress';
@@ -706,7 +707,12 @@ export const useLocalStorage = () => {
       const existingIds = new Set((existing || []).map((e) => e.entry_id));
       // Only add entries that do not yet exist in DB
       const toAdd = list.filter((e) => e && e.entry_id && !existingIds.has(e.entry_id));
+      console.log(`Import: ${list.length} entries in file, ${toAdd.length} new entries to add`);
+      console.log('Existing entry IDs:', Array.from(existingIds));
+      console.log('New entry IDs:', toAdd.map(e => e.entry_id));
+      
       if (toAdd.length === 0) {
+        console.log('No new entries to add - all entries already exist in database');
         // Nothing to add; refresh UI and exit
         const dbEntries = await fetchAllEntriesFromDb();
         if (Array.isArray(dbEntries)) {
@@ -735,9 +741,8 @@ export const useLocalStorage = () => {
             source_urls: entry.source_urls,
             last_reviewed: entry.last_reviewed || new Date().toISOString().split('T')[0],
             visibility: entry.visibility || { gli: true, cpa: false },
-            offline: entry.offline || { pack_include: false },
             // Import-specific fields
-            created_by: userInfo?.personId || userInfo?.person_id || entry.created_by || 5,
+            created_by: userInfo?.personId || userInfo?.person_id || (entry.created_by && entry.created_by !== 0 ? entry.created_by : 5),
             created_by_name: userInfo?.name || userInfo?.displayName || entry.created_by_name || 'Imported User',
             verified: false, // All imported entries are marked as unverified
             verified_at: null,
@@ -818,6 +823,41 @@ export const useLocalStorage = () => {
       });
       const results = await Promise.allSettled(upserts);
       const successCount = results.reduce((n, r) => n + ((r.status === 'fulfilled' && r.value?.success) ? 1 : 0), 0);
+      console.log(`Import results: ${successCount} successful, ${results.length - successCount} failed`);
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.error(`Entry ${index} failed:`, result.reason);
+        } else if (!result.value?.success) {
+          console.error(`Entry ${index} failed:`, result.value?.error);
+        }
+      });
+      
+      // Update progress for successfully imported entries
+      if (successCount > 0 && userInfo) {
+        const currentDate = toISODate(getPlanDate(new Date()));
+        const userId = userInfo.personId || userInfo.person_id || userInfo.id;
+        
+        // Count successful imports by type
+        const importCounts = {};
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value?.success) {
+            const entry = toAdd[index];
+            if (entry && entry.type) {
+              importCounts[entry.type] = (importCounts[entry.type] || 0) + 1;
+            }
+          }
+        });
+        
+        // Update progress for each entry type
+        Object.entries(importCounts).forEach(([entryType, count]) => {
+          for (let i = 0; i < count; i++) {
+            updateProgressForEntry(currentDate, userId, entryType);
+          }
+        });
+        
+        console.log(`Updated progress for ${successCount} imported entries for user ${userId}`);
+      }
+      
       // Refresh from DB after import
       const dbEntries = await fetchAllEntriesFromDb();
       if (Array.isArray(dbEntries)) {

@@ -390,6 +390,10 @@ updated_at: string      // ISO timestamp (auto-generated)
   - `verified`: Set to `false`
   - `verified_at`: Set to `null`
   - `verified_by`: Set to `null`
+- **Progress Tracking:** Imported entries count towards daily quotas and progress
+  - Each imported entry increments the user's daily progress for that entry type
+  - Progress is tracked by entry type (e.g., `constitution_provision`, `statute_section`)
+  - Imported entries contribute to quota completion just like manually created entries
 - **No manual input required:** These fields are automatically populated during import
 
 ### **Jurisdiction Validation**
@@ -683,6 +687,7 @@ When generating constitution provision entries with GPT or similar AI tools, use
     - `verified` - Set to false for all imports
     - `verified_at` - Set to null for all imports
     - `verified_by` - Set to null for all imports
+    - **Progress tracking** - Imported entries automatically count towards daily quotas and progress
 
 ---
 
