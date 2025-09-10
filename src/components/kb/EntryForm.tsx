@@ -184,7 +184,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Check if this is an imported entry (has entry_id but no id field) vs existing entry (has id field)
   // Also check if we're on a /law-entry/ URL (create mode) vs /entry/ID/edit URL (edit mode)
   const isOnCreateUrl = window.location.pathname.startsWith('/law-entry/');
-  const isImportedEntry = entry && entry.entry_id && !(entry as any).id;
+  // Check if this is an imported entry by looking for importedEntryData in sessionStorage
+  const hasImportedData = sessionStorage.getItem('importedEntryData') !== null;
+  const isImportedEntry = entry && entry.entry_id && (hasImportedData || !(entry as any).id);
   // Prioritize URL pattern over entry properties for mode detection
   // If we're on a /law-entry/ URL, we're always in create mode (including imported entries)
   const isEditMode = !!entry && !isImportedEntry && !isOnCreateUrl;
@@ -195,6 +197,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     isCreateMode,
     isImportedEntry,
     isOnCreateUrl,
+    hasImportedData,
     currentUrl: window.location.pathname,
     entryId: entry?.entry_id || (entry as any)?.id,
     entryType: entry?.type,
@@ -1010,6 +1013,46 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
     console.log('Business rules validation passed');
     
+    // Additional validation for imported entries
+    console.log('Validating imported entry data...');
+    const sanitizedAny = sanitized as any;
+    console.log('Legal bases:', sanitizedAny.legal_bases);
+    console.log('Related sections:', sanitizedAny.related_sections);
+    
+    // Check for invalid external entries
+    const invalidExternalEntries: string[] = [];
+    
+    // Check legal_bases
+    if (sanitizedAny.legal_bases) {
+      sanitizedAny.legal_bases.forEach((item: any, index: number) => {
+        if (item && item.type === 'external' && (!item.citation || item.citation.trim() === '')) {
+          invalidExternalEntries.push(`Legal Basis ${index + 1}: External entries require a citation`);
+        }
+        if (item && item.type === 'internal' && (!item.entry_id || item.entry_id.trim() === '')) {
+          invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal entries require an entry_id`);
+        }
+      });
+    }
+    
+    // Check related_sections
+    if (sanitizedAny.related_sections) {
+      sanitizedAny.related_sections.forEach((item: any, index: number) => {
+        if (item && item.type === 'external' && (!item.citation || item.citation.trim() === '')) {
+          invalidExternalEntries.push(`Related Section ${index + 1}: External entries require a citation`);
+        }
+        if (item && item.type === 'internal' && (!item.entry_id || item.entry_id.trim() === '')) {
+          invalidExternalEntries.push(`Related Section ${index + 1}: Internal entries require an entry_id`);
+        }
+      });
+    }
+    
+    if (invalidExternalEntries.length > 0) {
+      console.log('Invalid external entries found:', invalidExternalEntries);
+      alert('Validation errors found:\n' + invalidExternalEntries.join('\n'));
+      return;
+    }
+    console.log('Imported entry validation passed');
+    
     // Clear draft
     try {
       localStorage.removeItem('kb_entry_draft');
@@ -1228,12 +1271,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 currentStep={currentStep}
                 onStepClick={(step) => {
                   setCurrentStep(step);
-                  // Maintain edit URL structure when editing existing entries
-                  if (entry) {
-                    const entryId = (entry as any).id || entry.entry_id;
-                    navigate(`/entry/${entryId}/edit?step=${step}`);
-                  } else {
+                  // Use URL pattern as primary determinant for navigation (same as Next/Previous buttons)
+                  if (isOnCreateUrl) {
+                    // We're on a create URL (including imported entries), use regular form URL
                     navigate(`/law-entry/${step}`);
+                  } else {
+                    // We're editing an existing entry, maintain edit URL structure
+                    const entryId = entry ? ((entry as any).id || entry.entry_id) : null;
+                    if (entryId) {
+                      navigate(`/entry/${entryId}/edit?step=${step}`);
+                    }
                   }
                 }}
               />
