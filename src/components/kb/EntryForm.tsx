@@ -543,6 +543,21 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       
       // Set amendment state for edit mode
       setHasAmendment(!!entry.amendment_date);
+      
+      // Force trigger duplicate detection for entries on create URLs
+      if (isOnCreateUrl) {
+        setTimeout(() => {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Force triggering duplicate detection after form reset');
+          }
+          // Force trigger by updating the title field
+          const currentTitle = resetData.title;
+          if (currentTitle && currentTitle.length >= 3) {
+            setValue('title', currentTitle + ' ');
+            setTimeout(() => setValue('title', currentTitle), 10);
+          }
+        }, 100);
+      }
     } else if (isCreateMode) {
       // Try to load draft data for new entries (CREATE MODE ONLY)
       // First check for imported data in sessionStorage
@@ -1204,7 +1219,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
     
     // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
-    // For imported entries or new entries, we should always run duplicate detection
+    // For ALL entries on create URLs, we should run duplicate detection
     if (entry && (entry as any).id && !isOnCreateUrl) {
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
@@ -1213,10 +1228,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
     
-    // If we have an entry but we're on a create URL, this is likely an imported entry or new entry
-    if (entry && isOnCreateUrl) {
+    // ALWAYS run duplicate detection for entries on create URLs (imported or new)
+    if (isOnCreateUrl) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Entry found on create URL - treating as imported/new entry, enabling duplicate detection');
+        console.log('🔍 On create URL - enabling duplicate detection for all entries');
       }
     }
     
@@ -1259,6 +1274,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
       setNearDuplicates([]);
       return;
+    }
+    
+    // Force duplicate detection to run for entries on create URLs
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Proceeding with duplicate detection for create URL entry');
     }
     
     let cancelled = false;
