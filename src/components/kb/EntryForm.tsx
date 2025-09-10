@@ -26,6 +26,7 @@ type EntryFormProps = {
   onSave: (data: Entry) => void;
   onCancel: () => void;
   onShowIncompleteEntriesModal?: (entryData: Entry) => void;
+  isUpdatingEntry?: boolean;
 };
 
 // Validation error type for required fields
@@ -177,7 +178,7 @@ const stepListBase: Step[] = [
   { id: 5, name: 'Review & Publish', description: 'Final check before saving' },
 ];
 
-export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel, onShowIncompleteEntriesModal }: EntryFormProps) {
+export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel, onShowIncompleteEntriesModal, isUpdatingEntry = false }: EntryFormProps) {
   const { user } = useAuth();
   
   // Explicit mode detection
@@ -186,9 +187,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const isOnCreateUrl = window.location.pathname.startsWith('/law-entry/');
   // Check if this is an imported entry by looking for importedEntryData in sessionStorage
   const hasImportedData = sessionStorage.getItem('importedEntryData') !== null;
-  const isImportedEntry = entry && entry.entry_id && (hasImportedData || !(entry as any).id);
+  // For imported entries: they have entry_id but no id field AND we have imported data in sessionStorage
+  const isImportedEntry = entry && entry.entry_id && !(entry as any).id && hasImportedData;
   // Prioritize URL pattern over entry properties for mode detection
   // If we're on a /law-entry/ URL, we're always in create mode (including imported entries)
+  // If we're on a /entry/ID/edit URL, we're in edit mode (unless it's an imported entry)
   const isEditMode = !!entry && !isImportedEntry && !isOnCreateUrl;
   const isCreateMode = !entry || isImportedEntry || isOnCreateUrl;
   
@@ -198,6 +201,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     isImportedEntry,
     isOnCreateUrl,
     hasImportedData,
+    entryHasId: !!(entry as any)?.id,
+    entryHasEntryId: !!entry?.entry_id,
     currentUrl: window.location.pathname,
     entryId: entry?.entry_id || (entry as any)?.id,
     entryType: entry?.type,
@@ -1693,8 +1698,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               {!entry && (
                                 <Button type="button" variant="outline" className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
-                              <Button type="submit" className="flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
-                                {isEditMode ? 'Update Entry' : 'Create Entry'}
+                              <Button 
+                                type="submit" 
+                                disabled={isUpdatingEntry}
+                                className="flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isUpdatingEntry ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    {isEditMode ? 'Updating...' : 'Creating...'}
+                                  </>
+                                ) : (
+                                  isEditMode ? 'Update Entry' : 'Create Entry'
+                                )}
                               </Button>
                             </div>
                           </div>

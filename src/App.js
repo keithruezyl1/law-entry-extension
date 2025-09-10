@@ -207,6 +207,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showEntrySavedModal, setShowEntrySavedModal] = useState(false);
   const [savedEntryTitle, setSavedEntryTitle] = useState('');
+  const [isUpdatingEntry, setIsUpdatingEntry] = useState(false);
   const [now, setNow] = useState(new Date());
   const [isCreatingEntry, setIsCreatingEntry] = useState(false);
   const [isResumingYes, setIsResumingYes] = useState(false);
@@ -660,14 +661,31 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       }
       
       if (editingEntry) {
-        await updateEntry(editingEntry.id, entryData);
-        console.log('Entry updated:', entryData);
+        // Show loading state for update
+        setIsUpdatingEntry(true);
         
-        // Clear editing state after successful update
-        setEditingEntry(null);
-        
-        // Note: Vector embeddings are automatically updated by the backend PUT endpoint
-        // No need for additional upsertEntry call which was causing duplication
+        try {
+          await updateEntry(editingEntry.id, entryData);
+          console.log('Entry updated:', entryData);
+          
+          // Clear editing state after successful update
+          setEditingEntry(null);
+          
+          // Clear imported data if this was an imported entry being updated
+          setImportedEntryData(null);
+          sessionStorage.removeItem('importedEntryData');
+          sessionStorage.removeItem('cameFromDashboard');
+          
+          // Show success modal and redirect to dashboard
+          setSavedEntryTitle(entryData.title);
+          setShowEntrySavedModal(true);
+          
+          // Note: Vector embeddings are automatically updated by the backend PUT endpoint
+          // No need for additional upsertEntry call which was causing duplication
+        } finally {
+          // Hide loading state
+          setIsUpdatingEntry(false);
+        }
       } else {
         // Check if this entry will complete a daily quota
         if (entryData.team_member_id && entryData.type) {
@@ -1632,6 +1650,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               onSave={handleSaveEntry}
               onCancel={handleBackToList}
               onShowIncompleteEntriesModal={showIncompleteEntriesModalWithEntry}
+              isUpdatingEntry={isUpdatingEntry}
             />
           </>
         )}
@@ -1758,6 +1777,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       <LoadingModal
         isOpen={showImportLoadingModal}
         message="Importing Entry..."
+      />
+
+      {/* Update Loading Modal */}
+      <LoadingModal
+        isOpen={isUpdatingEntry}
+        message="Updating Entry..."
       />
 
       {/* Import Success Modal */}
