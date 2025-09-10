@@ -1452,7 +1452,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 <Button type="button" variant="outline" className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
                               <Button type="submit" className="flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
-                                {entry ? 'Update Entry' : 'Create Entry'}
+                                {isEditMode ? 'Update Entry' : 'Create Entry'}
                               </Button>
                             </div>
                           </div>

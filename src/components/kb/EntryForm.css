@@ -344,7 +344,7 @@
 	.relations-wrapper { overflow: hidden; }
 	.relations-highlight-layer { width: calc(50% - 4px); }
 	.relations-highlight-layer.to-left  { transform: translateX(0); }
-	.relations-highlight-layer.to-right { transform: translateX(calc(100% + 8px)); }
+	.relations-highlight-layer.to-right { transform: translateX(calc(100% + 12px)); }
 }
 
 .kb-form .stepper button {
