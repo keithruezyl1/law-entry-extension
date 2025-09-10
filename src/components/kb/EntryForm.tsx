@@ -1202,21 +1202,21 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
   // Disabled when editing existing entries to avoid confusion
   useEffect(() => {
+    console.log('🚨 DUPLICATE DETECTION useEffect RUNNING! 🚨');
     // Don't run duplicate detection when editing existing entries
-    if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 Duplicate detection check:', { 
+    console.log('🔍 DUPLICATE DETECTION useEffect TRIGGERED!', { 
       hasEntry: !!entry, 
       entryId: entry?.entry_id || (entry as any)?.id,
       isEditMode,
-        isCreateMode,
-        isImportedEntry,
-        isOnCreateUrl,
-        formPopulated,
-        title: title || 'no title',
-        lawFamily: lawFamily || 'no law family',
-        currentUrl: window.location.pathname
-      });
-    }
+      isCreateMode,
+      isImportedEntry,
+      isOnCreateUrl,
+      formPopulated,
+      title: title || 'no title',
+      lawFamily: lawFamily || 'no law family',
+      currentUrl: window.location.pathname,
+      timestamp: new Date().toISOString()
+    });
     
     // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
     // For ALL entries on create URLs, we should run duplicate detection
@@ -2154,6 +2154,43 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               className="bg-orange-500 text-white px-3 py-1 rounded text-xs"
             >
               Force Trigger
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                console.log('🔍 IMMEDIATE duplicate detection test...');
+                // Run duplicate detection immediately without waiting for useEffect
+                const currentValues = methods.getValues() as any;
+                const { title, law_family, section_id, canonical_citation, effective_date } = currentValues;
+                
+                if (title && title.length >= 3) {
+                  const idTokens = [title, law_family, section_id, canonical_citation, effective_date]
+                    .filter(Boolean)
+                    .join(' ');
+                  const q = `${idTokens}`.trim();
+                  
+                  console.log('🔍 IMMEDIATE query:', q);
+                  
+                  // Run semantic search immediately
+                  semanticSearch(q, 10).then(resp => {
+                    console.log('🔍 IMMEDIATE semantic search response:', resp);
+                    if (resp.success && resp.results && resp.results.length > 0) {
+                      console.log('🔍 IMMEDIATE found results:', resp.results.length);
+                      setNearDuplicates(resp.results.slice(0, 5));
+                    } else {
+                      console.log('🔍 IMMEDIATE no results found');
+                      setNearDuplicates([]);
+                    }
+                  }).catch(error => {
+                    console.error('🔍 IMMEDIATE error:', error);
+                  });
+                } else {
+                  console.log('🔍 IMMEDIATE title too short');
+                }
+              }}
+              className="bg-red-500 text-white px-3 py-1 rounded text-xs"
+            >
+              Immediate Test
             </button>
           </div>
         )}
