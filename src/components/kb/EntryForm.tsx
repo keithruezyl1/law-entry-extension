@@ -1158,11 +1158,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       hasEntry: !!entry, 
       entryId: entry?.entry_id || (entry as any)?.id,
       isEditMode,
-      isCreateMode 
+      isCreateMode,
+      formPopulated,
+      title: title || 'no title',
+      lawFamily: lawFamily || 'no law family'
     });
     
-    if (entry) {
-      console.log('✅ Disabling duplicate detection for existing entry');
+    if (entry && !isImportedEntry) {
+      console.log('✅ Disabling duplicate detection for existing entry (not imported)');
       setNearDuplicates([]);
       return;
     }
@@ -1527,7 +1530,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [title, lawFamily, sectionId, citation, effectiveDate, type]);
+  }, [title, lawFamily, sectionId, citation, effectiveDate, type, formPopulated]);
 
   // Debug logging for duplicate detection
   useEffect(() => {
@@ -1545,25 +1548,33 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       // Reset the flag
       setFormPopulated(false);
       
-      // Get current form values
-      const currentValues = methods.getValues();
-      const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
-      
-      // Trigger duplicate detection with current values
-      const idTokens = [title, law_family, section_id, canonical_citation, effective_date]
-        .filter(Boolean)
-        .join(' ');
-      const q = `${idTokens}`.trim();
-      
-      if (q && title && title.length >= 3) {
-        // Run the same duplicate detection logic
-        const runDuplicateDetection = async () => {
-          try {
-            setSearchingDupes(true);
-            console.log('🔍 Running duplicate detection for imported entry with query:', q);
-            
-            const resp = await semanticSearch(q, 10);
-            console.log('🔍 Semantic search response for imported entry:', resp);
+      // Small delay to ensure form is fully populated
+      setTimeout(() => {
+        // Get current form values
+        const currentValues = methods.getValues() as any;
+        const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
+        
+        console.log('🔍 Current form values for duplicate detection:', {
+          title, law_family, section_id, canonical_citation, effective_date, type
+        });
+        
+        // Trigger duplicate detection with current values
+        const idTokens = [title, law_family, section_id, canonical_citation, effective_date]
+          .filter(Boolean)
+          .join(' ');
+        const q = `${idTokens}`.trim();
+        
+        console.log('🔍 Generated query for duplicate detection:', q);
+        
+        if (q && title && title.length >= 3) {
+          // Run the same duplicate detection logic
+          const runDuplicateDetection = async () => {
+            try {
+              setSearchingDupes(true);
+              console.log('🔍 Running duplicate detection for imported entry with query:', q);
+              
+              const resp = await semanticSearch(q, 10);
+              console.log('🔍 Semantic search response for imported entry:', resp);
             
             if (resp.success && resp.results && resp.results.length > 0) {
               // Use the same filtering logic as the main duplicate detection
@@ -1879,8 +1890,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           }
         };
         
-        runDuplicateDetection();
-      }
+          runDuplicateDetection();
+        } else {
+          console.log('🔍 Query too short or missing title for duplicate detection');
+        }
+      }, 100); // Small delay to ensure form is fully populated
     }
   }, [formPopulated, methods, existingEntries]);
 
@@ -1903,29 +1917,44 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         
         {/* Debug button for testing duplicate detection */}
         {process.env.NODE_ENV === 'development' && (
-          <button
-            type="button"
-            onClick={() => {
-              console.log('🧪 Testing duplicate detection with sample data');
-              setNearDuplicates([
-                {
-                  title: "Test Entry 1",
-                  canonical_citation: "Test Citation 1",
-                  entry_id: "test-1",
-                  similarity: 0.8
-                },
-                {
-                  title: "Test Entry 2", 
-                  canonical_citation: "Test Citation 2",
-                  entry_id: "test-2",
-                  similarity: 0.7
-                }
-              ]);
-            }}
-            className="fixed bottom-4 right-4 bg-blue-500 text-white px-3 py-1 rounded text-xs z-50"
-          >
-            Test Duplicates
-          </button>
+          <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
+            <button
+              type="button"
+              onClick={() => {
+                console.log('🧪 Testing duplicate detection with sample data');
+                setNearDuplicates([
+                  {
+                    title: "Test Entry 1",
+                    canonical_citation: "Test Citation 1",
+                    entry_id: "test-1",
+                    similarity: 0.8
+                  },
+                  {
+                    title: "Test Entry 2", 
+                    canonical_citation: "Test Citation 2",
+                    entry_id: "test-2",
+                    similarity: 0.7
+                  }
+                ]);
+              }}
+              className="bg-blue-500 text-white px-3 py-1 rounded text-xs"
+            >
+              Test Duplicates
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const currentValues = methods.getValues() as any;
+                console.log('🔍 Current form values:', currentValues);
+                console.log('🔍 Form populated flag:', formPopulated);
+                console.log('🔍 Is imported entry:', isImportedEntry);
+                console.log('🔍 Near duplicates:', nearDuplicates);
+              }}
+              className="bg-green-500 text-white px-3 py-1 rounded text-xs"
+            >
+              Debug Form
+            </button>
+          </div>
         )}
         <div className="kb-form-container">
           <header className="kb-form-header mb-6">
@@ -2335,8 +2364,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               )}
                               <Button 
                                 type="submit" 
-                                disabled={isUpdatingEntry}
-                                className="flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
+                                className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
+                                  isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
+                                    ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                                    : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'
+                                }`}
                               >
                                 {isUpdatingEntry ? (
                                   <>
