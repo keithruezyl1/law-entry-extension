@@ -7,8 +7,8 @@ const LoadingModal = ({ isOpen, message = "Processing..." }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content loading-modal">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
+        <div className="modal-loading-spinner">
+          <div className="modal-spinner"></div>
         </div>
         <h2 className="modal-title">{message}</h2>
         <p className="modal-subtitle">Please wait while we process your import...</p>

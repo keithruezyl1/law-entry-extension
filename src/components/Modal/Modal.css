@@ -337,11 +337,11 @@
   max-width: 400px;
 }
 
-.loading-spinner {
+.modal-loading-spinner {
   margin-bottom: 20px;
 }
 
-.spinner {
+.modal-spinner {
   width: 40px;
   height: 40px;
   border: 4px solid #374151;
