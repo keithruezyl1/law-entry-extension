@@ -701,178 +701,37 @@ export const useLocalStorage = () => {
     try {
       const parsed = JSON.parse(jsonData);
       const list = Array.isArray(parsed) ? parsed : [parsed];
-      if (!list || list.length === 0) return 0;
-      // Fetch existing entry_ids to avoid overwriting
+      if (!list || list.length === 0) return { success: false, error: 'No entries found in file' };
+      
+      // For the new workflow, we'll process the first entry and return it for form population
+      const entry = list[0];
+      if (!entry || !entry.entry_id) {
+        return { success: false, error: 'Invalid entry format' };
+      }
+      
+      // Check if entry already exists
       const existing = await fetchAllEntriesFromDb();
       const existingIds = new Set((existing || []).map((e) => e.entry_id));
-      // Only add entries that do not yet exist in DB
-      const toAdd = list.filter((e) => e && e.entry_id && !existingIds.has(e.entry_id));
-      console.log(`Import: ${list.length} entries in file, ${toAdd.length} new entries to add`);
-      console.log('Existing entry IDs:', Array.from(existingIds));
-      console.log('New entry IDs:', toAdd.map(e => e.entry_id));
       
-      if (toAdd.length === 0) {
-        console.log('No new entries to add - all entries already exist in database');
-        // Nothing to add; refresh UI and exit
-        const dbEntries = await fetchAllEntriesFromDb();
-        if (Array.isArray(dbEntries)) {
-          const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
-          setEntries(mapped);
-        }
-        return 0;
-      }
-      const upserts = toAdd.map((entry) => {
-        try {
-          if (!entry || !entry.entry_id) return Promise.resolve({ success: false, error: 'missing entry_id' });
-          
-          // Log the entry being processed for debugging
-          console.log('Processing entry:', entry.entry_id, 'Type:', entry.type);
-          
-          const payload = {
-            entry_id: entry.entry_id,
-            type: entry.type,
-            title: entry.title,
-            canonical_citation: entry.canonical_citation,
-            summary: entry.summary,
-            text: entry.text,
-            tags: entry.tags,
-            jurisdiction: entry.jurisdiction,
-            law_family: entry.law_family,
-            section_id: entry.section_id,
-            status: entry.status || 'active',
-            effective_date: entry.effective_date,
-            amendment_date: entry.amendment_date,
-            source_urls: entry.source_urls,
-            last_reviewed: entry.last_reviewed || new Date().toISOString().split('T')[0],
-            visibility: entry.visibility || { gli: true, cpa: false },
-            // Import-specific fields - use same logic as EntryForm.tsx
-            created_by: userInfo?.personId ? Number(String(userInfo.personId).replace('P','')) : (entry.created_by && entry.created_by !== 0 ? entry.created_by : 5),
-            created_by_name: userInfo?.name || userInfo?.username || entry.created_by_name || 'Imported User',
-            created_by_username: userInfo?.username,
-            verified: false, // All imported entries are marked as unverified
-            verified_at: null,
-            verified_by: null,
-            // Type-specific fields
-            ...(entry.type === 'statute_section' && {
-              elements: entry.elements,
-              penalties: entry.penalties,
-              defenses: entry.defenses,
-              prescriptive_period: entry.prescriptive_period,
-              standard_of_proof: entry.standard_of_proof,
-              related_sections: entry.related_sections,
-              legal_bases: entry.legal_bases
-            }),
-            ...(entry.type === 'rule_of_court' && {
-              rule_no: entry.rule_no,
-              section_no: entry.section_no,
-              triggers: entry.triggers,
-              time_limits: entry.time_limits,
-              required_forms: entry.required_forms,
-              related_sections: entry.related_sections
-            }),
-            ...(entry.type === 'rights_advisory' && {
-              rights_scope: entry.rights_scope,
-              advice_points: entry.advice_points,
-              legal_bases: entry.legal_bases,
-              related_sections: entry.related_sections
-            }),
-            ...(entry.type === 'pnp_sop' && {
-              steps_brief: entry.steps_brief,
-              forms_required: entry.forms_required,
-              failure_states: entry.failure_states,
-              legal_bases: entry.legal_bases
-            }),
-            ...(entry.type === 'incident_checklist' && {
-              incident: entry.incident,
-              phases: entry.phases,
-              forms: entry.forms,
-              handoff: entry.handoff,
-              rights_callouts: entry.rights_callouts
-            }),
-            ...(entry.type === 'agency_circular' && {
-              circular_no: entry.circular_no,
-              section_no: entry.section_no,
-              applicability: entry.applicability,
-              legal_bases: entry.legal_bases,
-              supersedes: entry.supersedes
-            }),
-            ...(entry.type === 'doj_issuance' && {
-              issuance_no: entry.issuance_no,
-              applicability: entry.applicability,
-              legal_bases: entry.legal_bases,
-              supersedes: entry.supersedes
-            }),
-            ...(entry.type === 'executive_issuance' && {
-              instrument_no: entry.instrument_no,
-              applicability: entry.applicability,
-              legal_bases: entry.legal_bases,
-              supersedes: entry.supersedes
-            }),
-            ...(entry.type === 'city_ordinance_section' && {
-              elements: entry.elements,
-              penalties: entry.penalties,
-              defenses: entry.defenses,
-              related_sections: entry.related_sections,
-              legal_bases: entry.legal_bases
-            }),
-            ...(entry.type === 'constitution_provision' && {
-              topics: entry.topics,
-              related_sections: entry.related_sections,
-              jurisprudence: entry.jurisprudence
-            })
-          };
-          const result = await upsertEntry(payload);
-          console.log('Upsert result for', entry.entry_id, ':', result);
-          return result;
-        } catch (e) {
-          console.error('Error processing entry', entry.entry_id, ':', e);
-          return Promise.resolve({ success: false, error: String(e?.message || e) });
-        }
-      });
-      const results = await Promise.allSettled(upserts);
-      const successCount = results.reduce((n, r) => n + ((r.status === 'fulfilled' && r.value?.success) ? 1 : 0), 0);
-      console.log(`Import results: ${successCount} successful, ${results.length - successCount} failed`);
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error(`Entry ${index} failed:`, result.reason);
-        } else if (!result.value?.success) {
-          console.error(`Entry ${index} failed:`, result.value?.error);
-        }
-      });
-      
-      // Update progress for successfully imported entries
-      if (successCount > 0 && userInfo) {
-        const currentDate = toISODate(getPlanDate(new Date()));
-        const userId = userInfo.personId || userInfo.person_id || userInfo.id;
-        
-        // Count successful imports by type
-        const importCounts = {};
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled' && result.value?.success) {
-            const entry = toAdd[index];
-            if (entry && entry.type) {
-              importCounts[entry.type] = (importCounts[entry.type] || 0) + 1;
-            }
-          }
-        });
-        
-        // Update progress for each entry type
-        Object.entries(importCounts).forEach(([entryType, count]) => {
-          for (let i = 0; i < count; i++) {
-            updateProgressForEntry(currentDate, userId, entryType);
-          }
-        });
-        
-        console.log(`Updated progress for ${successCount} imported entries for user ${userId}`);
+      if (existingIds.has(entry.entry_id)) {
+        return { success: false, error: `Entry with ID "${entry.entry_id}" already exists` };
       }
       
-      // Refresh from DB after import
-      const dbEntries = await fetchAllEntriesFromDb();
-      if (Array.isArray(dbEntries)) {
-        const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
-        setEntries(mapped);
-      }
-      return successCount;
+      // Prepare the entry data for form population
+      const formData = {
+        ...entry,
+        // Override with user info for created_by fields
+        created_by: userInfo?.personId ? Number(String(userInfo.personId).replace('P','')) : (entry.created_by && entry.created_by !== 0 ? entry.created_by : 5),
+        created_by_name: userInfo?.name || userInfo?.username || entry.created_by_name || 'Imported User',
+        created_by_username: userInfo?.username,
+        // Set verification status for imported entries
+        verified: false,
+        verified_at: null,
+        verified_by: null,
+      };
+      
+      console.log('Import successful, returning form data:', formData);
+      return { success: true, data: formData };
     } catch (err) {
       console.error('Error importing entries:', err);
       throw new Error('Failed to import entries');

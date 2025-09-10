@@ -8,6 +8,7 @@ import EntryView from './components/EntryView/EntryView';
 import Login from './components/Login/Login';
 import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
+import LoadingModal from './components/Modal/LoadingModal';
 import { loadPlanFromJson, computeDayIndex, rowsForDay, getPlanDate, toISODate } from './lib/plan/planLoader';
 import { format } from 'date-fns';
 import { setDay1Date } from './lib/plan/progressStore';
@@ -148,7 +149,7 @@ function EntryEdit() {
   return <AppContent currentView="form" isEditing={true} selectedEntryId={entryId} />;
 }
 
-function AppContent({ currentView: initialView = 'list', isEditing = false, formStep = 1, selectedEntryId: initialEntryId = null }) {
+function AppContent({ currentView: initialView = 'list', isEditing = false, formStep = 1, selectedEntryId: initialEntryId = null, importedData = null }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -176,6 +177,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [pendingEntryForModal, setPendingEntryForModal] = useState(null);
   const [showImportSuccessModal, setShowImportSuccessModal] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
+  const [showImportLoadingModal, setShowImportLoadingModal] = useState(false);
+  const [importedEntryData, setImportedEntryData] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showEntrySavedModal, setShowEntrySavedModal] = useState(false);
   const [savedEntryTitle, setSavedEntryTitle] = useState('');
@@ -739,6 +742,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         // Show proper modal instead of browser alert
         setSavedEntryTitle(entryData.title);
         setShowEntrySavedModal(true);
+        setImportedEntryData(null); // Clear imported data after successful save
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);
@@ -833,14 +837,28 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const handleImport = async (event) => {
     const file = event.target.files[0];
     if (file) {
+      // Show loading modal
+      setShowImportLoadingModal(true);
+      
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const count = await importEntries(e.target.result, user);
-          setImportedCount(count);
-          setShowImportSuccessModal(true);
+          const result = await importEntries(e.target.result, user);
+          
+          // Hide loading modal
+          setShowImportLoadingModal(false);
+          
+          if (result.success) {
+            // Store the imported data and redirect to form
+            setImportedEntryData(result.data);
+            navigate('/law-entry/4'); // Go to step 4 (review step)
+          } else {
+            // Show error
+            alert(`Import failed: ${result.error}`);
+          }
         } catch (err) {
           console.error('Error importing entries:', err);
+          setShowImportLoadingModal(false);
           alert('Failed to import entries. Please check the file format.');
         }
       };
@@ -997,6 +1015,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   // Plan import removed
 
   const handleBackToList = () => {
+    setImportedEntryData(null); // Clear imported data
     navigate('/dashboard');
   };
 
@@ -1569,7 +1588,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <>
             {console.log('Rendering EntryForm with editingEntry:', editingEntry)}
             <EntryForm
-              entry={editingEntry}
+              entry={editingEntry || importedData}
               existingEntries={entries}
               onSave={handleSaveEntry}
               onCancel={handleBackToList}
@@ -1695,6 +1714,12 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           </button>
         </div>
       </Modal>
+
+      {/* Import Loading Modal */}
+      <LoadingModal
+        isOpen={showImportLoadingModal}
+        message="Importing Entry..."
+      />
 
       {/* Import Success Modal */}
       <Modal
