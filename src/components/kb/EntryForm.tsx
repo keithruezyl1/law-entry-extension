@@ -417,6 +417,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
   const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
+  const [formPopulated, setFormPopulated] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [showDraftLoaded, setShowDraftLoaded] = useState<boolean>(false);
   const [hasAmendment, setHasAmendment] = useState<boolean>(false);
@@ -662,6 +663,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           
           console.log('Resetting form with imported data:', resetData);
           methods.reset(resetData as any);
+          setFormPopulated(true);
           return;
         }
       } catch (e) {
@@ -1228,15 +1230,37 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           
           const normalize = (s: string) => String(s || '')
             .toLowerCase()
-            .replace(/[“”]/g, '"')
-            .replace(/[’]/g, "'")
+            .replace(/[""]/g, '"')
+            .replace(/[']/g, "'")
             .replace(/[\-–—_()\[\],.:/]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
-          const compact = (s: string) => normalize(s).replace(/\s+/g, '');
+          
+          // Enhanced normalization for Roman numerals and common variations
+          const enhancedNormalize = (s: string) => {
+            let normalized = normalize(s);
+            
+            // Roman numeral variations
+            normalized = normalized
+              .replace(/\b(article|art\.?)\s*([ivxlcdm]+)\b/gi, 'article $2')
+              .replace(/\b(article|art\.?)\s*(\d+)\b/gi, 'article $2')
+              .replace(/\b(section|sec\.?)\s*([ivxlcdm]+)\b/gi, 'section $2')
+              .replace(/\b(section|sec\.?)\s*(\d+)\b/gi, 'section $2');
+            
+            // Common abbreviations
+            normalized = normalized
+              .replace(/\b(article|art\.?)\b/gi, 'article')
+              .replace(/\b(section|sec\.?)\b/gi, 'section')
+              .replace(/\b(paragraph|para\.?|par\.?)\b/gi, 'paragraph')
+              .replace(/\b(subsection|subsec\.?|sub\.?)\b/gi, 'subsection');
+            
+            return normalized;
+          };
+          
+          const compact = (s: string) => enhancedNormalize(s).replace(/\s+/g, '');
           const overlap = (a: string, b: string) => {
-            const A = new Set(tokenize(a));
-            const B = new Set(tokenize(b));
+            const A = new Set(tokenize(enhancedNormalize(a)));
+            const B = new Set(tokenize(enhancedNormalize(b)));
             if (A.size === 0 || B.size === 0) return 0;
             let inter = 0;
             A.forEach(w => { if (B.has(w)) inter++; });
@@ -1257,37 +1281,231 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           const filtered = resultsRaw.filter((r: any) => {
             const sim = Number(r.similarity || r.score || 0);
             const candidateTokens = [r.title, r.canonical_citation, r.section_id, r.law_family, r.effective_date]
-              .filter(Boolean).map(normalize).join(' ');
+              .filter(Boolean).map(enhancedNormalize).join(' ');
             const candidateCompact = compact(candidateTokens);
-            const candidateTitle = normalize(String((r.title || r.canonical_citation || '')));
+            const candidateTitle = enhancedNormalize(String((r.title || r.canonical_citation || '')));
             const sameType = !type || !r.type || r.type === type;
             
             // Calculate token overlap for meaningful word similarity
-            const tokOverlap = overlap(normalize(title || ''), candidateTitle);
+            const tokOverlap = overlap(enhancedNormalize(title || ''), candidateTitle);
 
-            // Strong heuristics: exact or near-exact matches on section id, citation, or effective date
-            const exactSection = sectionId && (candidateTokens.includes(normalize(sectionId)) || candidateCompact.includes(compact(sectionId)));
-            const exactCitation = citation && (candidateTokens.includes(normalize(citation)) || candidateCompact.includes(compact(citation)));
-            const exactDate = effectiveDate && (candidateTokens.includes(normalize(effectiveDate)) || candidateCompact.includes(compact(effectiveDate)));
+            // Basic exact matches
+            const exactSection = sectionId && (candidateTokens.includes(enhancedNormalize(sectionId)) || candidateCompact.includes(compact(sectionId)));
+            const exactCitation = citation && (candidateTokens.includes(enhancedNormalize(citation)) || candidateCompact.includes(compact(citation)));
+            const exactDate = effectiveDate && (candidateTokens.includes(enhancedNormalize(effectiveDate)) || candidateCompact.includes(compact(effectiveDate)));
             
-            // Show entries that could be duplicates - not too strict, not too loose
+            // Get current form values for enhanced matching
+            const currentValues = methods.getValues() as any;
+            const { 
+              jurisdiction: currentJurisdiction, 
+              violation_code: currentViolationCode, 
+              violation_name: currentViolationName,
+              tags: currentTags, summary: currentSummary, text: currentText,
+              fine_schedule: currentFineSchedule, elements: currentElements,
+              legal_bases: currentLegalBases, related_sections: currentRelatedSections,
+              jurisprudence: currentJurisprudence, topics: currentTopics, forms: currentForms
+            } = currentValues;
+            
+            // Enhanced matching parameters
+            const exactJurisdiction = currentJurisdiction && r.jurisdiction && enhancedNormalize(currentJurisdiction) === enhancedNormalize(r.jurisdiction);
+            const exactLawFamily = lawFamily && r.law_family && enhancedNormalize(lawFamily) === enhancedNormalize(r.law_family);
+            const exactViolationCode = currentViolationCode && r.violation_code && enhancedNormalize(currentViolationCode) === enhancedNormalize(r.violation_code);
+            const exactViolationName = currentViolationName && r.violation_name && enhancedNormalize(currentViolationName) === enhancedNormalize(r.violation_name);
+            
+            // Date range matching (within 1 year)
+            const dateRangeMatch = effectiveDate && r.effective_date && (() => {
+              try {
+                const currentDate = new Date(effectiveDate);
+                const candidateDate = new Date(r.effective_date);
+                const diffDays = Math.abs(currentDate.getTime() - candidateDate.getTime()) / (1000 * 60 * 60 * 24);
+                return diffDays <= 365; // Within 1 year
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Tag overlap matching
+            const tagOverlap = currentTags && r.tags && Array.isArray(currentTags) && Array.isArray(r.tags) && (() => {
+              const currentTagsSet = new Set(currentTags.map((t: any) => enhancedNormalize(t)));
+              const candidateTags = new Set(r.tags.map((t: any) => enhancedNormalize(t)));
+              const intersection = new Set([...currentTagsSet].filter(t => candidateTags.has(t)));
+              return intersection.size > 0 && intersection.size / Math.min(currentTagsSet.size, candidateTags.size) >= 0.3;
+            })();
+            
+            // Summary and text content similarity
+            const summarySimilarity = currentSummary && r.summary && (() => {
+              const summaryOverlap = overlap(enhancedNormalize(currentSummary), enhancedNormalize(r.summary));
+              return summaryOverlap >= 0.4;
+            })();
+            
+            const textSimilarity = currentText && r.text && (() => {
+              const textOverlap = overlap(enhancedNormalize(currentText), enhancedNormalize(r.text));
+              return textOverlap >= 0.3;
+            })();
+            
+            // Fine amount matching (for penalty-related entries)
+            const fineAmountMatch = currentFineSchedule && r.fine_schedule && (() => {
+              try {
+                const currentFines = Array.isArray(currentFineSchedule) ? currentFineSchedule : [];
+                const candidateFines = Array.isArray(r.fine_schedule) ? r.fine_schedule : [];
+                if (currentFines.length === 0 || candidateFines.length === 0) return false;
+                
+                // Check if any fine amounts match (within 10% tolerance)
+                return currentFines.some((currentFine: any) => 
+                  candidateFines.some((candidateFine: any) => {
+                    const currentAmount = parseFloat(currentFine.amount || currentFine);
+                    const candidateAmount = parseFloat(candidateFine.amount || candidateFine);
+                    if (isNaN(currentAmount) || isNaN(candidateAmount)) return false;
+                    const tolerance = Math.max(currentAmount, candidateAmount) * 0.1;
+                    return Math.abs(currentAmount - candidateAmount) <= tolerance;
+                  })
+                );
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Penalty elements matching
+            const penaltyElementsMatch = currentElements && r.elements && (() => {
+              try {
+                const currentElementsArray = Array.isArray(currentElements) ? currentElements : [];
+                const candidateElements = Array.isArray(r.elements) ? r.elements : [];
+                if (currentElementsArray.length === 0 || candidateElements.length === 0) return false;
+                
+                const currentElementNames = new Set(currentElementsArray.map((e: any) => enhancedNormalize(e.name || e)));
+                const candidateElementNames = new Set(candidateElements.map((e: any) => enhancedNormalize(e.name || e)));
+                const intersection = new Set([...currentElementNames].filter(name => candidateElementNames.has(name)));
+                return intersection.size > 0 && intersection.size / Math.min(currentElementNames.size, candidateElementNames.size) >= 0.4;
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Legal bases matching
+            const legalBasesMatch = currentLegalBases && r.legal_bases && (() => {
+              try {
+                const currentBases = Array.isArray(currentLegalBases) ? currentLegalBases : [];
+                const candidateBases = Array.isArray(r.legal_bases) ? r.legal_bases : [];
+                if (currentBases.length === 0 || candidateBases.length === 0) return false;
+                
+                const currentBaseIds = new Set(currentBases.map((b: any) => enhancedNormalize(b.entry_id || b.id || b)));
+                const candidateBaseIds = new Set(candidateBases.map((b: any) => enhancedNormalize(b.entry_id || b.id || b)));
+                const intersection = new Set([...currentBaseIds].filter(id => candidateBaseIds.has(id)));
+                return intersection.size > 0 && intersection.size / Math.min(currentBaseIds.size, candidateBaseIds.size) >= 0.5;
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Related sections matching
+            const relatedSectionsMatch = currentRelatedSections && r.related_sections && (() => {
+              try {
+                const currentSections = Array.isArray(currentRelatedSections) ? currentRelatedSections : [];
+                const candidateSections = Array.isArray(r.related_sections) ? r.related_sections : [];
+                if (currentSections.length === 0 || candidateSections.length === 0) return false;
+                
+                const currentSectionIds = new Set(currentSections.map((s: any) => enhancedNormalize(s.entry_id || s.id || s)));
+                const candidateSectionIds = new Set(candidateSections.map((s: any) => enhancedNormalize(s.entry_id || s.id || s)));
+                const intersection = new Set([...currentSectionIds].filter(id => candidateSectionIds.has(id)));
+                return intersection.size > 0 && intersection.size / Math.min(currentSectionIds.size, candidateSectionIds.size) >= 0.5;
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Jurisprudence matching
+            const jurisprudenceMatch = currentJurisprudence && r.jurisprudence && (() => {
+              try {
+                const currentJurisprudenceArray = Array.isArray(currentJurisprudence) ? currentJurisprudence : [];
+                const candidateJurisprudence = Array.isArray(r.jurisprudence) ? r.jurisprudence : [];
+                if (currentJurisprudenceArray.length === 0 || candidateJurisprudence.length === 0) return false;
+                
+                const currentJurisNames = new Set(currentJurisprudenceArray.map((j: any) => enhancedNormalize(j.name || j.title || j)));
+                const candidateJurisNames = new Set(candidateJurisprudence.map((j: any) => enhancedNormalize(j.name || j.title || j)));
+                const intersection = new Set([...currentJurisNames].filter(name => candidateJurisNames.has(name)));
+                return intersection.size > 0 && intersection.size / Math.min(currentJurisNames.size, candidateJurisNames.size) >= 0.4;
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Topics matching
+            const topicsMatch = currentTopics && r.topics && (() => {
+              try {
+                const currentTopicsArray = Array.isArray(currentTopics) ? currentTopics : [];
+                const candidateTopics = Array.isArray(r.topics) ? r.topics : [];
+                if (currentTopicsArray.length === 0 || candidateTopics.length === 0) return false;
+                
+                const currentTopicNames = new Set(currentTopicsArray.map((t: any) => enhancedNormalize(t.name || t.title || t)));
+                const candidateTopicNames = new Set(candidateTopics.map((t: any) => enhancedNormalize(t.name || t.title || t)));
+                const intersection = new Set([...currentTopicNames].filter(name => candidateTopicNames.has(name)));
+                return intersection.size > 0 && intersection.size / Math.min(currentTopicNames.size, candidateTopicNames.size) >= 0.4;
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Forms matching
+            const formsMatch = currentForms && r.forms && (() => {
+              try {
+                const currentFormsArray = Array.isArray(currentForms) ? currentForms : [];
+                const candidateForms = Array.isArray(r.forms) ? r.forms : [];
+                if (currentFormsArray.length === 0 || candidateForms.length === 0) return false;
+                
+                const currentFormNames = new Set(currentFormsArray.map((f: any) => enhancedNormalize(f.name || f.title || f)));
+                const candidateFormNames = new Set(candidateForms.map((f: any) => enhancedNormalize(f.name || f.title || f)));
+                const intersection = new Set([...currentFormNames].filter(name => candidateFormNames.has(name)));
+                return intersection.size > 0 && intersection.size / Math.min(currentFormNames.size, candidateFormNames.size) >= 0.4;
+              } catch {
+                return false;
+              }
+            })();
+            
+            // Comprehensive matching logic
             const shouldShow = 
-              exactSection || exactCitation || exactDate ||
-              // High semantic similarity (very likely duplicate)
-              sim >= 0.7 || // Lowered from 0.8 to 0.7
+              // Exact matches (highest priority)
+              exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName ||
+              
+              // High semantic similarity
+              sim >= 0.7 ||
+              
               // Good semantic similarity with decent token overlap
-              (sim >= 0.5 && tokOverlap >= 0.2) || // Lowered thresholds
-              // Same type with good token overlap (potential duplicate)
-              (sameType && tokOverlap >= 0.3 && sim >= 0.4) || // Lowered thresholds
-              // High token overlap (very similar wording)
-              tokOverlap >= 0.4; // Lowered from 0.55 to 0.4
+              (sim >= 0.5 && tokOverlap >= 0.2) ||
+              
+              // Same type with good token overlap
+              (sameType && tokOverlap >= 0.3 && sim >= 0.4) ||
+              
+              // High token overlap
+              tokOverlap >= 0.4 ||
+              
+              // Date range match with good similarity
+              (dateRangeMatch && sim >= 0.6) ||
+              
+              // Tag overlap with good similarity
+              (tagOverlap && sim >= 0.5) ||
+              
+              // Content similarity
+              summarySimilarity || textSimilarity ||
+              
+              // Fine amount matching
+              fineAmountMatch ||
+              
+              // Penalty elements matching
+              penaltyElementsMatch ||
+              
+              // Legal document specific matching
+              legalBasesMatch || relatedSectionsMatch || jurisprudenceMatch || topicsMatch || formsMatch;
             
-            // Debug logging for each result
-            console.log('Result:', {
+            // Debug logging for enhanced matching
+            console.log('Enhanced duplicate detection result:', {
               title: candidateTitle,
               similarity: sim,
               tokenOverlap: tokOverlap,
-              sameType,
+              exactMatches: { exactSection, exactCitation, exactDate, exactJurisdiction, exactLawFamily, exactViolationCode, exactViolationName },
+              enhancedMatches: { 
+                dateRangeMatch, tagOverlap, summarySimilarity, textSimilarity, fineAmountMatch, penaltyElementsMatch,
+                legalBasesMatch, relatedSectionsMatch, jurisprudenceMatch, topicsMatch, formsMatch
+              },
               shouldShow
             });
             
@@ -1319,6 +1537,352 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       matches: nearDuplicates || []
     });
   }, [nearDuplicates]);
+
+  // Trigger duplicate detection when form is populated with imported data
+  useEffect(() => {
+    if (formPopulated) {
+      console.log('🔍 Form populated with imported data, triggering duplicate detection');
+      // Reset the flag
+      setFormPopulated(false);
+      
+      // Get current form values
+      const currentValues = methods.getValues();
+      const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
+      
+      // Trigger duplicate detection with current values
+      const idTokens = [title, law_family, section_id, canonical_citation, effective_date]
+        .filter(Boolean)
+        .join(' ');
+      const q = `${idTokens}`.trim();
+      
+      if (q && title && title.length >= 3) {
+        // Run the same duplicate detection logic
+        const runDuplicateDetection = async () => {
+          try {
+            setSearchingDupes(true);
+            console.log('🔍 Running duplicate detection for imported entry with query:', q);
+            
+            const resp = await semanticSearch(q, 10);
+            console.log('🔍 Semantic search response for imported entry:', resp);
+            
+            if (resp.success && resp.results && resp.results.length > 0) {
+              // Use the same filtering logic as the main duplicate detection
+              const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','at','by','with','from','into','during','including','until','against','among','throughout','despite','towards','upon']);
+              const tokenize = (s: string) => String(s || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .split(/\s+/)
+                .filter(Boolean)
+                .filter(w => !STOPWORDS.has(w) && w.length > 2);
+              
+              const normalize = (s: string) => String(s || '')
+                .toLowerCase()
+                .replace(/[""]/g, '"')
+                .replace(/[']/g, "'")
+                .replace(/[\-–—_()\[\],.:/]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+              
+              // Enhanced normalization for Roman numerals and common variations
+              const enhancedNormalize = (s: string) => {
+                let normalized = normalize(s);
+                
+                // Roman numeral variations
+                normalized = normalized
+                  .replace(/\b(article|art\.?)\s*([ivxlcdm]+)\b/gi, 'article $2')
+                  .replace(/\b(article|art\.?)\s*(\d+)\b/gi, 'article $2')
+                  .replace(/\b(section|sec\.?)\s*([ivxlcdm]+)\b/gi, 'section $2')
+                  .replace(/\b(section|sec\.?)\s*(\d+)\b/gi, 'section $2');
+                
+                // Common abbreviations
+                normalized = normalized
+                  .replace(/\b(article|art\.?)\b/gi, 'article')
+                  .replace(/\b(section|sec\.?)\b/gi, 'section')
+                  .replace(/\b(paragraph|para\.?|par\.?)\b/gi, 'paragraph')
+                  .replace(/\b(subsection|subsec\.?|sub\.?)\b/gi, 'subsection');
+                
+                return normalized;
+              };
+              const compact = (s: string) => enhancedNormalize(s).replace(/\s+/g, '');
+              const overlap = (a: string, b: string) => {
+                const A = new Set(tokenize(enhancedNormalize(a)));
+                const B = new Set(tokenize(enhancedNormalize(b)));
+                if (A.size === 0 || B.size === 0) return 0;
+                let inter = 0;
+                A.forEach(w => { if (B.has(w)) inter++; });
+                return inter / Math.min(A.size, B.size);
+              };
+
+              const filtered = resp.results.filter((r: any) => {
+                const sim = Number(r.similarity || r.score || 0);
+                const candidateTokens = [r.title, r.canonical_citation, r.section_id, r.law_family, r.effective_date]
+                  .filter(Boolean).map(enhancedNormalize).join(' ');
+                const candidateCompact = compact(candidateTokens);
+                const candidateTitle = enhancedNormalize(String((r.title || r.canonical_citation || '')));
+                const sameType = !type || !r.type || r.type === type;
+                
+                // Get current form values for enhanced matching
+                const currentValues = methods.getValues() as any;
+                const { 
+                  title: currentTitle, law_family: currentLawFamily, section_id: currentSectionId, 
+                  canonical_citation: currentCitation, effective_date: currentEffectiveDate, type: currentType,
+                  jurisdiction: currentJurisdiction, summary: currentSummary, text: currentText, 
+                  tags: currentTags, violation_code: currentViolationCode, violation_name: currentViolationName,
+                  fine_schedule: currentFineSchedule, penalties: currentPenalties, elements: currentElements,
+                  legal_bases: currentLegalBases, related_sections: currentRelatedSections,
+                  jurisprudence: currentJurisprudence, topics: currentTopics, forms: currentForms
+                } = currentValues;
+                
+                const tokOverlap = overlap(enhancedNormalize(currentTitle || ''), candidateTitle);
+                
+                // Basic exact matches
+                const exactSection = currentSectionId && (candidateTokens.includes(enhancedNormalize(currentSectionId)) || candidateCompact.includes(compact(currentSectionId)));
+                const exactCitation = currentCitation && (candidateTokens.includes(enhancedNormalize(currentCitation)) || candidateCompact.includes(compact(currentCitation)));
+                const exactDate = currentEffectiveDate && (candidateTokens.includes(enhancedNormalize(currentEffectiveDate)) || candidateCompact.includes(compact(currentEffectiveDate)));
+                
+                // Enhanced matching parameters
+                const exactJurisdiction = currentJurisdiction && r.jurisdiction && enhancedNormalize(currentJurisdiction) === enhancedNormalize(r.jurisdiction);
+                const exactLawFamily = currentLawFamily && r.law_family && enhancedNormalize(currentLawFamily) === enhancedNormalize(r.law_family);
+                const exactViolationCode = currentViolationCode && r.violation_code && enhancedNormalize(currentViolationCode) === enhancedNormalize(r.violation_code);
+                const exactViolationName = currentViolationName && r.violation_name && enhancedNormalize(currentViolationName) === enhancedNormalize(r.violation_name);
+                
+                // Date range matching (within 1 year)
+                const dateRangeMatch = currentEffectiveDate && r.effective_date && (() => {
+                  try {
+                    const currentDate = new Date(currentEffectiveDate);
+                    const candidateDate = new Date(r.effective_date);
+                    const diffDays = Math.abs(currentDate.getTime() - candidateDate.getTime()) / (1000 * 60 * 60 * 24);
+                    return diffDays <= 365; // Within 1 year
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Tag overlap matching
+                const tagOverlap = currentTags && r.tags && Array.isArray(currentTags) && Array.isArray(r.tags) && (() => {
+                  const currentTagsSet = new Set(currentTags.map((t: any) => enhancedNormalize(t)));
+                  const candidateTags = new Set(r.tags.map((t: any) => enhancedNormalize(t)));
+                  const intersection = new Set([...currentTagsSet].filter(t => candidateTags.has(t)));
+                  return intersection.size > 0 && intersection.size / Math.min(currentTagsSet.size, candidateTags.size) >= 0.3;
+                })();
+                
+                // Summary and text content similarity
+                const summarySimilarity = currentSummary && r.summary && (() => {
+                  const summaryOverlap = overlap(enhancedNormalize(currentSummary), enhancedNormalize(r.summary));
+                  return summaryOverlap >= 0.4;
+                })();
+                
+                const textSimilarity = currentText && r.text && (() => {
+                  const textOverlap = overlap(enhancedNormalize(currentText), enhancedNormalize(r.text));
+                  return textOverlap >= 0.3;
+                })();
+                
+                // Fine amount matching (for penalty-related entries)
+                const fineAmountMatch = currentFineSchedule && r.fine_schedule && (() => {
+                  try {
+                    const currentFines = Array.isArray(currentFineSchedule) ? currentFineSchedule : [];
+                    const candidateFines = Array.isArray(r.fine_schedule) ? r.fine_schedule : [];
+                    if (currentFines.length === 0 || candidateFines.length === 0) return false;
+                    
+                    // Check if any fine amounts match (within 10% tolerance)
+                    return currentFines.some((currentFine: any) => 
+                      candidateFines.some((candidateFine: any) => {
+                        const currentAmount = parseFloat(currentFine.amount || currentFine);
+                        const candidateAmount = parseFloat(candidateFine.amount || candidateFine);
+                        if (isNaN(currentAmount) || isNaN(candidateAmount)) return false;
+                        const tolerance = Math.max(currentAmount, candidateAmount) * 0.1;
+                        return Math.abs(currentAmount - candidateAmount) <= tolerance;
+                      })
+                    );
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Penalty elements matching
+                const penaltyElementsMatch = currentElements && r.elements && (() => {
+                  try {
+                    const currentElementsArray = Array.isArray(currentElements) ? currentElements : [];
+                    const candidateElements = Array.isArray(r.elements) ? r.elements : [];
+                    if (currentElementsArray.length === 0 || candidateElements.length === 0) return false;
+                    
+                    const currentElementNames = new Set(currentElementsArray.map((e: any) => enhancedNormalize(e.name || e)));
+                    const candidateElementNames = new Set(candidateElements.map((e: any) => enhancedNormalize(e.name || e)));
+                    const intersection = new Set([...currentElementNames].filter(name => candidateElementNames.has(name)));
+                    return intersection.size > 0 && intersection.size / Math.min(currentElementNames.size, candidateElementNames.size) >= 0.4;
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Legal bases matching
+                const legalBasesMatch = currentLegalBases && r.legal_bases && (() => {
+                  try {
+                    const currentBases = Array.isArray(currentLegalBases) ? currentLegalBases : [];
+                    const candidateBases = Array.isArray(r.legal_bases) ? r.legal_bases : [];
+                    if (currentBases.length === 0 || candidateBases.length === 0) return false;
+                    
+                    const currentBaseIds = new Set(currentBases.map((b: any) => enhancedNormalize(b.entry_id || b.id || b)));
+                    const candidateBaseIds = new Set(candidateBases.map((b: any) => enhancedNormalize(b.entry_id || b.id || b)));
+                    const intersection = new Set([...currentBaseIds].filter(id => candidateBaseIds.has(id)));
+                    return intersection.size > 0 && intersection.size / Math.min(currentBaseIds.size, candidateBaseIds.size) >= 0.5;
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Related sections matching
+                const relatedSectionsMatch = currentRelatedSections && r.related_sections && (() => {
+                  try {
+                    const currentSections = Array.isArray(currentRelatedSections) ? currentRelatedSections : [];
+                    const candidateSections = Array.isArray(r.related_sections) ? r.related_sections : [];
+                    if (currentSections.length === 0 || candidateSections.length === 0) return false;
+                    
+                    const currentSectionIds = new Set(currentSections.map((s: any) => enhancedNormalize(s.entry_id || s.id || s)));
+                    const candidateSectionIds = new Set(candidateSections.map((s: any) => enhancedNormalize(s.entry_id || s.id || s)));
+                    const intersection = new Set([...currentSectionIds].filter(id => candidateSectionIds.has(id)));
+                    return intersection.size > 0 && intersection.size / Math.min(currentSectionIds.size, candidateSectionIds.size) >= 0.5;
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Jurisprudence matching
+                const jurisprudenceMatch = currentJurisprudence && r.jurisprudence && (() => {
+                  try {
+                    const currentJurisprudenceArray = Array.isArray(currentJurisprudence) ? currentJurisprudence : [];
+                    const candidateJurisprudence = Array.isArray(r.jurisprudence) ? r.jurisprudence : [];
+                    if (currentJurisprudenceArray.length === 0 || candidateJurisprudence.length === 0) return false;
+                    
+                    const currentJurisNames = new Set(currentJurisprudenceArray.map((j: any) => enhancedNormalize(j.name || j.title || j)));
+                    const candidateJurisNames = new Set(candidateJurisprudence.map((j: any) => enhancedNormalize(j.name || j.title || j)));
+                    const intersection = new Set([...currentJurisNames].filter(name => candidateJurisNames.has(name)));
+                    return intersection.size > 0 && intersection.size / Math.min(currentJurisNames.size, candidateJurisNames.size) >= 0.4;
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Topics matching
+                const topicsMatch = currentTopics && r.topics && (() => {
+                  try {
+                    const currentTopicsArray = Array.isArray(currentTopics) ? currentTopics : [];
+                    const candidateTopics = Array.isArray(r.topics) ? r.topics : [];
+                    if (currentTopicsArray.length === 0 || candidateTopics.length === 0) return false;
+                    
+                    const currentTopicNames = new Set(currentTopicsArray.map((t: any) => enhancedNormalize(t.name || t.title || t)));
+                    const candidateTopicNames = new Set(candidateTopics.map((t: any) => enhancedNormalize(t.name || t.title || t)));
+                    const intersection = new Set([...currentTopicNames].filter(name => candidateTopicNames.has(name)));
+                    return intersection.size > 0 && intersection.size / Math.min(currentTopicNames.size, candidateTopicNames.size) >= 0.4;
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Forms matching
+                const formsMatch = currentForms && r.forms && (() => {
+                  try {
+                    const currentFormsArray = Array.isArray(currentForms) ? currentForms : [];
+                    const candidateForms = Array.isArray(r.forms) ? r.forms : [];
+                    if (currentFormsArray.length === 0 || candidateForms.length === 0) return false;
+                    
+                    const currentFormNames = new Set(currentFormsArray.map((f: any) => enhancedNormalize(f.name || f.title || f)));
+                    const candidateFormNames = new Set(candidateForms.map((f: any) => enhancedNormalize(f.name || f.title || f)));
+                    const intersection = new Set([...currentFormNames].filter(name => candidateFormNames.has(name)));
+                    return intersection.size > 0 && intersection.size / Math.min(currentFormNames.size, candidateFormNames.size) >= 0.4;
+                  } catch {
+                    return false;
+                  }
+                })();
+                
+                // Comprehensive matching logic
+                const shouldShow = 
+                  // Exact matches (highest priority)
+                  exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName ||
+                  
+                  // High semantic similarity
+                  sim >= 0.7 ||
+                  
+                  // Good semantic similarity with decent token overlap
+                  (sim >= 0.5 && tokOverlap >= 0.2) ||
+                  
+                  // Same type with good token overlap
+                  (sameType && tokOverlap >= 0.3 && sim >= 0.4) ||
+                  
+                  // High token overlap
+                  tokOverlap >= 0.4 ||
+                  
+                  // Date range match with good similarity
+                  (dateRangeMatch && sim >= 0.6) ||
+                  
+                  // Tag overlap with good similarity
+                  (tagOverlap && sim >= 0.5) ||
+                  
+                  // Content similarity
+                  summarySimilarity || textSimilarity ||
+                  
+                  // Fine amount matching
+                  fineAmountMatch ||
+                  
+                  // Penalty elements matching
+                  penaltyElementsMatch ||
+                  
+                  // Legal document specific matching
+                  legalBasesMatch || relatedSectionsMatch || jurisprudenceMatch || topicsMatch || formsMatch;
+                
+                // Debug logging for enhanced matching
+                console.log('Enhanced duplicate detection result:', {
+                  title: candidateTitle,
+                  similarity: sim,
+                  tokenOverlap: tokOverlap,
+                  exactMatches: { exactSection, exactCitation, exactDate, exactJurisdiction, exactLawFamily, exactViolationCode, exactViolationName },
+                  enhancedMatches: { 
+                    dateRangeMatch, tagOverlap, summarySimilarity, textSimilarity, fineAmountMatch, penaltyElementsMatch,
+                    legalBasesMatch, relatedSectionsMatch, jurisprudenceMatch, topicsMatch, formsMatch
+                  },
+                  shouldShow
+                });
+                
+                return shouldShow;
+              });
+              
+              console.log('🔍 Duplicate detection results for imported entry:', filtered.length);
+              setNearDuplicates(filtered);
+            } else {
+              // Try fallback text search
+              const searchTerm = q.toLowerCase();
+              const resultsRaw = existingEntries
+                .filter(entry => {
+                  const searchableText = [
+                    entry.title,
+                    (entry as any).canonical_citation,
+                    (entry as any).section_id,
+                    (entry as any).law_family,
+                    (entry as any).summary
+                  ].filter(Boolean).join(' ').toLowerCase();
+                  return searchableText.includes(searchTerm);
+                })
+                .map(entry => ({
+                  ...entry,
+                  similarity: 0.5
+                }))
+                .slice(0, 10);
+              
+              console.log('🔍 Fallback text search results for imported entry:', resultsRaw.length);
+              setNearDuplicates(resultsRaw);
+            }
+          } catch (error) {
+            console.error('❌ Error in duplicate detection for imported entry:', error);
+            setNearDuplicates([]);
+          } finally {
+            setSearchingDupes(false);
+          }
+        };
+        
+        runDuplicateDetection();
+      }
+    }
+  }, [formPopulated, methods, existingEntries]);
 
   // (Relations helper components were removed; using dedicated picker in Step 4)
 
