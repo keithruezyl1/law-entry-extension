@@ -972,17 +972,59 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
     
+    // Normalize relations to fix entry_id: null issues
+    const normalizeRelations = (arr: any[] | undefined) => {
+      if (!Array.isArray(arr)) return [] as any[];
+      return arr.map((it) => {
+        if (!it) return it;
+        // Strings -> assume internal relation id
+        if (typeof it === 'string') {
+          return { type: 'internal', entry_id: it };
+        }
+        // Default missing type to internal when entry_id is present
+        if (!it.type && it.entry_id) {
+          return { ...it, type: 'internal' };
+        }
+        // Legacy external stored under entry_id
+        if (it.type === 'external' && it.entry_id && !it.citation) {
+          return { ...it, citation: it.entry_id, entry_id: undefined };
+        }
+        // Handle external entries with title but no citation (for related_sections)
+        if (it.type === 'external' && it.title && !it.citation) {
+          return { ...it, citation: it.title };
+        }
+        // Clean up external entries - remove entry_id field if it's null or empty
+        if (it.type === 'external') {
+          const { entry_id, ...cleanEntry } = it;
+          return cleanEntry;
+        }
+        // Legacy 'topic' -> new 'title'
+        if (it.topic && !it.title) {
+          const { topic, ...rest } = it;
+          return { ...rest, title: topic };
+        }
+        return it;
+      });
+    };
+
     const sanitized: Entry = {
       ...data,
       source_urls: (data as any).source_urls?.filter((u: string) => !!u && u.trim().length > 0) || [],
       tags: (data as any).tags?.filter((t: string) => !!t && t.trim().length > 0) || [],
+      // Normalize relations to fix entry_id: null issues
+      legal_bases: normalizeRelations((data as any).legal_bases),
+      related_sections: normalizeRelations((data as any).related_sections),
     } as any;
 
-    // Debug logging for source_urls
+    // Debug logging for source_urls and relations
     console.log('Raw form data source_urls:', (data as any).source_urls);
     console.log('Sanitized source_urls:', sanitized.source_urls);
     console.log('Sanitized source_urls type:', typeof sanitized.source_urls);
     console.log('Sanitized source_urls length:', sanitized.source_urls?.length);
+    console.log('Raw form data legal_bases:', (data as any).legal_bases);
+    console.log('Sanitized legal_bases:', (sanitized as any).legal_bases);
+    console.log('Raw form data related_sections:', (data as any).related_sections);
+    console.log('Sanitized related_sections:', (sanitized as any).related_sections);
 
     // Remove deprecated keys
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
