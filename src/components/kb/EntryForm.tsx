@@ -185,6 +185,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Also check if we're on a /law-entry/ URL (create mode) vs /entry/ID/edit URL (edit mode)
   const isOnCreateUrl = window.location.pathname.startsWith('/law-entry/');
   const isImportedEntry = entry && entry.entry_id && !(entry as any).id;
+  // Prioritize URL pattern over entry properties for mode detection
+  // If we're on a /law-entry/ URL, we're always in create mode (including imported entries)
   const isEditMode = !!entry && !isImportedEntry && !isOnCreateUrl;
   const isCreateMode = !entry || isImportedEntry || isOnCreateUrl;
   
@@ -212,13 +214,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   
   // Get step from URL params or query string (for edit mode)
   const getInitialStep = () => {
-    // For new entries and imported entries: /law-entry/:step - use URL param directly
-    if ((!entry || isImportedEntry) && step) {
+    // For create mode (including imported entries): /law-entry/:step - use URL param directly
+    if (isOnCreateUrl && step) {
       return parseInt(step);
     }
     
     // For edit mode: /entry/:id/edit?step=X - use query string
-    if (entry && !isImportedEntry) {
+    if (!isOnCreateUrl) {
       const urlParams = new URLSearchParams(window.location.search);
       const queryStep = urlParams.get('step');
       if (queryStep) {
@@ -790,7 +792,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
     
     // Auto-save draft before moving to next step (for new entries and imported entries)
-    if (!entry || isImportedEntry) {
+    if (!entry || isOnCreateUrl) {
       try {
         setIsAutoSaving(true);
         const draft = getValues();
@@ -819,16 +821,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         next
       });
       
-      if (entry && !isImportedEntry) {
-        // We're editing an existing entry, maintain edit URL structure
-        // Use entry_id instead of id to avoid TypeScript issues
-        const entryId = (entry as any).id || entry.entry_id;
-        console.log('Navigating to edit mode:', `/entry/${entryId}/edit?step=${next}`);
-        navigate(`/entry/${entryId}/edit?step=${next}`);
-      } else {
-        // We're creating a new entry (including imported entries), use regular form URL
+      // Use URL pattern as primary determinant for navigation
+      if (isOnCreateUrl) {
+        // We're on a create URL (including imported entries), use regular form URL
         console.log('Navigating to create mode:', `/law-entry/${next}`);
         navigate(`/law-entry/${next}`);
+      } else {
+        // We're editing an existing entry, maintain edit URL structure
+        // Use entry_id instead of id to avoid TypeScript issues
+        const entryId = entry ? ((entry as any).id || entry.entry_id) : null;
+        if (entryId) {
+          console.log('Navigating to edit mode:', `/entry/${entryId}/edit?step=${next}`);
+        navigate(`/entry/${entryId}/edit?step=${next}`);
+        }
       }
       // Scroll after state updates on next tick
       setTimeout(scrollToCardTop, 0);
@@ -838,7 +843,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
   const goPrev = () => {
     // Auto-save draft before moving to previous step (for new entries and imported entries)
-    if (!entry || isImportedEntry) {
+    if (!entry || isOnCreateUrl) {
       try {
         setIsAutoSaving(true);
         const draft = getValues();
@@ -867,16 +872,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         prev
       });
       
-      if (entry && !isImportedEntry) {
-        // We're editing an existing entry, maintain edit URL structure
-        // Use entry_id instead of id to avoid TypeScript issues
-        const entryId = (entry as any).id || entry.entry_id;
-        console.log('goPrev Navigating to edit mode:', `/entry/${entryId}/edit?step=${prev}`);
-        navigate(`/entry/${entryId}/edit?step=${prev}`);
-      } else {
-        // We're creating a new entry (including imported entries), use regular form URL
+      // Use URL pattern as primary determinant for navigation
+      if (isOnCreateUrl) {
+        // We're on a create URL (including imported entries), use regular form URL
         console.log('goPrev Navigating to create mode:', `/law-entry/${prev}`);
         navigate(`/law-entry/${prev}`);
+      } else {
+        // We're editing an existing entry, maintain edit URL structure
+        // Use entry_id instead of id to avoid TypeScript issues
+        const entryId = entry ? ((entry as any).id || entry.entry_id) : null;
+        if (entryId) {
+          console.log('goPrev Navigating to edit mode:', `/entry/${entryId}/edit?step=${prev}`);
+        navigate(`/entry/${entryId}/edit?step=${prev}`);
+        }
       }
       setTimeout(scrollToCardTop, 0);
       return prev;
