@@ -702,10 +702,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         } catch (e) {
           console.warn('Failed to clear localStorage drafts:', e);
         }
-        // Fire-and-forget vector upsert (does not block UX)
+        // Vector upsert - wait for completion before showing success modal
         try {
           if (!entryData.entry_id) {
             console.warn('Skipping vector upsert: missing entry_id. Ensure Law Family/Section are set to generate ID.');
+            // Show success modal even if vector upsert is skipped
+            setSavedEntryTitle(entryData.title);
+            setShowEntrySavedModal(true);
+            setImportedEntryData(null);
+            sessionStorage.removeItem('importedEntryData');
+            sessionStorage.removeItem('cameFromDashboard');
           } else {
             const payload = {
               entry_id: entryData.entry_id,
@@ -759,19 +765,26 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               legal_bases: entryData.legal_bases,
               related_sections: entryData.related_sections,
             };
-            upsertEntry(payload).then((resp) => {
-              if (!resp?.success) console.warn('Vector upsert failed:', resp?.error);
-            }).catch((e) => console.warn('Vector upsert error:', e));
+            
+            // Wait for vector upsert to complete before showing success modal
+            const vectorResult = await upsertEntry(payload);
+            if (!vectorResult?.success) {
+              console.error('Vector upsert failed:', vectorResult?.error);
+              throw new Error(`Vector indexing failed: ${vectorResult?.error || 'Unknown error'}`);
+            }
+            console.log('Vector upsert successful');
+            
+            // Show success modal only after vector upsert succeeds
+            setSavedEntryTitle(entryData.title);
+            setShowEntrySavedModal(true);
+            setImportedEntryData(null); // Clear imported data after successful save
+            sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
+            sessionStorage.removeItem('cameFromDashboard'); // Clear dashboard access flag
           }
         } catch (e) {
-          console.warn('Vector upsert error:', e);
+          console.error('Vector upsert error:', e);
+          throw new Error(`Entry saved to database but vector indexing failed: ${e.message}`);
         }
-        // Show proper modal instead of browser alert
-        setSavedEntryTitle(entryData.title);
-        setShowEntrySavedModal(true);
-        setImportedEntryData(null); // Clear imported data after successful save
-        sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
-        sessionStorage.removeItem('cameFromDashboard'); // Clear dashboard access flag
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);
