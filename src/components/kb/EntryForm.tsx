@@ -417,6 +417,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [showDraftLoaded, setShowDraftLoaded] = useState<boolean>(false);
   const [hasAmendment, setHasAmendment] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   //
 
@@ -1011,10 +1012,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   }, [watch, getValues, entry]);
 
   const onSubmit = async (data: Entry) => {
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      console.log('Form submission already in progress, ignoring duplicate click');
+      return;
+    }
+    
     console.log('Form data being submitted:', data);
     console.log('Form data type:', typeof data);
     console.log('Form data keys:', Object.keys(data));
     
+    setIsSubmitting(true);
+    
+    try {
     // First, validate all required fields
     const validationErrors = validateAllRequiredFields(data);
     
@@ -1197,14 +1207,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     window.dispatchEvent(new Event('refresh-progress'));
     
     // Navigation will be handled by the success modal in App.js
+    } catch (error) {
+      console.error('Error during form submission:', error);
+      alert('An error occurred while saving the entry. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
   // Disabled when editing existing entries to avoid confusion
   useEffect(() => {
-    console.log('🚨 DUPLICATE DETECTION useEffect RUNNING! 🚨');
-    // Don't run duplicate detection when editing existing entries
-    console.log('🔍 DUPLICATE DETECTION useEffect TRIGGERED!', { 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 DUPLICATE DETECTION useEffect TRIGGERED!', { 
       hasEntry: !!entry, 
       entryId: entry?.entry_id || (entry as any)?.id,
       isEditMode,
@@ -1217,6 +1232,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       currentUrl: window.location.pathname,
       timestamp: new Date().toISOString()
     });
+    }
     
     // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
     // For ALL entries on create URLs, we should run duplicate detection
@@ -1229,12 +1245,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
     
     // ALWAYS run duplicate detection for entries on create URLs (imported or new)
-    if (isOnCreateUrl) {
+    if (isOnCreateUrl && process.env.NODE_ENV === 'development') {
       console.log('🔍 On create URL - enabling duplicate detection for all entries');
     }
     
     // If we don't have an entry at all, this is a new entry
-    if (!entry) {
+    if (!entry && process.env.NODE_ENV === 'development') {
       console.log('🔍 No entry prop - treating as new entry, enabling duplicate detection');
     }
     
@@ -1243,53 +1259,77 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       .join(' ');
     const q = `${idTokens}`.trim();
     
-    console.log('🔍 Duplicate detection query generation:', {
-      title: title || 'no title',
-      lawFamily: lawFamily || 'no law family',
-      sectionId: sectionId || 'no section id',
-      citation: citation || 'no citation',
-      effectiveDate: effectiveDate || 'no date',
-      idTokens: idTokens,
-      query: q
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Duplicate detection query generation:', {
+        title: title || 'no title',
+        lawFamily: lawFamily || 'no law family',
+        sectionId: sectionId || 'no section id',
+        citation: citation || 'no citation',
+        effectiveDate: effectiveDate || 'no date',
+        idTokens: idTokens,
+        query: q
+      });
+    }
     
     if (!q) {
-      console.log('🔍 No query generated, clearing duplicates');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 No query generated, clearing duplicates');
+      }
       setNearDuplicates([]);
       return;
     }
     
     // Clear duplicates if title is too short (less than 3 characters)
     if (title && title.length < 3) {
-      console.log('🔍 Title too short, clearing duplicates');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Title too short, clearing duplicates');
+      }
       setNearDuplicates([]);
       return;
     }
     
     // Force duplicate detection to run for entries on create URLs
-    console.log('🔍 Proceeding with duplicate detection for create URL entry');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Proceeding with duplicate detection for create URL entry');
+    }
     
     let cancelled = false;
     const t = setTimeout(async () => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚨 SETTIMEOUT CALLBACK EXECUTING! 🚨');
+      }
       try {
-        console.log('🔍 Setting searchingDupes to TRUE');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Setting searchingDupes to TRUE');
+        }
         setSearchingDupes(true);
-        console.log('🔍 Starting semantic search with query:', q);
-        console.log('🔍 Existing entries count:', existingEntries.length);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Starting semantic search with query:', q);
+          console.log('🔍 Existing entries count:', existingEntries.length);
+        }
         
         // ask for more results, then filter client-side by a threshold
         const resp = await semanticSearch(q, 10);
-        console.log('🔍 Semantic search response:', resp);
-        console.log('🔍 Semantic search success:', resp.success);
-        console.log('🔍 Semantic search results count:', resp.results?.length || 0);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Semantic search response:', resp);
+          console.log('🔍 Semantic search success:', resp.success);
+        }
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Semantic search results count:', resp.results?.length || 0);
+        }
         
         if (!cancelled) {
           // If semantic search fails or returns no results, try a fallback text search
           let resultsRaw = [];
           if (resp.success && resp.results && resp.results.length > 0) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔍 Using semantic search results');
+            }
             resultsRaw = resp.results;
           } else {
-            console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
+            }
             // Fallback: simple text search through existing entries
             const searchTerm = q.toLowerCase();
             resultsRaw = existingEntries
@@ -1308,7 +1348,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 similarity: 0.5 // Default similarity for text matches
               }))
               .slice(0, 10);
-            console.log('🔍 Fallback text search results:', resultsRaw.length);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔍 Fallback text search results:', resultsRaw.length);
+            }
           }
           // Smart stopwords - filter out only the most generic words
           const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','at','by','with','from','into','during','including','until','against','among','throughout','despite','towards','upon']);
@@ -1361,15 +1403,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           // resultsRaw is now set above with fallback logic
           
           // Debug logging
-          console.log('🔍 Duplicate detection processing:', {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Duplicate detection processing:', {
             query: q,
             resultsCount: resultsRaw.length,
             title: title,
             type: type,
             results: resultsRaw.slice(0, 3) // Show first 3 results for debugging
           });
+          }
             
-          console.log('🔍 About to filter results with enhanced matching logic...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 About to filter results with enhanced matching logic...');
+          }
           
           const filtered = resultsRaw.filter((r: any) => {
             const sim = Number(r.similarity || r.score || 0);
@@ -1607,8 +1653,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             return shouldShow;
           });
           
-          console.log('🔍 Filtered duplicates:', filtered.length);
-          console.log('🔍 Final duplicate matches:', filtered);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Filtered duplicates:', filtered.length);
+            console.log('🔍 Final duplicate matches:', filtered);
+          }
           setNearDuplicates(filtered);
         }
       } catch (error) {
@@ -1620,22 +1668,29 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         }
       } finally {
         if (!cancelled) {
-          console.log('🔍 Setting searchingDupes to FALSE');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Setting searchingDupes to FALSE');
+          }
           setSearchingDupes(false);
         }
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [title, lawFamily, sectionId, citation, effectiveDate, type, formPopulated]);
+  }, [title, lawFamily, sectionId, citation, effectiveDate, type, formPopulated, entry, isOnCreateUrl, methods, existingEntries]);
 
   // Debug logging for duplicate detection
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Duplicate detection state:', { 
-        nearDuplicates: nearDuplicates?.length || 0, 
-        isOpen: nearDuplicates && nearDuplicates.length > 0,
-        matches: nearDuplicates || []
-      });
+      // Add a small delay to reduce log spam
+      const timeoutId = setTimeout(() => {
+        console.log('🔍 Duplicate detection state:', { 
+          nearDuplicates: nearDuplicates?.length || 0, 
+          isOpen: nearDuplicates && nearDuplicates.length > 0,
+          matches: nearDuplicates || []
+        });
+      }, 100); // 100ms delay
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [nearDuplicates]);
 
@@ -1643,7 +1698,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   useEffect(() => {
     if (formPopulated) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Form populated with imported data, triggering duplicate detection');
+        // Add delay to reduce log spam
+        setTimeout(() => {
+          console.log('🔍 Form populated with imported data, triggering duplicate detection');
+        }, 200);
       }
       // Reset the flag
       setFormPopulated(false);
@@ -1655,9 +1713,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
         
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Current form values for duplicate detection:', {
-            title, law_family, section_id, canonical_citation, effective_date, type
-          });
+          setTimeout(() => {
+            console.log('🔍 Current form values for duplicate detection:', {
+              title, law_family, section_id, canonical_citation, effective_date, type
+            });
+          }, 300);
         }
         
         // Trigger duplicate detection with current values
@@ -1667,7 +1727,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const q = `${idTokens}`.trim();
         
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Generated query for duplicate detection:', q);
+          setTimeout(() => {
+            console.log('🔍 Generated query for duplicate detection:', q);
+          }, 400);
         }
         
         if (q && title && title.length >= 3) {
@@ -1676,12 +1738,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             try {
               setSearchingDupes(true);
               if (process.env.NODE_ENV === 'development') {
-                console.log('🔍 Running duplicate detection for imported entry with query:', q);
+                setTimeout(() => {
+                  console.log('🔍 Running duplicate detection for imported entry with query:', q);
+                }, 500);
               }
               
               const resp = await semanticSearch(q, 10);
               if (process.env.NODE_ENV === 'development') {
-                console.log('🔍 Semantic search response for imported entry:', resp);
+                setTimeout(() => {
+                  console.log('🔍 Semantic search response for imported entry:', resp);
+                }, 600);
               }
             
             if (resp.success && resp.results && resp.results.length > 0) {
@@ -1966,7 +2032,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               });
               
               if (process.env.NODE_ENV === 'development') {
-                console.log('🔍 Duplicate detection results for imported entry:', filtered.length);
+                setTimeout(() => {
+                  console.log('🔍 Duplicate detection results for imported entry:', filtered.length);
+                }, 700);
               }
               setNearDuplicates(filtered);
             } else {
@@ -1990,7 +2058,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 .slice(0, 10);
               
               if (process.env.NODE_ENV === 'development') {
-                console.log('🔍 Fallback text search results for imported entry:', resultsRaw.length);
+                setTimeout(() => {
+                  console.log('🔍 Fallback text search results for imported entry:', resultsRaw.length);
+                }, 800);
               }
               setNearDuplicates(resultsRaw);
             }
@@ -2005,7 +2075,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           runDuplicateDetection();
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Query too short or missing title for duplicate detection');
+            setTimeout(() => {
+              console.log('🔍 Query too short or missing title for duplicate detection');
+            }, 900);
           }
         }
       }, 100); // Small delay to ensure form is fully populated
@@ -2071,12 +2143,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               type="button"
               onClick={() => {
                 const currentValues = methods.getValues() as any;
-                console.log('🔍 Current form values:', currentValues);
-                console.log('🔍 Form populated flag:', formPopulated);
-                console.log('🔍 Is imported entry:', isImportedEntry);
-                console.log('🔍 Near duplicates:', nearDuplicates);
-                console.log('🔍 Is on create URL:', isOnCreateUrl);
-                console.log('🔍 Current URL:', window.location.pathname);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔍 Current form values:', currentValues);
+                  console.log('🔍 Form populated flag:', formPopulated);
+                  console.log('🔍 Is imported entry:', isImportedEntry);
+                  console.log('🔍 Near duplicates:', nearDuplicates);
+                  console.log('🔍 Is on create URL:', isOnCreateUrl);
+                  console.log('🔍 Current URL:', window.location.pathname);
+                }
               }}
               className="bg-green-500 text-white px-3 py-1 rounded text-xs"
             >
@@ -2085,7 +2159,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <button
               type="button"
               onClick={async () => {
-                console.log('🔍 Manually triggering duplicate detection...');
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔍 Manually triggering duplicate detection...');
+                }
                 const currentValues = methods.getValues() as any;
                 const { title, law_family, section_id, canonical_citation, effective_date, type } = currentValues;
                 
@@ -2095,18 +2171,26 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                     .join(' ');
                   const q = `${idTokens}`.trim();
                   
-                  console.log('🔍 Manual duplicate detection query:', q);
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('🔍 Manual duplicate detection query:', q);
+                  }
                   
                   try {
                     setSearchingDupes(true);
                     const resp = await semanticSearch(q, 10);
-                    console.log('🔍 Manual semantic search response:', resp);
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('🔍 Manual semantic search response:', resp);
+                    }
                     
                     if (resp.success && resp.results && resp.results.length > 0) {
-                      console.log('🔍 Found results, setting as duplicates');
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('🔍 Found results, setting as duplicates');
+                      }
                       setNearDuplicates(resp.results.slice(0, 5));
                     } else {
-                      console.log('🔍 No results found');
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('🔍 No results found');
+                      }
                       setNearDuplicates([]);
                     }
                   } catch (error) {
@@ -2115,7 +2199,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                     setSearchingDupes(false);
                   }
                 } else {
-                  console.log('🔍 Title too short for duplicate detection');
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('🔍 Title too short for duplicate detection');
+                  }
                 }
               }}
               className="bg-purple-500 text-white px-3 py-1 rounded text-xs"
@@ -2125,7 +2211,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <button
               type="button"
               onClick={() => {
-                console.log('🔍 Force triggering duplicate detection...');
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔍 Force triggering duplicate detection...');
+                }
                 // Force trigger by updating a form field
                 const currentTitle = methods.getValues('title');
                 setValue('title', currentTitle + ' ');
@@ -2138,7 +2226,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <button
               type="button"
               onClick={() => {
-                console.log('🔍 IMMEDIATE duplicate detection test...');
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔍 IMMEDIATE duplicate detection test...');
+                }
                 // Run duplicate detection immediately without waiting for useEffect
                 const currentValues = methods.getValues() as any;
                 const { title, law_family, section_id, canonical_citation, effective_date } = currentValues;
@@ -2149,28 +2239,69 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                     .join(' ');
                   const q = `${idTokens}`.trim();
                   
-                  console.log('🔍 IMMEDIATE query:', q);
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('🔍 IMMEDIATE query:', q);
+                  }
                   
                   // Run semantic search immediately
                   semanticSearch(q, 10).then(resp => {
-                    console.log('🔍 IMMEDIATE semantic search response:', resp);
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('🔍 IMMEDIATE semantic search response:', resp);
+                    }
                     if (resp.success && resp.results && resp.results.length > 0) {
-                      console.log('🔍 IMMEDIATE found results:', resp.results.length);
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('🔍 IMMEDIATE found results:', resp.results.length);
+                      }
                       setNearDuplicates(resp.results.slice(0, 5));
                     } else {
-                      console.log('🔍 IMMEDIATE no results found');
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('🔍 IMMEDIATE no results found');
+                      }
                       setNearDuplicates([]);
                     }
                   }).catch(error => {
                     console.error('🔍 IMMEDIATE error:', error);
                   });
                 } else {
-                  console.log('🔍 IMMEDIATE title too short');
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('🔍 IMMEDIATE title too short');
+                  }
                 }
               }}
               className="bg-red-500 text-white px-3 py-1 rounded text-xs"
             >
               Immediate Test
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔍 SIMPLE API TEST - searching for "libel"...');
+                }
+                // Test the semantic search API directly with a simple query
+                semanticSearch('libel', 10).then(resp => {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('🔍 SIMPLE API TEST response:', resp);
+                  }
+                  if (resp.success && resp.results && resp.results.length > 0) {
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('🔍 SIMPLE API TEST found results:', resp.results.length);
+                      console.log('🔍 SIMPLE API TEST first result:', resp.results[0]);
+                    }
+                    setNearDuplicates(resp.results.slice(0, 3));
+                  } else {
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('🔍 SIMPLE API TEST no results found');
+                    }
+                    setNearDuplicates([]);
+                  }
+                }).catch(error => {
+                  console.error('🔍 SIMPLE API TEST error:', error);
+                });
+              }}
+              className="bg-yellow-500 text-white px-3 py-1 rounded text-xs"
+            >
+              API Test
             </button>
           </div>
         )}
@@ -2582,14 +2713,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               )}
                               <Button 
                                 type="submit" 
-                                disabled={isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
+                                disabled={isUpdatingEntry || isSubmitting || (nearDuplicates && nearDuplicates.length > 0)}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
-                                  isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
+                                  isUpdatingEntry || isSubmitting || (nearDuplicates && nearDuplicates.length > 0)
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'
                                 }`}
                               >
-                                {isUpdatingEntry ? (
+                                {isUpdatingEntry || isSubmitting ? (
                                   <>
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                                     {isEditMode ? 'Updating...' : 'Creating...'}
