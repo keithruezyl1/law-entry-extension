@@ -315,7 +315,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   })();
 
   // Get entries from useLocalStorage hook
-  const { entries, loading, error, addEntry, updateEntry, deleteEntry, getEntryById, getEntryByEntryId, searchEntries, exportEntries, exportSingleEntry, importEntries, clearAllEntries, getStorageStats, getAllTeamProgress, getYesterdayTeamProgress, updateProgressForEntry, checkDailyCompletion } = useLocalStorage();
+  const { entries, loading, error, clearError, addEntry, updateEntry, deleteEntry, getEntryById, getEntryByEntryId, searchEntries, exportEntries, exportSingleEntry, importEntries, clearAllEntries, getStorageStats, getAllTeamProgress, getYesterdayTeamProgress, updateProgressForEntry, checkDailyCompletion } = useLocalStorage();
 
   // Function to check incomplete entries from yesterday
   const checkIncompleteEntries = useCallback(() => {
@@ -655,15 +655,20 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             localStorage.removeItem(key);
           }
         });
-        console.log('Cleared all drafts when starting new entry');
+        console.log('🧹 Cleared all drafts when starting new entry');
       } catch (e) {
         console.warn('Failed to clear drafts:', e);
       }
+      
+      // Set flag to ensure form doesn't load any drafts
+      sessionStorage.setItem('entryJustCreated', '1');
+      console.log('🧹 Set entryJustCreated flag to prevent draft loading');
       setResumeDraft(null);
       setShowResumeModal(false);
       setEditingEntry(null);
       // Set session storage to indicate user came from dashboard
       sessionStorage.setItem('cameFromDashboard', 'true');
+      console.log('🧹 Navigating to clean form after clearing drafts');
       navigate('/law-entry/1');
     } finally {
       setIsResumingNo(false);
@@ -762,6 +767,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           }
         }
         const newEntry = await addEntry(entryData);
+        
+        // Clear any previous errors when entry is successfully created
+        clearError();
         
         // Set session flag for success toast on dashboard (instead of showing modal)
         try { sessionStorage.setItem('entryCreated', '1'); } catch {}

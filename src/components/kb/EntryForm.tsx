@@ -973,7 +973,25 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   };
   const requestCancel = () => setShowCancelConfirm(true);
   const confirmCancel = () => {
-    try { localStorage.removeItem('kb_entry_draft'); } catch {}
+    // Clear all draft data comprehensively
+    try {
+      localStorage.removeItem('kb_entry_draft');
+      localStorage.removeItem('kb_draft');
+      localStorage.removeItem('kb_drafts');
+      // Clear any other draft-related keys
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('kb_entry_') || 
+            key.startsWith('entry_draft_') || 
+            key.startsWith('kb_draft') ||
+            key.includes('draft') ||
+            key.includes('autosave')) {
+          localStorage.removeItem(key);
+        }
+      });
+      console.log('🧹 Cleared all drafts on cancel');
+    } catch (e) {
+      console.warn('Failed to clear drafts on cancel:', e);
+    }
     setShowCancelConfirm(false);
     navigate('/dashboard');
   };
@@ -2490,7 +2508,29 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         </Modal>
         <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Are you sure you want to cancel?" subtitle="This will delete all your current inputs in the forms.">
           <div className="modal-buttons">
-            <button className="modal-button danger" onClick={() => { try { localStorage.removeItem('kb_entry_draft'); } catch {}; setShowCancelConfirm(false); onCancel(); }}>Yes, go to home</button>
+            <button className="modal-button danger" onClick={() => { 
+              // Clear all draft data comprehensively
+              try {
+                localStorage.removeItem('kb_entry_draft');
+                localStorage.removeItem('kb_draft');
+                localStorage.removeItem('kb_drafts');
+                // Clear any other draft-related keys
+                Object.keys(localStorage).forEach(key => {
+                  if (key.startsWith('kb_entry_') || 
+                      key.startsWith('entry_draft_') || 
+                      key.startsWith('kb_draft') ||
+                      key.includes('draft') ||
+                      key.includes('autosave')) {
+                    localStorage.removeItem(key);
+                  }
+                });
+                console.log('🧹 Cleared all drafts on modal cancel');
+              } catch (e) {
+                console.warn('Failed to clear drafts on modal cancel:', e);
+              }
+              setShowCancelConfirm(false); 
+              onCancel(); 
+            }}>Yes, go to home</button>
             <button className="modal-button cancel" onClick={() => setShowCancelConfirm(false)}>No, stay here</button>
           </div>
         </Modal>

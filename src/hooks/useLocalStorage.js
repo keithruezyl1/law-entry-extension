@@ -13,6 +13,9 @@ export const useLocalStorage = () => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Function to clear errors
+  const clearError = () => setError(null);
   const [teamProgress, setTeamProgress] = useState({});
   const [dailyQuotas, setDailyQuotas] = useState({});
 
@@ -39,7 +42,8 @@ export const useLocalStorage = () => {
       }
     } catch (err) {
       console.error('Error loading data from localStorage:', err);
-      setError('Failed to load data from storage');
+      // Don't show localStorage errors to users - localStorage is just a cache
+      // The real data comes from the database, so this is not a critical error
     } finally {
       setLoading(false);
     }
@@ -69,36 +73,52 @@ export const useLocalStorage = () => {
     if (!loading) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        // Clear any previous localStorage errors when save succeeds
+        if (error && error.includes('storage')) {
+          setError(null);
+        }
       } catch (err) {
         console.error('Error saving entries to localStorage:', err);
-        setError('Failed to save entries to storage');
+        // Don't show localStorage errors to users - these are not critical
+        // The entries are still working fine from the database
+        // Only log the error for debugging purposes
       }
     }
-  }, [entries, loading]);
+  }, [entries, loading, error]);
 
   // Save team progress to localStorage whenever it changes
   useEffect(() => {
     if (!loading) {
       try {
         localStorage.setItem(TEAM_PROGRESS_KEY, JSON.stringify(teamProgress));
+        // Clear any previous localStorage errors when save succeeds
+        if (error && error.includes('storage')) {
+          setError(null);
+        }
       } catch (err) {
         console.error('Error saving team progress to localStorage:', err);
-        setError('Failed to save team progress to storage');
+        // Don't show localStorage errors to users - these are not critical
+        // Only log the error for debugging purposes
       }
     }
-  }, [teamProgress, loading]);
+  }, [teamProgress, loading, error]);
 
   // Save daily quotas to localStorage whenever they change
   useEffect(() => {
     if (!loading) {
       try {
         localStorage.setItem(DAILY_QUOTAS_KEY, JSON.stringify(dailyQuotas));
+        // Clear any previous localStorage errors when save succeeds
+        if (error && error.includes('storage')) {
+          setError(null);
+        }
       } catch (err) {
         console.error('Error saving daily quotas to localStorage:', err);
-        setError('Failed to save daily quotas to storage');
+        // Don't show localStorage errors to users - these are not critical
+        // Only log the error for debugging purposes
       }
     }
-  }, [dailyQuotas, loading]);
+  }, [dailyQuotas, loading, error]);
 
   // Check for daily reset at midnight
   useEffect(() => {
@@ -192,6 +212,8 @@ export const useLocalStorage = () => {
       if (Array.isArray(dbEntries)) {
         const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
         setEntries(mapped);
+        // Clear any previous errors when operation succeeds
+        setError(null);
       }
 
       // Progress increments are keyed by username + date
@@ -323,6 +345,8 @@ export const useLocalStorage = () => {
       if (Array.isArray(dbEntries)) {
         const mapped = dbEntries.map((e) => ({ ...e, id: e.entry_id }));
         setEntries(mapped);
+        // Clear any previous errors when operation succeeds
+        setError(null);
       }
 
       console.log('Entry updated successfully:', result);
@@ -797,7 +821,7 @@ export const useLocalStorage = () => {
   };
 
   return {
-    entries, loading, error, addEntry, updateEntry, deleteEntry,
+    entries, loading, error, clearError, addEntry, updateEntry, deleteEntry,
     getEntryById, getEntryByEntryId, searchEntries, getEntriesByType,
     getOfflinePackEntries, exportEntries, exportSingleEntry, importEntries, clearAllEntries,
     getStorageStats, getTeamMemberProgress, getAllTeamProgress, resetDailyQuotas,
