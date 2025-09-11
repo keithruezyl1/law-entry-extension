@@ -4,6 +4,7 @@ import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import EntryForm from './components/kb/EntryForm.tsx'; // new TS + RHF + Zod wizard
 import EntryList from './components/EntryList/EntryList';
+import DashboardNotifications from './components/DashboardNotifications';
 import EntryView from './components/EntryView/EntryView';
 import Login from './components/Login/Login';
 import Confetti from './components/Confetti/Confetti';
@@ -1584,6 +1585,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         </div>
         
          <div className="nav-right">
+           <button onClick={() => navigate('/dashboard?tab=notifications')} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+             Notifications
+           </button>
            <button onClick={() => setShowChat(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
              Ask Villy (RAG)
            </button>
@@ -1643,6 +1647,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           searchEntries={searchEntries}
           teamMemberNames={teamMemberNames}
         />
+        )}
+
+        {currentView === 'list' && new URLSearchParams(location.search).get('tab') === 'notifications' && (
+          <DashboardNotifications />
         )}
 
         {currentView === 'form' && (

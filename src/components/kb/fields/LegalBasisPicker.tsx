@@ -1,9 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Trash2, Plus, Search, ArrowLeft } from 'lucide-react';
 import { fetchEntryById, fetchAllEntriesFromDb } from '../../../services/kbApi';
+import { Toast } from '../../ui/Toast';
 
 type EntryLite = { id?: string; entry_id: string; title: string; type?: string; canonical_citation?: string };
 
@@ -16,13 +17,20 @@ interface LegalBasisPickerProps {
 
 export function LegalBasisPicker({ name, control, register, existingEntries = [], onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
   // RHF context helpers will be provided via register/controls in parent
-  const { fields, append, remove } = useFieldArray({ name, control });
+  const { fields, append, remove, update } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
   const [allEntries, setAllEntries] = useState<EntryLite[] | null>(null);
   const internalCount = useMemo(() => (items || []).filter((it: any) => it && it.type !== 'external').length, [items]);
   const externalCount = useMemo(() => (items || []).filter((it: any) => it && it.type === 'external').length, [items]);
+  const [externalToast, setExternalToast] = useState<{
+    open: boolean;
+    index: number | null;
+    matches: EntryLite[];
+  }>({ open: false, index: null, matches: [] });
+  const suppressDetectForExternal = useRef<Set<number>>(new Set());
+  const detectTimersRef = useRef<Record<number, number | undefined>>({});
   
   // Internal citation states
   const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0);
@@ -302,8 +310,66 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     return scoredEntries.map(item => item.entry);
   }, [existingEntries, allEntries, query]);
 
+  // Build a search query from an external citation row
+  const buildExternalQuery = (ext: any): string => {
+    const parts = [ext?.citation || '', ext?.title || '', ext?.url || ''];
+    return parts.filter(Boolean).join(' ').slice(0, 400);
+  };
+
+  const findSimilarEntriesForExternal = (ext: any): EntryLite[] => {
+    const q = buildExternalQuery(ext).trim();
+    if (!q) return [];
+    const searchTerms = getSearchTerms(q);
+    if (searchTerms.length === 0) return [];
+    const pool = (allEntries && allEntries.length ? allEntries : existingEntries);
+    const scored = pool
+      .map(entry => ({ entry, score: calculateMatchScore(entry, searchTerms) }))
+      .filter(item => item.score >= 12)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(s => s.entry);
+    return scored;
+  };
+
+  const handleDetectExternalMatches = (idx: number) => {
+    const ext = items?.[idx];
+    if (!ext || ext.type !== 'external') return;
+    if (suppressDetectForExternal.current.has(idx)) return;
+    const matches = findSimilarEntriesForExternal(ext);
+    if (matches.length > 0) {
+      setExternalToast({ open: true, index: idx, matches });
+    }
+  };
+
+  const handleDetectExternalMatchesDebounced = (idx: number) => {
+    const existing = detectTimersRef.current[idx];
+    if (existing) {
+      window.clearTimeout(existing);
+    }
+    const timer = window.setTimeout(() => handleDetectExternalMatches(idx), 600);
+    detectTimersRef.current[idx] = timer as unknown as number;
+  };
+
+  const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
+    try {
+      const full = await fetchEntryById(chosen.entry_id);
+      const firstUrl = Array.isArray(full?.source_urls) && full.source_urls.length > 0 ? full.source_urls[0] : '';
+      const newInternal = {
+        type: 'internal',
+        entry_id: chosen.entry_id,
+        url: firstUrl || '',
+        title: full?.title || chosen.title,
+        note: full?.summary || ''
+      } as any;
+      update(extIndex, newInternal);
+    } finally {
+      setExternalToast({ open: false, index: null, matches: [] });
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <>
+      <div className="space-y-4">
       {/* Picker tabs on top */}
       <div className="flex gap-3 kb-toggle-row">
         <Button
@@ -495,7 +561,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
-                      {...register(`${name}.${i}.citation` as const)}
+                      {...register(`${name}.${i}.citation` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -503,7 +569,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const)}
+                      {...register(`${name}.${i}.url` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -511,7 +577,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const)}
+                      {...register(`${name}.${i}.title` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -569,7 +635,71 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           )}
         </div>
       )}
-    </div>
+      </div>
+      {/* External-to-internal matches toast */}
+      <Toast
+        isOpen={externalToast.open}
+        onClose={() => setExternalToast({ open: false, index: null, matches: [] })}
+        title={((): string => {
+          const isRelated = String(name || '').includes('related_sections');
+          const base = isRelated ? 'Detected internal citation for Related Sections' : 'Detected internal citation for Legal Bases';
+          return externalToast.matches.length > 1 ? `${base} (${externalToast.matches.length})` : base;
+        })()}
+        type="warning"
+        position="top-right"
+      >
+        <div className="space-y-3">
+          {externalToast.matches.map((m, idx) => (
+            <div key={`${m.entry_id}-${idx}`} className="border rounded-lg p-3">
+              <div className="text-sm font-medium">{m.title}</div>
+              <div className="text-xs text-muted-foreground">{m.entry_id}{m.canonical_citation ? ` • ${m.canonical_citation}` : ''}</div>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={() => {
+                    if (externalToast.index != null) {
+                      void convertExternalToInternal(externalToast.index, m);
+                    }
+                  }}
+                  className="h-9"
+                >
+                  Add as Internal Instead
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setExternalToast(prev => {
+                      const remaining = prev.matches.filter((_, j) => j !== idx);
+                      return { ...prev, matches: remaining, open: remaining.length > 0 };
+                    });
+                  }}
+                  className="h-9"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+          ))}
+          {externalToast.index != null && (
+            <div className="pt-2 border-t mt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  suppressDetectForExternal.current.add(externalToast.index as number);
+                  setExternalToast({ open: false, index: null, matches: [] });
+                }}
+                className="h-8 text-xs"
+              >
+                Don’t suggest again for this citation
+              </Button>
+            </div>
+          )}
+        </div>
+      </Toast>
+    </>
   );
 }
 

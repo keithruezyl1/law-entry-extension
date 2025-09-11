@@ -7,6 +7,7 @@ import kbRouter from './routes/kb.js';
 import chatRouter from './routes/chat.js';
 import authRouter from './routes/auth.js';
 import plansRouter from './routes/plans.js';
+import notificationsRouter from './routes/notifications.js';
 import setupDatabase from './setup-db.js';
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/kb', authenticateToken, kbRouter);
 app.use('/api/chat', authenticateToken, chatRouter);
 app.use('/api/plans', authenticateToken, plansRouter);
+app.use('/api/notifications', authenticateToken, notificationsRouter);
 
 const port = process.env.PORT || 4000;
 
