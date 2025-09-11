@@ -1056,6 +1056,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
 
+    // Normalize string fields to prevent null values
+    const normalizeStringField = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      return String(value);
+    };
+
     // Normalize relations to fix entry_id: null issues
     const normalizeRelations = (arr: any[] | undefined) => {
       if (!Array.isArray(arr)) return [] as any[];
@@ -1091,8 +1097,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       });
     };
 
+    // Type-specific field mapping
+    const typeSpecificFields: Record<string, string[]> = {
+      constitution_provision: ['topics', 'related_sections', 'jurisprudence'],
+      statute_section: ['elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof', 'related_sections', 'legal_bases'],
+      city_ordinance_section: ['elements', 'penalties', 'defenses', 'related_sections', 'legal_bases'],
+      rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'related_sections'],
+      agency_circular: ['circular_no', 'section_no', 'applicability', 'legal_bases', 'supersedes'],
+      doj_issuance: ['issuance_no', 'applicability', 'legal_bases', 'supersedes'],
+      executive_issuance: ['instrument_no', 'applicability', 'legal_bases', 'supersedes'],
+      rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
+    };
+
     const sanitized: Entry = {
       ...data,
+      // Normalize common string fields to prevent null values
+      title: normalizeStringField(data.title),
+      canonical_citation: normalizeStringField(data.canonical_citation),
+      summary: normalizeStringField(data.summary),
+      text: normalizeStringField(data.text),
+      law_family: normalizeStringField(data.law_family),
+      section_id: normalizeStringField(data.section_id),
+      status: normalizeStringField(data.status),
       source_urls: (data as any).source_urls?.filter((u: string) => !!u && u.trim().length > 0) || [],
       tags: (data as any).tags?.filter((t: string) => !!t && t.trim().length > 0) || [],
       // Normalize relations to fix entry_id: null issues
@@ -1100,10 +1126,24 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       related_sections: normalizeRelations((data as any).related_sections),
     } as any;
 
+    // Only normalize type-specific string fields that are relevant for this entry type
+    const relevantFields = typeSpecificFields[data.type] || [];
+    const typeSpecificStringFields = ['standard_of_proof', 'rule_no', 'section_no', 'circular_no', 'issuance_no', 'instrument_no', 'violation_code', 'violation_name', 'license_action', 'incident', 'rights_scope'];
+    
+    typeSpecificStringFields.forEach(field => {
+      if (relevantFields.includes(field)) {
+        (sanitized as any)[field] = normalizeStringField((data as any)[field]);
+      }
+    });
+
     // Debug logging for source_urls and relations
     console.log('Raw form data source_urls:', (data as any).source_urls);
     console.log('Sanitized source_urls:', sanitized.source_urls);
     console.log('Sanitized source_urls type:', typeof sanitized.source_urls);
+    console.log('🔧 Entry type:', data.type);
+    console.log('🔧 Relevant fields for this type:', relevantFields);
+    console.log('🔧 Type-specific string fields being normalized:', typeSpecificStringFields.filter(field => relevantFields.includes(field)));
+    console.log('🔧 Normalized standard_of_proof:', (sanitized as any).standard_of_proof, 'Type:', typeof (sanitized as any).standard_of_proof);
     console.log('Sanitized source_urls length:', sanitized.source_urls?.length);
     console.log('Raw form data legal_bases:', (data as any).legal_bases);
     console.log('Sanitized legal_bases:', (sanitized as any).legal_bases);
