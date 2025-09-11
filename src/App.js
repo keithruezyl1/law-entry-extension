@@ -1117,6 +1117,17 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         </div>
         <div className="header-actions">
           <button
+            aria-label="Notifications"
+            className="icon-btn"
+            onClick={() => navigate('/dashboard?tab=notifications')}
+            title="Notifications"
+          >
+            {/* bell icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z"/>
+            </svg>
+          </button>
+          <button
             aria-label="Toggle theme"
             className={`theme-toggle ${isDarkMode ? 'theme-toggle--dark' : 'theme-toggle--light'}`}
             onClick={() => setIsDarkMode(v => !v)}
@@ -1585,9 +1596,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         </div>
         
          <div className="nav-right">
-           <button onClick={() => navigate('/dashboard?tab=notifications')} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-             Notifications
-           </button>
+           {/* Removed rectangular Notifications button in favor of header icon */}
            <button onClick={() => setShowChat(true)} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
              Ask Villy (RAG)
            </button>

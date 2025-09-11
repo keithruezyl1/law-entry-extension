@@ -33,6 +33,7 @@ async function setupDatabase() {
       // Idempotent post-initial migrations
       join(__dirname, '../sql/007_add_created_by_name.sql'),
       join(__dirname, '../sql/008_add_verified.sql'),
+      join(__dirname, '../sql/011_notifications.sql'),
     ];
 
     console.log('SQL files to execute:', sqlFiles);

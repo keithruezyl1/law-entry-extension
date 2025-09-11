@@ -7,7 +7,7 @@ export interface NotificationItem {
   created_at: string;
 }
 
-const ORIGIN_BASE = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_VECTOR_API_URL || 'http://localhost:4000');
+const ORIGIN_BASE = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_VECTOR_API_URL || window.location.origin.replace(/\/$/, ''));
 const API_BASE = `${ORIGIN_BASE.endsWith('/api') ? ORIGIN_BASE : ORIGIN_BASE + '/api'}`;
 
 function authHeaders() {
