@@ -15,13 +15,12 @@ import { format } from 'date-fns';
 import { setDay1Date } from './lib/plan/progressStore';
 import { upsertEntry, deleteEntryVector, clearEntriesVector } from './services/vectorApi';
 // import { fetchAllEntriesFromDb } from './services/kbApi';
+import { fetchEntryById } from './services/kbApi';
 // Plans API removed: we now load from bundled JSON
 import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { checkAdminAndAlert, isTagarao } from './utils/adminUtils';
 import { Toast } from './components/ui/Toast';
-import React, { useState } from 'react';
-import DashboardNotifications from './components/DashboardNotifications';
 
 function HeaderNotificationsButton() {
   const [open, setOpen] = useState(false);
