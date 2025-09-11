@@ -418,6 +418,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [showDraftLoaded, setShowDraftLoaded] = useState<boolean>(false);
   const [hasAmendment, setHasAmendment] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const isSubmittingRef = React.useRef<boolean>(false);
 
 
   //
@@ -1005,13 +1006,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   }, [watch, getValues, entry]);
 
   const onSubmit = async (data: Entry) => {
-    // Prevent multiple submissions
-    if (isSubmitting) {
+    // Prevent multiple submissions using both state and ref
+    if (isSubmitting || isSubmittingRef.current) {
       console.log('Form submission already in progress, ignoring duplicate submission');
       return;
     }
 
     setIsSubmitting(true);
+    isSubmittingRef.current = true;
 
 
 
@@ -1036,6 +1038,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
       alert(`Missing required fields:\n${errorMessage}`);
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -1102,6 +1105,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     if (!sanitized.source_urls || sanitized.source_urls.length < 1) {
       alert('Please add at least one Source URL before publishing.');
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -1111,6 +1115,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       if (!Array.isArray(lbs) || lbs.length < 1) {
         alert('Rights Advisory entries require at least one legal basis.');
         setIsSubmitting(false);
+        isSubmittingRef.current = false;
         return;
       }
     }
@@ -1121,6 +1126,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       console.log('Business rule validation errors:', errs);
       alert(errs.join('\n'));
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
     console.log('Business rules validation passed');
@@ -1162,6 +1168,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       console.log('Invalid external entries found:', invalidExternalEntries);
       alert('Validation errors found:\n' + invalidExternalEntries.join('\n'));
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
     console.log('Imported entry validation passed');
@@ -1198,6 +1205,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         // Show modal with entry details instead of saving directly
         onShowIncompleteEntriesModal(withMember);
         setIsSubmitting(false);
+        isSubmittingRef.current = false;
         return;
       }
     }
@@ -1218,6 +1226,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       console.error('Error saving entry:', error);
       // Reset submission state on error so user can try again
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       throw error; // Re-throw to let parent handle the error
     }
 
@@ -2004,11 +2013,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
             {/* Below: Law input card (form) spanning full width */}
             <section className="kb-form-section col-span-12">
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const formData = getValues();
-                onSubmit(formData);
-              }}>
+              <form onSubmit={handleSubmit(onSubmit)}>
                 {(() => {
                   if (currentStep === 1) {
                     return (
