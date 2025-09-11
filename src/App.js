@@ -24,19 +24,35 @@ import { Toast } from './components/ui/Toast';
 
 function HeaderNotificationsButton() {
   const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState(null);
+  const btnRef = useRef(null);
+  const handleToggle = () => {
+    const el = btnRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      setAnchor({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    }
+    setOpen((o) => !o);
+  };
   return (
     <>
       <button
+        ref={btnRef}
         aria-label="Notifications"
         className="icon-btn"
-        onClick={() => setOpen(o => !o)}
+        onClick={handleToggle}
         title="Notifications"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z"/>
         </svg>
       </button>
-      {open && <DashboardNotifications inline />}
+      {open && (
+        <DashboardNotifications
+          onClose={() => setOpen(false)}
+          anchor={anchor}
+        />
+      )}
     </>
   );
 }

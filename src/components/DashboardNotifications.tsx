@@ -2,7 +2,7 @@ import React from 'react';
 import { listNotifications, computeNotifications, dismissNotification, resolveNotification, NotificationItem } from '../services/notificationsApi';
 import './DashboardNotifications.css';
 
-export default function DashboardNotifications({ inline, onClose }: { inline?: boolean; onClose?: () => void }) {
+export default function DashboardNotifications({ inline, onClose, anchor }: { inline?: boolean; onClose?: () => void; anchor?: { top: number; left: number; width?: number } | null }) {
   const [items, setItems] = React.useState<NotificationItem[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [computing, setComputing] = React.useState<boolean>(false);
@@ -67,8 +67,15 @@ export default function DashboardNotifications({ inline, onClose }: { inline?: b
   );
 
   if (inline) return content;
+  // Body-level flyout positioned below the anchor button
+  const style: React.CSSProperties = anchor ? {
+    position: 'fixed',
+    top: anchor.top,
+    left: Math.max(12, Math.min(anchor.left, window.innerWidth - 980 - 12)),
+    zIndex: 2147483647,
+  } : { position: 'fixed', top: 60, right: 12, zIndex: 2147483647 };
   return (
-    <div className="notif-overlay" onClick={onClose}>
+    <div className="notif-flyout-root" style={style}>
       <div className="notif-panel" onClick={(e) => e.stopPropagation()}>
         <button className="notif-close" onClick={onClose} aria-label="Close">×</button>
         {content}
