@@ -20,6 +20,27 @@ import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { checkAdminAndAlert, isTagarao } from './utils/adminUtils';
 import { Toast } from './components/ui/Toast';
+import React, { useState } from 'react';
+import DashboardNotifications from './components/DashboardNotifications';
+
+function HeaderNotificationsButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        aria-label="Notifications"
+        className="icon-btn"
+        onClick={() => setOpen(o => !o)}
+        title="Notifications"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z"/>
+        </svg>
+      </button>
+      {open && <DashboardNotifications inline />}
+    </>
+  );
+}
 
 function App() {
   return (
@@ -426,27 +447,46 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
   // Handle initial entry loading for view/edit
   useEffect(() => {
-    if (initialEntryId && (currentView === 'view' || isEditing) && !loading) {
-      
-      const entry = getEntryById(initialEntryId);
+    const ensureEntryLoaded = async () => {
+      if (!initialEntryId || !(currentView === 'view' || isEditing) || loading) return;
+
+      let entry = getEntryById(initialEntryId);
       console.log('Found entry:', entry);
-      
+
+      // Fallback: fetch from DB if not present in memory yet
+      if (!entry && !importedEntryData) {
+        try {
+          console.log('Entry not found in memory, fetching from DB by id:', initialEntryId);
+          const fetched = await fetchEntryById(initialEntryId);
+          if (fetched) {
+            entry = { ...fetched, id: fetched.entry_id };
+            console.log('Fetched entry from DB:', entry);
+          }
+        } catch (e) {
+          console.warn('Failed to fetch entry by id:', e);
+        }
+      }
+
       if (entry) {
         if (isEditing) {
           console.log('Setting editing entry:', entry);
           setEditingEntry(entry);
         }
         setSelectedEntryId(initialEntryId);
-      } else if (importedEntryData) {
-        // If no entry found but we have imported data, that's fine - we're creating a new entry
+        return;
+      }
+
+      if (importedEntryData) {
         console.log('No existing entry found, but imported data available for new entry creation');
         setSelectedEntryId(null);
-      } else {
-        // Entry not found and no imported data, redirect to dashboard
-        console.log('Entry not found and no imported data, redirecting to dashboard');
-        navigate('/dashboard');
+        return;
       }
-    }
+
+      console.log('Entry not found and no imported data, redirecting to dashboard');
+      navigate('/dashboard');
+    };
+
+    ensureEntryLoaded();
   }, [initialEntryId, currentView, isEditing, getEntryById, navigate, entries, loading, importedEntryData]);
 
   const stats = getStorageStats();
@@ -1116,17 +1156,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           <span className="header-entries-count">{stats.totalEntries} entries</span>
         </div>
         <div className="header-actions">
-          <button
-            aria-label="Notifications"
-            className="icon-btn"
-            onClick={() => navigate('/dashboard?tab=notifications')}
-            title="Notifications"
-          >
-            {/* bell icon */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z"/>
-            </svg>
-          </button>
+          {/* Inline notifications dropdown state */}
+          <HeaderNotificationsButton />
           <button
             aria-label="Toggle theme"
             className={`theme-toggle ${isDarkMode ? 'theme-toggle--dark' : 'theme-toggle--light'}`}

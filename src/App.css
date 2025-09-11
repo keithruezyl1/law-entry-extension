@@ -375,6 +375,27 @@ body {
 }
 .icon-btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); }
 
+/* Notifications dropdown */
+.notif-dropdown {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  width: 420px;
+  max-height: 60vh;
+  overflow: auto;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  z-index: 1000;
+}
+.dark-mode .notif-dropdown {
+  background: #1f2937;
+  color: #e5e7eb;
+  border-color: #374151;
+}
+
 /* Theme toggle button */
 .header-actions {
   display: flex;

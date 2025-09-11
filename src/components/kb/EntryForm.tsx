@@ -1336,11 +1336,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     });
 
 
-    // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
-    // For ALL entries on create URLs, we should run duplicate detection
-    if (entry && (entry as any).id && !isOnCreateUrl) {
+    // Hard-disable duplicate detection when in edit mode regardless of URL state
+    if (isEditMode || (entry && (entry as any).id && !isOnCreateUrl)) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
+        console.log('✅ Disabling duplicate detection while editing');
       }
       setNearDuplicates([]);
       return;

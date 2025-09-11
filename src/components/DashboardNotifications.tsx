@@ -1,7 +1,7 @@
 import React from 'react';
 import { listNotifications, computeNotifications, dismissNotification, resolveNotification, NotificationItem } from '../services/notificationsApi';
 
-export default function DashboardNotifications() {
+export default function DashboardNotifications({ inline }: { inline?: boolean }) {
   const [items, setItems] = React.useState<NotificationItem[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [computing, setComputing] = React.useState<boolean>(false);
@@ -36,7 +36,7 @@ export default function DashboardNotifications() {
 
   if (loading) return <div className="p-4">Loading notifications…</div>;
 
-  return (
+  const content = (
     <div className="p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold">Notifications</h3>
@@ -79,6 +79,13 @@ export default function DashboardNotifications() {
           </div>
         ))}
       </div>
+    </div>
+  );
+
+  if (inline) return content;
+  return (
+    <div className="notif-dropdown">
+      {content}
     </div>
   );
 }
