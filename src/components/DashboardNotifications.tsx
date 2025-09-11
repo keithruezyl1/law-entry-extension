@@ -1,7 +1,8 @@
 import React from 'react';
 import { listNotifications, computeNotifications, dismissNotification, resolveNotification, NotificationItem } from '../services/notificationsApi';
+import './DashboardNotifications.css';
 
-export default function DashboardNotifications({ inline }: { inline?: boolean }) {
+export default function DashboardNotifications({ inline, onClose }: { inline?: boolean; onClose?: () => void }) {
   const [items, setItems] = React.useState<NotificationItem[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [computing, setComputing] = React.useState<boolean>(false);
@@ -37,55 +38,41 @@ export default function DashboardNotifications({ inline }: { inline?: boolean })
   if (loading) return <div className="p-4">Loading notifications…</div>;
 
   const content = (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold">Notifications</h3>
-        <button className="btn-secondary" onClick={onCompute} disabled={computing}>
-          {computing ? 'Scanning…' : 'Scan for suggestions'}
+    <div className="notif-content">
+      <div className="notif-left">
+        <div className="notif-title">Notifications</div>
+        <button className="notif-scan-btn" onClick={onCompute} disabled={computing}>
+          {computing ? 'Scanning…' : 'Scan for external > internal'}
         </button>
+        <div className="notif-empty">{items.length === 0 ? '0 notifications found.' : ''}</div>
       </div>
-
-      {items.length === 0 && (
-        <div className="text-sm text-gray-600">No notifications.</div>
-      )}
-
-      <div className="space-y-3">
-        {items.map(n => (
-          <div key={n.id} className="border rounded-lg p-3 bg-white">
-            <div className="text-sm font-medium mb-1">Entry {n.entry_id}</div>
-            <div className="text-xs text-gray-700 mb-2">
-              External: {n.citation_snapshot?.title || n.citation_snapshot?.citation || n.citation_snapshot?.url || '(untitled)'}
-            </div>
-            {n.matched_entry_ids && n.matched_entry_ids.length > 0 && (
-              <div className="text-xs text-gray-600 mb-2">
-                {n.matched_entry_ids.length > 1 ? (
-                  <>
-                    <div className="mb-1">Select a match:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {n.matched_entry_ids.map(mid => (
-                        <button key={mid} className="btn-secondary" onClick={() => onResolve(n.id, mid)}>{mid}</button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <>Match: {n.matched_entry_ids[0]}</>
-                )}
+      <div className="notif-right">
+        {items.map(n => {
+          const label = `‘Entry ${n.entry_id}’ – Legal Bases Citation has been identified as an internal citation.`;
+          const primary = () => onResolve(n.id, n.matched_entry_ids?.[0]);
+          const secondary = () => onDismiss(n.id);
+          return (
+            <div key={n.id} className="notif-card">
+              <div className="notif-card-title">{label}</div>
+              <div className="notif-card-sub">Do you want to convert it to an internal reference?</div>
+              <div className="notif-card-actions">
+                <button className="notif-action-yes" onClick={primary}>Convert to Internal</button>
+                <button className="notif-action-no" onClick={secondary}>Dismiss</button>
               </div>
-            )}
-            <div className="flex gap-2">
-              <button className="btn-primary" onClick={() => onResolve(n.id, n.matched_entry_ids?.[0])}>Add as Internal Instead</button>
-              <button className="btn-secondary" onClick={() => onDismiss(n.id)}>No</button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 
   if (inline) return content;
   return (
-    <div className="notif-dropdown">
-      {content}
+    <div className="notif-overlay" onClick={onClose}>
+      <div className="notif-panel" onClick={(e) => e.stopPropagation()}>
+        <button className="notif-close" onClick={onClose} aria-label="Close">×</button>
+        {content}
+      </div>
     </div>
   );
 }
