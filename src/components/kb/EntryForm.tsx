@@ -417,6 +417,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [showDraftLoaded, setShowDraftLoaded] = useState<boolean>(false);
   const [hasAmendment, setHasAmendment] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
 
   //
@@ -1004,6 +1005,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   }, [watch, getValues, entry]);
 
   const onSubmit = async (data: Entry) => {
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      console.log('Form submission already in progress, ignoring duplicate submission');
+      return;
+    }
+
+    setIsSubmitting(true);
 
 
 
@@ -1027,6 +1035,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       ).join('\n');
 
       alert(`Missing required fields:\n${errorMessage}`);
+      setIsSubmitting(false);
       return;
     }
 
@@ -1092,6 +1101,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Publish gating
     if (!sanitized.source_urls || sanitized.source_urls.length < 1) {
       alert('Please add at least one Source URL before publishing.');
+      setIsSubmitting(false);
       return;
     }
 
@@ -1100,6 +1110,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       const lbs = (sanitized as any).legal_bases || [];
       if (!Array.isArray(lbs) || lbs.length < 1) {
         alert('Rights Advisory entries require at least one legal basis.');
+        setIsSubmitting(false);
         return;
       }
     }
@@ -1109,6 +1120,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     if (errs.length) {
       console.log('Business rule validation errors:', errs);
       alert(errs.join('\n'));
+      setIsSubmitting(false);
       return;
     }
     console.log('Business rules validation passed');
@@ -1149,6 +1161,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     if (invalidExternalEntries.length > 0) {
       console.log('Invalid external entries found:', invalidExternalEntries);
       alert('Validation errors found:\n' + invalidExternalEntries.join('\n'));
+      setIsSubmitting(false);
       return;
     }
     console.log('Imported entry validation passed');
@@ -1184,6 +1197,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       if (userHasIncompleteEntries) {
         // Show modal with entry details instead of saving directly
         onShowIncompleteEntriesModal(withMember);
+        setIsSubmitting(false);
         return;
       }
     }
@@ -1191,6 +1205,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Progress tracking is now handled in useLocalStorage.js addEntry function
     // based on the created_at timestamp set in handleSaveEntry
 
+    try {
     await onSave(withMember);
     // Note: Draft clearing is now handled in App.js handleSaveEntry function
     // to ensure it happens at the right time and covers all draft types
@@ -1199,6 +1214,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     window.dispatchEvent(new Event('refresh-progress'));
 
     // Navigation will be handled by the success modal in App.js
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      // Reset submission state on error so user can try again
+      setIsSubmitting(false);
+      throw error; // Re-throw to let parent handle the error
+    }
 
 
 
@@ -2337,14 +2358,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               )}
                               <Button 
                                 type="submit" 
-                                disabled={isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
+                                disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
-                                  isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
+                                  isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'
                                 }`}
                               >
-                                {isUpdatingEntry ? (
+                                {isSubmitting || isUpdatingEntry ? (
                                   <>
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                                     {isEditMode ? 'Updating...' : 'Creating...'}
