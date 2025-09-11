@@ -731,89 +731,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         } catch (e) {
           console.warn('Failed to clear localStorage drafts:', e);
         }
-        // Vector upsert - wait for completion before showing success modal
-        try {
-          if (!entryData.entry_id) {
-            console.warn('Skipping vector upsert: missing entry_id. Ensure Law Family/Section are set to generate ID.');
-            // Show success modal even if vector upsert is skipped
-            setSavedEntryTitle(entryData.title);
-            setShowEntrySavedModal(true);
-            setImportedEntryData(null);
-            sessionStorage.removeItem('importedEntryData');
-            sessionStorage.removeItem('cameFromDashboard');
-          } else {
-            const payload = {
-              entry_id: entryData.entry_id,
-              type: entryData.type,
-              title: entryData.title,
-              canonical_citation: entryData.canonical_citation,
-              summary: entryData.summary,
-              text: entryData.text,
-              tags: entryData.tags,
-              jurisdiction: entryData.jurisdiction,
-              law_family: entryData.law_family,
-              section_id: entryData.section_id,
-              status: entryData.status,
-              effective_date: entryData.effective_date,
-              amendment_date: entryData.amendment_date,
-              last_reviewed: entryData.last_reviewed,
-              visibility: entryData.visibility,
-              source_urls: entryData.source_urls,
-              elements: entryData.elements,
-              penalties: entryData.penalties,
-              defenses: entryData.defenses,
-              prescriptive_period: entryData.prescriptive_period,
-              standard_of_proof: entryData.standard_of_proof,
-              rule_no: entryData.rule_no,
-              section_no: entryData.section_no,
-              triggers: entryData.triggers,
-              time_limits: entryData.time_limits,
-              required_forms: entryData.required_forms,
-              circular_no: entryData.circular_no,
-              applicability: entryData.applicability,
-              issuance_no: entryData.issuance_no,
-              instrument_no: entryData.instrument_no,
-              supersedes: entryData.supersedes,
-              steps_brief: entryData.steps_brief,
-              forms_required: entryData.forms_required,
-              failure_states: entryData.failure_states,
-              violation_code: entryData.violation_code,
-              violation_name: entryData.violation_name,
-              license_action: entryData.license_action,
-              fine_schedule: entryData.fine_schedule,
-              apprehension_flow: entryData.apprehension_flow,
-              incident: entryData.incident,
-              phases: entryData.phases,
-              forms: entryData.forms,
-              handoff: entryData.handoff,
-              rights_callouts: entryData.rights_callouts,
-              rights_scope: entryData.rights_scope,
-              advice_points: entryData.advice_points,
-              topics: entryData.topics,
-              jurisprudence: entryData.jurisprudence,
-              legal_bases: entryData.legal_bases,
-              related_sections: entryData.related_sections,
-            };
-            
-            // Wait for vector upsert to complete before showing success modal
-            const vectorResult = await upsertEntry(payload);
-            if (!vectorResult?.success) {
-              console.error('Vector upsert failed:', vectorResult?.error);
-              throw new Error(`Vector indexing failed: ${vectorResult?.error || 'Unknown error'}`);
-            }
-            console.log('Vector upsert successful');
-            
-            // Show success modal only after vector upsert succeeds
-            setSavedEntryTitle(entryData.title);
-            setShowEntrySavedModal(true);
-            setImportedEntryData(null); // Clear imported data after successful save
-            sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
-            sessionStorage.removeItem('cameFromDashboard'); // Clear dashboard access flag
-          }
-        } catch (e) {
-          console.error('Vector upsert error:', e);
-          throw new Error(`Entry saved to database but vector indexing failed: ${e.message}`);
-        }
+        // Vector indexing is already handled by addEntry() above
+        // Show success modal after addEntry completes successfully
+        setSavedEntryTitle(entryData.title);
+        setShowEntrySavedModal(true);
+        setImportedEntryData(null); // Clear imported data after successful save
+        sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
+        sessionStorage.removeItem('cameFromDashboard'); // Clear dashboard access flag
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);
