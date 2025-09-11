@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -157,6 +157,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [currentView] = useState(initialView);
   const [selectedEntryId, setSelectedEntryId] = useState(initialEntryId);
   const [editingEntry, setEditingEntry] = useState(null);
+  
+  // Track which entries are currently being saved to prevent duplicates
+  const savingEntries = useRef(new Set());
   
   // Check for imported data in sessionStorage
   const [importedEntryData, setImportedEntryData] = useState(() => {
@@ -643,6 +646,14 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleSaveEntry = async (entryData) => {
+    // Prevent multiple submissions for the same entry
+    const entryId = entryData.entry_id;
+    if (savingEntries.current.has(entryId)) {
+      console.log('Entry already being saved, ignoring duplicate submission:', entryId);
+      return;
+    }
+    
+    savingEntries.current.add(entryId);
     try {
       // Check if we're in yesterday mode OR if user has incomplete entries
       const isYesterdayMode = sessionStorage.getItem('yesterdayMode') === 'true';
@@ -810,6 +821,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       console.error('Error saving entry:', err);
       const msg = (err && err.message) ? String(err.message) : 'Please try again.';
       alert(`Failed to save entry: ${msg}`);
+    } finally {
+      // Always remove the entry from the saving set
+      savingEntries.current.delete(entryId);
     }
   };
 
