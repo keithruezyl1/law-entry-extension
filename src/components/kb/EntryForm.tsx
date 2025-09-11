@@ -51,9 +51,7 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel, on
     }
   });
 
-  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [stepError, setStepError] = useState('');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   
   // Duplicate detection state
@@ -328,33 +326,6 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel, on
     return () => clearTimeout(t);
   }, [formData]);
 
-  // Step validation based on KB rules
-  const getMissingFieldsForStep = (step: number): string[] => {
-    const missing = [];
-    if (step === 1) {
-      if (!formData.type) missing.push('Entry Type');
-      if (!formData.title) missing.push('Title');
-      if (!formData.jurisdiction) missing.push('Jurisdiction');
-      if (!formData.law_family) missing.push('Law Family');
-      if (!formData.canonical_citation) missing.push('Canonical Citation');
-      if (!formData.status) missing.push('Status');
-    }
-    if (step === 2) {
-      if (!formData.effective_date) missing.push('Effective Date');
-      if (formData.status === 'amended' && !formData.amendment_date) missing.push('Amendment Date');
-      const firstUrl = (formData.source_urls || [])[0];
-      if (!firstUrl) missing.push('At least 1 Source URL');
-      if (!formData.last_reviewed) missing.push('Last Reviewed');
-    }
-    if (step === 3) {
-      if (!formData.summary) missing.push('Summary');
-      if (!formData.text) missing.push('Legal Text');
-    }
-    if (step === 5) {
-      if (formData?.offline?.pack_include && !formData?.offline?.pack_category) missing.push('Offline Pack Category');
-    }
-    return missing;
-  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev: any) => {
@@ -499,32 +470,6 @@ export default function EntryForm({ entry, existingEntries, onSave, onCancel, on
     }
   };
 
-  const nextStep = () => {
-    const missing = getMissingFieldsForStep(currentStep);
-    if (missing.length > 0) {
-      setStepError(missing.join(', '));
-      return;
-    }
-    setStepError('');
-    if (currentStep < 6) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const steps = [
-    { id: 1, name: 'Basics', icon: '📋', description: 'Basic information' },
-    { id: 2, name: 'Sources & Dates', icon: '📅', description: 'Sources and important dates' },
-    { id: 3, name: 'Content', icon: '📝', description: 'Legal text and summary' },
-    { id: 4, name: 'Type-Specific', icon: '⚙️', description: 'Type-specific fields' },
-    { id: 5, name: 'Visibility & Offline', icon: '👁️', description: 'Visibility settings' },
-    { id: 6, name: 'Review & Publish', icon: '✅', description: 'Review and submit' }
-  ];
 
   const renderStep = () => {
     switch (currentStep) {
