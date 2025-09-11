@@ -573,8 +573,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       // Check if we just created an entry - if so, clear all drafts and start fresh
       const justCreated = sessionStorage.getItem('entryJustCreated');
       if (justCreated === '1') {
-        // Clear the flag and all draft data
-        sessionStorage.removeItem('entryJustCreated');
+        // Clear all draft data immediately
         try {
           localStorage.removeItem('kb_entry_draft');
           localStorage.removeItem('kb_draft');
@@ -593,6 +592,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         } catch (e) {
           console.warn('Failed to clear drafts:', e);
         }
+        // Don't clear the flag here - let the form loading logic handle it
         setEditingEntry(null);
         sessionStorage.setItem('cameFromDashboard', 'true');
         navigate('/law-entry/1');
@@ -784,8 +784,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             }
           });
           
-          // Set a flag to indicate successful entry creation
-          sessionStorage.setItem('entryJustCreated', '1');
+        // Set a flag to indicate successful entry creation
+        sessionStorage.setItem('entryJustCreated', '1');
+        console.log('🎉 Entry created successfully, set entryJustCreated flag');
           
           console.log('Cleared all entry drafts and autosaves from localStorage');
         } catch (e) {

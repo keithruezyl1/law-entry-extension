@@ -709,16 +709,21 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         if (justCreated === '1') {
           // Clear the flag and don't load any draft data
           sessionStorage.removeItem('entryJustCreated');
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Entry was just created, skipping draft loading for clean form');
+          console.log('🧹 Entry was just created, skipping draft loading for clean form');
+          // Double-check that drafts are cleared
+          try {
+            localStorage.removeItem('kb_entry_draft');
+            localStorage.removeItem('kb_draft');
+            localStorage.removeItem('kb_drafts');
+            console.log('🧹 Double-checked: cleared any remaining draft data');
+          } catch (e) {
+            console.warn('Failed to clear drafts in form:', e);
           }
         } else {
           const draftData = localStorage.getItem('kb_entry_draft');
           if (draftData) {
             const parsed = JSON.parse(draftData);
-            if (process.env.NODE_ENV === 'development') {
-            console.log('Loading draft data for new entry:', parsed);
-            }
+            console.log('📄 Loading draft data for new entry:', parsed);
 
             // Merge draft data with defaults, preserving user input
             const mergedData = {
@@ -783,6 +788,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             // Show notification that draft was loaded (CREATE MODE ONLY)
             setShowDraftLoaded(true);
             setTimeout(() => setShowDraftLoaded(false), 3000);
+          } else {
+            console.log('📄 No draft data found, starting with clean form');
           }
         }
       } catch (e) {

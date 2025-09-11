@@ -217,59 +217,88 @@ export const useLocalStorage = () => {
       const merged = { ...existing, ...updates };
       if (!merged.entry_id) throw new Error('entry_id is required');
       
-      // Send complete payload with all type-specific fields
+      // Type-specific field mapping
+      const typeSpecificFields = {
+        constitution_provision: ['topics', 'related_sections', 'jurisprudence'],
+        statute_section: ['elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof', 'related_sections', 'legal_bases'],
+        city_ordinance_section: ['elements', 'penalties', 'defenses', 'related_sections', 'legal_bases'],
+        rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'related_sections'],
+        agency_circular: ['circular_no', 'section_no', 'applicability', 'legal_bases', 'supersedes'],
+        doj_issuance: ['issuance_no', 'applicability', 'legal_bases', 'supersedes'],
+        executive_issuance: ['instrument_no', 'applicability', 'legal_bases', 'supersedes'],
+        rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
+      };
+
+      // Helper function to normalize string fields
+      const normalizeStringField = (value) => {
+        if (value === null || value === undefined) return '';
+        return String(value);
+      };
+
+      // Get relevant fields for this entry type
+      const relevantFields = typeSpecificFields[merged.type] || [];
+      
+      // Send complete payload with only relevant type-specific fields
       const payload = {
         entry_id: merged.entry_id,
         type: merged.type,
-        title: merged.title,
-        canonical_citation: merged.canonical_citation,
-        summary: merged.summary,
-        text: merged.text,
+        title: normalizeStringField(merged.title),
+        canonical_citation: normalizeStringField(merged.canonical_citation),
+        summary: normalizeStringField(merged.summary),
+        text: normalizeStringField(merged.text),
         tags: merged.tags,
         jurisdiction: merged.jurisdiction,
-        law_family: merged.law_family,
-        section_id: merged.section_id,
-        status: merged.status,
+        law_family: normalizeStringField(merged.law_family),
+        section_id: normalizeStringField(merged.section_id),
+        status: normalizeStringField(merged.status),
         effective_date: merged.effective_date,
         amendment_date: merged.amendment_date,
         last_reviewed: merged.last_reviewed,
         visibility: merged.visibility,
         source_urls: merged.source_urls,
-        elements: merged.elements,
-        penalties: merged.penalties,
-        defenses: merged.defenses,
-        prescriptive_period: merged.prescriptive_period,
-        standard_of_proof: merged.standard_of_proof,
-        rule_no: merged.rule_no,
-        section_no: merged.section_no,
-        triggers: merged.triggers,
-        time_limits: merged.time_limits,
-        required_forms: merged.required_forms,
-        circular_no: merged.circular_no,
-        applicability: merged.applicability,
-        issuance_no: merged.issuance_no,
-        instrument_no: merged.instrument_no,
-        supersedes: merged.supersedes,
-        steps_brief: merged.steps_brief,
-        forms_required: merged.forms_required,
-        failure_states: merged.failure_states,
-        violation_code: merged.violation_code,
-        violation_name: merged.violation_name,
-        license_action: merged.license_action,
-        fine_schedule: merged.fine_schedule,
-        apprehension_flow: merged.apprehension_flow,
-        incident: merged.incident,
-        phases: merged.phases,
-        forms: merged.forms,
-        handoff: merged.handoff,
-        rights_callouts: merged.rights_callouts,
-        rights_scope: merged.rights_scope,
-        advice_points: merged.advice_points,
-        topics: merged.topics,
-        jurisprudence: merged.jurisprudence,
         legal_bases: merged.legal_bases,
         related_sections: merged.related_sections,
       };
+
+      // Only include type-specific fields that are relevant for this entry type
+      if (relevantFields.includes('elements')) payload.elements = merged.elements;
+      if (relevantFields.includes('penalties')) payload.penalties = merged.penalties;
+      if (relevantFields.includes('defenses')) payload.defenses = merged.defenses;
+      if (relevantFields.includes('prescriptive_period')) payload.prescriptive_period = merged.prescriptive_period;
+      if (relevantFields.includes('standard_of_proof')) payload.standard_of_proof = normalizeStringField(merged.standard_of_proof);
+      if (relevantFields.includes('rule_no')) payload.rule_no = normalizeStringField(merged.rule_no);
+      if (relevantFields.includes('section_no')) payload.section_no = normalizeStringField(merged.section_no);
+      if (relevantFields.includes('triggers')) payload.triggers = merged.triggers;
+      if (relevantFields.includes('time_limits')) payload.time_limits = merged.time_limits;
+      if (relevantFields.includes('required_forms')) payload.required_forms = merged.required_forms;
+      if (relevantFields.includes('circular_no')) payload.circular_no = normalizeStringField(merged.circular_no);
+      if (relevantFields.includes('applicability')) payload.applicability = merged.applicability;
+      if (relevantFields.includes('issuance_no')) payload.issuance_no = normalizeStringField(merged.issuance_no);
+      if (relevantFields.includes('instrument_no')) payload.instrument_no = normalizeStringField(merged.instrument_no);
+      if (relevantFields.includes('supersedes')) payload.supersedes = merged.supersedes;
+      if (relevantFields.includes('steps_brief')) payload.steps_brief = merged.steps_brief;
+      if (relevantFields.includes('forms_required')) payload.forms_required = merged.forms_required;
+      if (relevantFields.includes('failure_states')) payload.failure_states = merged.failure_states;
+      if (relevantFields.includes('violation_code')) payload.violation_code = normalizeStringField(merged.violation_code);
+      if (relevantFields.includes('violation_name')) payload.violation_name = normalizeStringField(merged.violation_name);
+      if (relevantFields.includes('license_action')) payload.license_action = normalizeStringField(merged.license_action);
+      if (relevantFields.includes('fine_schedule')) payload.fine_schedule = merged.fine_schedule;
+      if (relevantFields.includes('apprehension_flow')) payload.apprehension_flow = merged.apprehension_flow;
+      if (relevantFields.includes('incident')) payload.incident = normalizeStringField(merged.incident);
+      if (relevantFields.includes('phases')) payload.phases = merged.phases;
+      if (relevantFields.includes('forms')) payload.forms = merged.forms;
+      if (relevantFields.includes('handoff')) payload.handoff = merged.handoff;
+      if (relevantFields.includes('rights_callouts')) payload.rights_callouts = merged.rights_callouts;
+      if (relevantFields.includes('rights_scope')) payload.rights_scope = normalizeStringField(merged.rights_scope);
+      if (relevantFields.includes('advice_points')) payload.advice_points = merged.advice_points;
+      if (relevantFields.includes('topics')) payload.topics = merged.topics;
+      if (relevantFields.includes('jurisprudence')) payload.jurisprudence = merged.jurisprudence;
+
+      // Debug logging
+      console.log('🔧 Update Entry - Type:', merged.type);
+      console.log('🔧 Update Entry - Relevant fields:', relevantFields);
+      console.log('🔧 Update Entry - Payload keys:', Object.keys(payload));
+      console.log('🔧 Update Entry - Has standard_of_proof:', 'standard_of_proof' in payload);
 
       // Use the proper PUT endpoint for updates
       const response = await fetch(`${process.env.REACT_APP_API_BASE || ''}/api/kb/entries/${merged.entry_id}`, {
