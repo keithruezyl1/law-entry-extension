@@ -702,17 +702,26 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         console.error('Failed to load imported data:', e);
       }
 
-      // Fallback to regular draft data
+      // Fallback to regular draft data (but not if we just created an entry)
       try {
-        const draftData = localStorage.getItem('kb_entry_draft');
-        if (draftData) {
-          const parsed = JSON.parse(draftData);
+        // Check if we just created an entry - if so, don't load any draft data
+        const justCreated = sessionStorage.getItem('entryJustCreated');
+        if (justCreated === '1') {
+          // Clear the flag and don't load any draft data
+          sessionStorage.removeItem('entryJustCreated');
           if (process.env.NODE_ENV === 'development') {
-          console.log('Loading draft data for new entry:', parsed);
+            console.log('Entry was just created, skipping draft loading for clean form');
           }
+        } else {
+          const draftData = localStorage.getItem('kb_entry_draft');
+          if (draftData) {
+            const parsed = JSON.parse(draftData);
+            if (process.env.NODE_ENV === 'development') {
+            console.log('Loading draft data for new entry:', parsed);
+            }
 
-          // Merge draft data with defaults, preserving user input
-          const mergedData = {
+            // Merge draft data with defaults, preserving user input
+            const mergedData = {
             type: parsed.type || 'statute_section',
             entry_id: parsed.entry_id || '',
             title: parsed.title || '',
@@ -766,14 +775,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             related_sections: parsed.related_sections || [],
           };
 
-          if (process.env.NODE_ENV === 'development') {
-          console.log('Merged draft data with defaults:', mergedData);
-          }
-          methods.reset(mergedData as any);
+            if (process.env.NODE_ENV === 'development') {
+            console.log('Merged draft data with defaults:', mergedData);
+            }
+            methods.reset(mergedData as any);
 
-          // Show notification that draft was loaded (CREATE MODE ONLY)
-          setShowDraftLoaded(true);
-          setTimeout(() => setShowDraftLoaded(false), 3000);
+            // Show notification that draft was loaded (CREATE MODE ONLY)
+            setShowDraftLoaded(true);
+            setTimeout(() => setShowDraftLoaded(false), 3000);
+          }
         }
       } catch (e) {
         console.error('Failed to load draft data:', e);
@@ -1011,6 +1021,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       console.log('Form submission already in progress, ignoring duplicate submission');
       return;
     }
+
+    console.log('🚀 FORM SUBMISSION STARTED');
+    console.log('📝 Form mode:', { isEditMode, isCreateMode, hasEntry: !!entry });
+    console.log('📊 Form data:', data);
 
     setIsSubmitting(true);
     isSubmittingRef.current = true;
@@ -1633,28 +1647,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               }
             })();
 
-            // Comprehensive matching logic
+            // Comprehensive matching logic - made more sensitive to catch actual duplicates
             const shouldShow = 
               // Exact matches (highest priority)
               exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName ||
 
-              // High semantic similarity
-              sim >= 0.7 ||
+              // High semantic similarity (lowered from 0.7 to 0.6)
+              sim >= 0.6 ||
 
-              // Good semantic similarity with decent token overlap
-              (sim >= 0.5 && tokOverlap >= 0.2) ||
+              // Good semantic similarity with decent token overlap (lowered thresholds)
+              (sim >= 0.4 && tokOverlap >= 0.15) ||
 
-              // Same type with good token overlap
-              (sameType && tokOverlap >= 0.3 && sim >= 0.4) ||
+              // Same type with good token overlap (lowered thresholds)
+              (sameType && tokOverlap >= 0.25 && sim >= 0.35) ||
 
-              // High token overlap
-              tokOverlap >= 0.4 ||
+              // High token overlap (lowered from 0.4 to 0.3)
+              tokOverlap >= 0.3 ||
 
-              // Date range match with good similarity
-              (dateRangeMatch && sim >= 0.6) ||
+              // Date range match with good similarity (lowered from 0.6 to 0.5)
+              (dateRangeMatch && sim >= 0.5) ||
 
-              // Tag overlap with good similarity
-              (tagOverlap && sim >= 0.5) ||
+              // Tag overlap with good similarity (lowered from 0.5 to 0.4)
+              (tagOverlap && sim >= 0.4) ||
 
               // Content similarity
               summarySimilarity || textSimilarity ||
@@ -1666,7 +1680,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               penaltyElementsMatch ||
 
               // Legal document specific matching
-              legalBasesMatch || relatedSectionsMatch || jurisprudenceMatch || topicsMatch || formsMatch;
+              legalBasesMatch || relatedSectionsMatch || jurisprudenceMatch || topicsMatch || formsMatch ||
+
+              // Additional fallback: if similarity is decent and we have some token overlap
+              (sim >= 0.3 && tokOverlap >= 0.1);
 
             // Debug logging for enhanced matching
             if (process.env.NODE_ENV === 'development') {
@@ -1679,7 +1696,27 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                   dateRangeMatch, tagOverlap, summarySimilarity, textSimilarity, fineAmountMatch, penaltyElementsMatch,
                   legalBasesMatch, relatedSectionsMatch, jurisprudenceMatch, topicsMatch, formsMatch
                 },
-              shouldShow
+              shouldShow,
+              sameType,
+              // Show why it's being filtered out
+              filterReasons: {
+                exactMatch: exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName,
+                highSimilarity: sim >= 0.6,
+                goodSimilarityWithOverlap: sim >= 0.4 && tokOverlap >= 0.15,
+                sameTypeWithOverlap: sameType && tokOverlap >= 0.25 && sim >= 0.35,
+                highTokenOverlap: tokOverlap >= 0.3,
+                dateRangeWithSimilarity: dateRangeMatch && sim >= 0.5,
+                tagOverlapWithSimilarity: tagOverlap && sim >= 0.4,
+                contentSimilarity: summarySimilarity || textSimilarity,
+                fineAmountMatch: fineAmountMatch,
+                penaltyElementsMatch: penaltyElementsMatch,
+                legalBasesMatch: legalBasesMatch,
+                relatedSectionsMatch: relatedSectionsMatch,
+                jurisprudenceMatch: jurisprudenceMatch,
+                topicsMatch: topicsMatch,
+                formsMatch: formsMatch,
+                fallbackMatch: sim >= 0.3 && tokOverlap >= 0.1
+              }
             });
             }
 

@@ -568,24 +568,53 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       // Always navigate to form - modal will be shown during form submission if needed
       setYesterdayMode(false);
       sessionStorage.removeItem('yesterdayMode');
-    sessionStorage.removeItem('yesterdayQuotas');
-    
-    try {
-      const raw = localStorage.getItem('kb_entry_draft');
-      if (raw) {
+      sessionStorage.removeItem('yesterdayQuotas');
+      
+      // Check if we just created an entry - if so, clear all drafts and start fresh
+      const justCreated = sessionStorage.getItem('entryJustCreated');
+      if (justCreated === '1') {
+        // Clear the flag and all draft data
+        sessionStorage.removeItem('entryJustCreated');
         try {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-            // Always ask user whether to resume or start new when a draft exists
-            setResumeDraft(parsed);
-            setShowResumeModal(true);
-            return;
-          }
-        } catch (_) {
-          // ignore parse errors and proceed to fresh form
+          localStorage.removeItem('kb_entry_draft');
+          localStorage.removeItem('kb_draft');
+          localStorage.removeItem('kb_drafts');
+          // Clear any other draft-related keys
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('kb_entry_') || 
+                key.startsWith('entry_draft_') || 
+                key.startsWith('kb_draft') ||
+                key.includes('draft') ||
+                key.includes('autosave')) {
+              localStorage.removeItem(key);
+            }
+          });
+          console.log('Cleared all drafts after successful entry creation');
+        } catch (e) {
+          console.warn('Failed to clear drafts:', e);
         }
+        setEditingEntry(null);
+        sessionStorage.setItem('cameFromDashboard', 'true');
+        navigate('/law-entry/1');
+        return;
       }
-    } catch (_) {}
+    
+      try {
+        const raw = localStorage.getItem('kb_entry_draft');
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+              // Always ask user whether to resume or start new when a draft exists
+              setResumeDraft(parsed);
+              setShowResumeModal(true);
+              return;
+            }
+          } catch (_) {
+            // ignore parse errors and proceed to fresh form
+          }
+        }
+      } catch (_) {}
       setEditingEntry(null);
       // Set session storage to indicate user came from dashboard
       sessionStorage.setItem('cameFromDashboard', 'true');
@@ -611,7 +640,25 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const handleResumeNo = async () => {
     setIsResumingNo(true);
     try {
-      try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
+      // Clear all draft data comprehensively
+      try {
+        localStorage.removeItem('kb_entry_draft');
+        localStorage.removeItem('kb_draft');
+        localStorage.removeItem('kb_drafts');
+        // Clear any other draft-related keys
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('kb_entry_') || 
+              key.startsWith('entry_draft_') || 
+              key.startsWith('kb_draft') ||
+              key.includes('draft') ||
+              key.includes('autosave')) {
+            localStorage.removeItem(key);
+          }
+        });
+        console.log('Cleared all drafts when starting new entry');
+      } catch (e) {
+        console.warn('Failed to clear drafts:', e);
+      }
       setResumeDraft(null);
       setShowResumeModal(false);
       setEditingEntry(null);
@@ -646,6 +693,11 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   };
 
   const handleSaveEntry = async (entryData) => {
+    console.log('🎯 HANDLE SAVE ENTRY CALLED');
+    console.log('📝 Entry data:', entryData);
+    console.log('🔍 Editing entry:', editingEntry);
+    console.log('🆔 Entry ID:', entryData.entry_id);
+    
     // Prevent multiple submissions for the same entry
     const entryId = entryData.entry_id;
     if (savingEntries.current.has(entryId)) {
@@ -672,12 +724,16 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       }
       
       if (editingEntry) {
+        console.log('🔄 UPDATE FLOW STARTED');
+        console.log('📝 Editing entry ID:', editingEntry.id);
+        console.log('📊 Update data:', entryData);
+        
         // Show loading state for update
         setIsUpdatingEntry(true);
         
         try {
           await updateEntry(editingEntry.id, entryData);
-          console.log('Entry updated:', entryData);
+          console.log('✅ Entry updated successfully:', entryData);
           
           // Clear editing state after successful update
           setEditingEntry(null);
@@ -727,6 +783,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
               localStorage.removeItem(key);
             }
           });
+          
+          // Set a flag to indicate successful entry creation
+          sessionStorage.setItem('entryJustCreated', '1');
+          
           console.log('Cleared all entry drafts and autosaves from localStorage');
         } catch (e) {
           console.warn('Failed to clear localStorage drafts:', e);
