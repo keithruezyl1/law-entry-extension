@@ -55,7 +55,8 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
                 value={jsonText}
                 onChange={(e) => setJsonText(e.target.value)}
                 placeholder="Paste your JSON entry here..."
-                className="h-full font-mono text-sm border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:pl-4 placeholder:pt-3"
+                className="font-mono text-sm border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:pl-4 placeholder:pt-3"
+                style={{ height: 'calc(100% - 16px)' }}
                 rows={16}
               />
               {jsonText && (
@@ -75,7 +76,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end items-center pt-8 border-t border-gray-200 dark:border-gray-600">
+          <div className="mt-auto flex justify-end items-center pt-8 border-t border-gray-200 dark:border-gray-600">
             <div className="flex gap-3">
               <Button
                 type="button"
