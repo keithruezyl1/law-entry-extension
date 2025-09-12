@@ -45,10 +45,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
       <div className="max-w-4xl w-full mx-auto h-[70vh] flex flex-col">
         <div className="flex-1 flex flex-col space-y-4">
           {/* JSON Input Section */}
-          <div className="flex-1 flex flex-col space-y-2">
-            <label htmlFor="json-input" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 -mb-1">
-              JSON Text
-            </label>
+          <div className="flex-1 flex flex-col">
             <div className="relative flex-1">
               <Textarea
                 id="json-input"
@@ -76,7 +73,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-auto flex justify-end items-center pt-8 border-t border-gray-200 dark:border-gray-600">
+          <div className="mt-auto flex justify-end items-center pt-8">
             <div className="flex gap-3">
               <Button
                 type="button"
