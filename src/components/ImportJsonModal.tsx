@@ -59,7 +59,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
                 rows={16}
               />
               {jsonText && (
-                <div className="absolute top-2 right-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded">
+                <div className="absolute top-2 right-8 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded">
                   {jsonText.length} characters
                 </div>
               )}
@@ -76,12 +76,12 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
 
           {/* Action Buttons */}
           <div className="flex justify-end items-center pt-4 border-t border-gray-200 dark:border-gray-600">
-            <div className="flex space-x-3">
+            <div className="flex space-x-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleClose}
-                className="px-6 py-3"
+                className="px-12 py-4 text-sm font-medium"
               >
                 Go Back
               </Button>
@@ -89,7 +89,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
                 type="button"
                 onClick={handleImport}
                 disabled={!jsonText.trim()}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
+                className="px-12 py-4 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
               >
                 Import Entry
               </Button>
