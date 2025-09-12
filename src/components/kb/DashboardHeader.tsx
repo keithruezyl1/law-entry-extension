@@ -49,7 +49,7 @@ export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, on
           </div>
           {/* Debug: stacked badges on the right */}
           {badgeItems && badgeItems.length > 0 && (
-            <div className="hidden sm:block">
+            <div className="block shrink-0 scale-75 sm:scale-100 origin-right">
               <TypeBadges items={badgeItems} stacked showAll />
             </div>
           )}
