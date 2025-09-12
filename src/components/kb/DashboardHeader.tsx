@@ -1,6 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '../ui/Button';
+import { TypeBadges, BadgeItem } from './TypeBadges';
 import { useAuth } from '../../contexts/AuthContext';
 import { isTagarao } from '../../utils/adminUtils';
 
@@ -13,9 +14,11 @@ type Props = {
   onClearToday?: () => void;
   onDateSelect?: (d: Date) => void;
   day1Date?: string | null;
+  // For debug badges
+  badgeItems?: BadgeItem[];
 };
 
-export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, onExportToday, onClearToday, onDateSelect, day1Date }: Props) {
+export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, onExportToday, onClearToday, onDateSelect, day1Date, badgeItems }: Props) {
   const { user } = useAuth();
   
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,18 +31,28 @@ export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, on
   };
 
   return (
-    <div className="mb-8 text-center">
+    <div className="mb-8">
       <div className="mb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-800 mb-2">Civilify Law Entry</h1>
-        <div className="text-base sm:text-lg text-gray-600">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-0">
-            <span>Day {dayIndex} of 30 • {format(date, 'PPP')}</span>
-            {day1Date && (
-              <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
-                Day 1: {format(new Date(day1Date), 'MMM d')}
-              </span>
-            )}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-center flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-800 mb-1">Civilify Law Entry</h1>
+            <div className="text-base sm:text-lg text-gray-600">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                <span>Day {dayIndex} of 30 • {format(date, 'PPP')}</span>
+                {day1Date && (
+                  <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+                    Day 1: {format(new Date(day1Date), 'MMM d')}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
+          {/* Debug: stacked badges on the right */}
+          {badgeItems && badgeItems.length > 0 && (
+            <div className="hidden sm:block">
+              <TypeBadges items={badgeItems} stacked showAll />
+            </div>
+          )}
         </div>
       </div>
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

@@ -4,6 +4,7 @@ import { computeDayIndex, rowsForDay, toISODate, loadPlanFromJson } from '../../
 import { PersonCard } from '../../../components/kb/PersonCard';
 import { GLI_CPA_TYPES } from '../../../lib/plan/config';
 import { exportDate, clearDate, setDay1Date } from '../../../lib/plan/progressStore';
+import { TypeBadges, BadgeItem } from '../../../components/kb/TypeBadges';
 
 export default function Dashboard() {
   const [date, setDate] = React.useState<Date>(new Date());
@@ -65,6 +66,37 @@ export default function Dashboard() {
   // Collect FocusNotes for the day
   const focus = dayRows.map((r: any) => r.FocusNotes).filter(Boolean).join(' • ');
 
+  // Compute cumulative totals across entire plan for debug badges
+  const badgeItems: BadgeItem[] = React.useMemo(() => {
+    if (!rows) return [];
+    const totals: Record<string, number> = Object.fromEntries(GLI_CPA_TYPES.map((t: string) => [t, 0]));
+    for (const r of rows) {
+      for (const t of GLI_CPA_TYPES) totals[t] += Number(r[t] || 0);
+    }
+    // Targets based on current plan totals after rebalance
+    const targets: Record<string, number> = {
+      constitution_provision: 90,
+      statute_section: 445,
+      rule_of_court: 385,
+      agency_circular: 70,
+      doj_issuance: 150,
+      executive_issuance: 70,
+      rights_advisory: 210,
+      city_ordinance_section: 80,
+    };
+    const labelMap: Record<string, string> = {
+      constitution_provision: 'Constitution',
+      statute_section: 'Statute',
+      rule_of_court: 'ROC',
+      agency_circular: 'Agency Circular',
+      doj_issuance: 'DOJ',
+      executive_issuance: 'Executive',
+      rights_advisory: 'Rights Advisory',
+      city_ordinance_section: 'City Ordinance',
+    };
+    return GLI_CPA_TYPES.map((t: string) => ({ key: t, label: labelMap[t] || t, count: totals[t], target: targets[t] })) as BadgeItem[];
+  }, [rows]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Blocking loader overlay while backend/plan is not yet ready */}
@@ -85,6 +117,7 @@ export default function Dashboard() {
           onImportPlan={onImportPlan}
           onDateSelect={handleDateSelect}
           day1Date={day1Date}
+          badgeItems={badgeItems}
           onClearToday={() => {
             if (window.confirm('Clear all progress for today?')) {
               clearDate(todayISO);
