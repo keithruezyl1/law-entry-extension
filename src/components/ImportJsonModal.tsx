@@ -12,6 +12,16 @@ interface ImportJsonModalProps {
 export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalProps) {
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState('');
+  const isDark = (typeof document !== 'undefined') && (
+    document.documentElement.classList.contains('dark-mode') ||
+    document.body.classList.contains('dark-mode')
+  );
+  const textareaStyle: React.CSSProperties = {
+    height: 'calc(100% - 16px)',
+    width: '100%',
+    backgroundColor: isDark ? '#1f2937' : '#f3f4f6',
+    color: isDark ? '#e5e7eb' : '#111827'
+  };
 
   const handleImport = () => {
     if (!jsonText.trim()) {
@@ -52,8 +62,8 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
                 value={jsonText}
                 onChange={(e) => setJsonText(e.target.value)}
                 placeholder="Paste your JSON entry here..."
-                className="json-textarea font-mono text-sm border-2 !border-gray-200 dark:!border-gray-600 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-200 rounded-lg resize-none !bg-gray-100 dark:!bg-gray-800 !text-gray-900 dark:!text-gray-100 placeholder:pl-4 placeholder:pt-3"
-                style={{ height: 'calc(100% - 16px)' }}
+                className="json-textarea w-full h-full font-mono text-sm border-2 !border-gray-200 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-200 rounded-lg resize-none placeholder:pl-4 placeholder:pt-3"
+                style={textareaStyle}
                 rows={16}
               />
               {jsonText && (
