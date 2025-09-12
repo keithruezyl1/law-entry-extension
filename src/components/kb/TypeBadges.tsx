@@ -14,15 +14,16 @@ type Props = {
   showAll?: boolean; // when true, show regardless of count/target
 };
 
-const defaultColorByKey: Record<string, string> = {
-  constitution_provision: 'blue',
-  statute_section: 'emerald',
-  rule_of_court: 'indigo',
-  agency_circular: 'orange',
-  doj_issuance: 'rose',
-  executive_issuance: 'violet',
-  rights_advisory: 'cyan',
-  city_ordinance_section: 'slate',
+// Static class maps so Tailwind can tree-shake correctly (no dynamic class names)
+const colorClassByKey: Record<string, { bg: string; text: string; border: string }> = {
+  constitution_provision: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
+  statute_section: { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200' },
+  rule_of_court: { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-200' },
+  agency_circular: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' },
+  doj_issuance: { bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-200' },
+  executive_issuance: { bg: 'bg-violet-100', text: 'text-violet-800', border: 'border-violet-200' },
+  rights_advisory: { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-200' },
+  city_ordinance_section: { bg: 'bg-slate-200', text: 'text-slate-900', border: 'border-slate-300' },
 };
 
 export function TypeBadges({ items, stacked = true, showAll = false }: Props) {
@@ -31,16 +32,13 @@ export function TypeBadges({ items, stacked = true, showAll = false }: Props) {
   return (
     <div className="flex items-center justify-end select-none">
       {visible.map((it, idx) => {
-        const color = it.color || defaultColorByKey[it.key] || 'gray';
+        const color = colorClassByKey[it.key] || { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' };
         const overlapClass = stacked && idx > 0 ? '-ml-2' : '';
         const zClass = stacked ? `z-[${100 - idx}]` : '';
-        const bg = `bg-${color}-100`;
-        const border = `border-${color}-200`;
-        const text = `text-${color}-800`;
         return (
           <div
             key={it.key}
-            className={`relative ${overlapClass} ${zClass} inline-flex items-center rounded-full ${bg} ${text} border ${border} px-3 py-1 text-xs font-semibold shadow-sm`}
+            className={`relative ${overlapClass} ${zClass} inline-flex items-center rounded-full ${color.bg} ${color.text} border ${color.border} px-3 py-1 text-xs font-semibold shadow-sm`}
             title={`${it.label}: ${it.count}/${it.target}`}
           >
             <span className="whitespace-nowrap">{it.label}</span>
