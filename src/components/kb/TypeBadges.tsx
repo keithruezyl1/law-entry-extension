@@ -5,7 +5,7 @@ export type BadgeItem = {
   label: string;
   count: number;
   target: number;
-  color?: string; // Tailwind color name, e.g., 'blue'
+  color?: string; // Not used in current purge-safe mapping, kept for API compat
 };
 
 type Props = {
@@ -32,17 +32,20 @@ export function TypeBadges({ items, stacked = true, showAll = false }: Props) {
   return (
     <div className="flex items-center justify-end select-none">
       {visible.map((it, idx) => {
-        const color = colorClassByKey[it.key] || { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' };
-        const overlapClass = stacked && idx > 0 ? '-ml-2' : '';
+        const color = colorClassByKey[it.key] || { bg: 'bg-gray-100', text: 'text-gray-900', border: 'border-gray-200' };
+        const overlapClass = stacked && idx > 0 ? '-ml-2 sm:-ml-3' : '';
         const zClass = stacked ? `z-[${100 - idx}]` : '';
+
         return (
           <div
             key={it.key}
-            className={`relative ${overlapClass} ${zClass} inline-flex items-center rounded-full ${color.bg} ${color.text} border ${color.border} px-3 py-1 text-xs font-semibold shadow-sm`}
+            className={`relative ${overlapClass} ${zClass} inline-flex items-center rounded-full ${color.bg} ${color.text} border ${color.border} shadow-sm px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm`}
             title={`${it.label}: ${it.count}/${it.target}`}
           >
-            <span className="whitespace-nowrap">{it.label}</span>
-            <span className="ml-2 rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-bold text-gray-900 border border-white/60">{it.count}/{it.target}</span>
+            <span className="font-bold whitespace-nowrap">{it.label}</span>
+            <span className="ml-2 rounded-full bg-white/85 text-gray-900 border border-white/70 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold tracking-tight">
+              {it.count}/{it.target}
+            </span>
           </div>
         );
       })}
