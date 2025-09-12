@@ -376,7 +376,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           type="button"
           variant={tab === 'internal' ? 'default' : 'outline'}
           onClick={() => { setTab('internal'); onActivate?.(); }}
-          className="h-11 px-7 rounded-xl min-w-[120px] kb-btn-outline"
+          className={`h-11 px-7 rounded-xl min-w-[120px] ${tab === 'internal' ? '' : 'kb-btn-outline'}`}
         >
           Internal
         </Button>
@@ -384,7 +384,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           type="button"
           variant={tab === 'external' ? 'default' : 'outline'}
           onClick={() => { setTab('external'); onActivate?.(); }}
-          className="h-11 px-7 rounded-xl min-w-[120px] kb-btn-outline"
+          className={`h-11 px-7 rounded-xl min-w-[120px] ${tab === 'external' ? '' : 'kb-btn-outline'}`}
         >
           External
         </Button>

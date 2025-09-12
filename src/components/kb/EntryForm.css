@@ -329,8 +329,8 @@
 .relations-highlight-layer {
 	position: absolute;
 	top: -12px;
-	left: -8px;
-	width: calc(100% + 16px);
+	left: -6px;
+	width: calc(100% + 20px);
 	height: calc(100% + 28px);
 	border-radius: 24px;
 	background: rgba(255, 107, 53, 0.14); /* light orange */
@@ -342,9 +342,9 @@
 .relations-highlight-layer.to-right { transform: translateX(0); }
 @media (min-width: 768px) {
 	.relations-wrapper { overflow: hidden; }
-	.relations-highlight-layer { width: calc(50% - 4px); }
+	.relations-highlight-layer { width: calc(50% - 2px); }
 	.relations-highlight-layer.to-left  { transform: translateX(0); }
-	.relations-highlight-layer.to-right { transform: translateX(calc(100% + 12px)); }
+	.relations-highlight-layer.to-right { transform: translateX(calc(100% + 16px)); }
 }
 
 .kb-form .stepper button {
