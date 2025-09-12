@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from './ui/Button';
-import { Textarea } from './ui/Textarea';
+// Bypass UI Textarea to fully control theme styling for this modal
 import Modal from './Modal/Modal';
 
 interface ImportJsonModalProps {
@@ -47,7 +47,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
           {/* JSON Input Section */}
           <div className="flex-1 flex flex-col">
             <div className="relative flex-1">
-              <Textarea
+              <textarea
                 id="json-input"
                 value={jsonText}
                 onChange={(e) => setJsonText(e.target.value)}
