@@ -213,6 +213,20 @@
   background: #545b62;
 }
 
+/* ImportJsonModal textarea theme control */
+.json-textarea {
+  background: #f3f4f6 !important; /* gray-100 */
+  color: #111827 !important;      /* gray-900 */
+  border-color: #e5e7eb !important; /* gray-200 */
+}
+.json-textarea::placeholder { color: #9ca3af; }
+.dark-mode .json-textarea {
+  background: #1f2937 !important; /* gray-800 */
+  color: #e5e7eb !important;      /* gray-100 */
+  border-color: #4b5563 !important; /* gray-600 */
+}
+.dark-mode .json-textarea::placeholder { color: #9ca3af; }
+
 @keyframes fadeIn {
   from {
     opacity: 0;

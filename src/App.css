@@ -425,9 +425,10 @@ body {
 }
 
 .theme-toggle.theme-toggle--dark {
-  background: transparent;
-  color: #ffffff; /* moon white in dark mode */
-  border-color: rgba(255,255,255,0.3); /* match logout outline */
+  /* Keep same translucent white bg as light mode; only icon changes */
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.3);
 }
 
 /* Navigation */
