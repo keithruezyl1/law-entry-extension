@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, useLoca
 import './App.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import EntryForm from './components/kb/EntryForm.tsx'; // new TS + RHF + Zod wizard
+import TypeBadges from './components/kb/TypeBadges';
 import EntryList from './components/EntryList/EntryList';
 import DashboardNotifications from './components/DashboardNotifications';
 import EntryView from './components/EntryView/EntryView';
@@ -1216,12 +1217,29 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
       {currentView !== 'form' && (
       <div className="team-progress">
-        <div className="team-progress-header">
-          <h3>Today's Team Progress {(
-            <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: '8px' }}>
+        <div className="team-progress-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <h3 style={{ margin: 0 }}>Today's Team Progress {(
+            <span style={{ color: '#6b7280', fontWeight: 500, marginLeft: 8 }}>
               {`Day ${computeDayIndex(now, day1Date)}, ${format(now, 'MMMM d, yyyy')} ${format(now, 'hh:mm:ss a')}`}
             </span>
           )}</h3>
+          {/* Debug badges beside the live clock */}
+          {Array.isArray(planRows) && planRows.length > 0 && (
+            <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center' }}>
+              <TypeBadges
+                items={(function(){
+                  const types = ['constitution_provision','statute_section','rule_of_court','agency_circular','doj_issuance','executive_issuance','rights_advisory','city_ordinance_section'];
+                  const totals = Object.fromEntries(types.map(t=>[t,0]));
+                  for (const r of planRows) for (const t of types) totals[t]+=Number(r[t]||0);
+                  const targets = { constitution_provision:90, statute_section:445, rule_of_court:385, agency_circular:70, doj_issuance:150, executive_issuance:70, rights_advisory:210, city_ordinance_section:80 };
+                  const labels = { constitution_provision:'Constitution', statute_section:'Statute', rule_of_court:'ROC', agency_circular:'Agency Circular', doj_issuance:'DOJ', executive_issuance:'Executive', rights_advisory:'Rights Advisory', city_ordinance_section:'City Ordinance' };
+                  return types.map(t=>({ key:t, label:labels[t]||t, count:totals[t], target:targets[t] }));
+                })()}
+                stacked
+                showAll
+              />
+            </div>
+          )}
         </div>
         <div className="team-members-grid">
           {dbTeamMembers.map(member => {
