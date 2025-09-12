@@ -75,21 +75,25 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end items-center pt-4 border-t border-gray-200 dark:border-gray-600">
+          <div className="flex justify-end items-center pt-8 border-t border-gray-200 dark:border-gray-600">
             <div className="flex gap-3">
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium"
+                className="!px-4 !py-2 text-sm font-medium"
+                style={{ padding: '8px 16px' }}
               >
                 Go Back
               </Button>
               <Button
                 type="button"
+                size="sm"
                 onClick={handleImport}
                 disabled={!jsonText.trim()}
-                className="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
+                className="!px-4 !py-2 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
+                style={{ padding: '8px 16px' }}
               >
                 Import Entry
               </Button>
