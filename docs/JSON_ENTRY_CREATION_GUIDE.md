@@ -475,11 +475,13 @@ Return only the JSON object, no additional text.
 
 ## 📁 Import Process
 
-1. **Create your JSON file** following this guide
-2. **Save as .json file** (e.g., `my_entries.json`)
-3. **Click "Import Entries"** button in the app
-4. **Select your JSON file**
-5. **Check the success message** for number of imported entries
+1. **Generate your JSON** following this guide (using GPT or manually)
+2. **Click "Import Entries"** button in the app
+3. **Paste your JSON text** into the text box
+4. **Click "Import Entry"** to process
+5. **Check the success message** for confirmation
+
+**New Feature**: No need to save files! Just paste your JSON directly from GPT or any other source.
 
 The system will automatically:
 - Validate all entries

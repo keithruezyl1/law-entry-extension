@@ -10,6 +10,7 @@ import Login from './components/Login/Login';
 import Confetti from './components/Confetti/Confetti';
 import Modal from './components/Modal/Modal';
 import LoadingModal from './components/Modal/LoadingModal';
+import { ImportJsonModal } from './components/ImportJsonModal';
 import { loadPlanFromJson, computeDayIndex, rowsForDay, getPlanDate, toISODate } from './lib/plan/planLoader';
 import { format } from 'date-fns';
 import { setDay1Date } from './lib/plan/progressStore';
@@ -244,6 +245,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showImportSuccessModal, setShowImportSuccessModal] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
   const [showImportLoadingModal, setShowImportLoadingModal] = useState(false);
+  const [showImportJsonModal, setShowImportJsonModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showEntrySavedModal, setShowEntrySavedModal] = useState(false);
   const [savedEntryTitle, setSavedEntryTitle] = useState('');
@@ -957,37 +959,35 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     }
   };
 
-  const handleImport = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      // Show loading modal
-      setShowImportLoadingModal(true);
+  const handleImportClick = () => {
+    setShowImportJsonModal(true);
+  };
+
+  const handleImportJson = async (jsonText) => {
+    // Show loading modal
+    setShowImportLoadingModal(true);
+    setShowImportJsonModal(false);
+    
+    try {
+      const result = await importEntries(jsonText, user);
       
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const result = await importEntries(e.target.result, user);
-          
-          // Hide loading modal
-          setShowImportLoadingModal(false);
-          
-          if (result.success) {
-            // Store the imported data in sessionStorage and redirect to form
-            sessionStorage.setItem('importedEntryData', JSON.stringify(result.data));
-            // Set the cameFromDashboard flag to allow access to the form
-            sessionStorage.setItem('cameFromDashboard', 'true');
-            navigate('/law-entry/1'); // Go to step 1 (start from beginning)
-          } else {
-            // Show error
-            alert(`Import failed: ${result.error}`);
-          }
-        } catch (err) {
-          console.error('Error importing entries:', err);
-          setShowImportLoadingModal(false);
-          alert('Failed to import entries. Please check the file format.');
-        }
-      };
-      reader.readAsText(file);
+      // Hide loading modal
+      setShowImportLoadingModal(false);
+      
+      if (result.success) {
+        // Store the imported data in sessionStorage and redirect to form
+        sessionStorage.setItem('importedEntryData', JSON.stringify(result.data));
+        // Set the cameFromDashboard flag to allow access to the form
+        sessionStorage.setItem('cameFromDashboard', 'true');
+        navigate('/law-entry/1'); // Go to step 1 (start from beginning)
+      } else {
+        // Show error
+        alert(`Import failed: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Error importing entries:', err);
+      setShowImportLoadingModal(false);
+      alert('Failed to import entries. Please check the JSON format.');
     }
   };
 
@@ -1653,15 +1653,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
            {/* For P5: Import Entries and Clear All Entries in nav-right (Row 2) */}
            {isTagarao(user) && (
              <>
-               <label className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+               <button onClick={handleImportClick} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
                  Import Entries
-                 <input 
-                   type="file" 
-                   accept=".json" 
-                   onChange={handleImport} 
-                   style={{ display: 'none' }}
-                 />
-               </label>
+               </button>
                <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
                  Clear All Entries
                </button>
@@ -1672,15 +1666,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
          {/* P1-P4 users: Expanded Import Entries button in mobile (Row 3) */}
          {!isTagarao(user) && (
            <div className="nav-import-expanded">
-             <label className="btn-secondary btn-import-expanded">
+             <button onClick={handleImportClick} className="btn-secondary btn-import-expanded">
                Import Entries
-               <input 
-                 type="file" 
-                 accept=".json" 
-                 onChange={handleImport} 
-                 style={{ display: 'none' }}
-               />
-             </label>
+             </button>
            </div>
          )}
       </nav>
@@ -1961,6 +1949,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           </button>
         </div>
       </Modal>
+
+      {/* Import JSON Modal */}
+      <ImportJsonModal
+        isOpen={showImportJsonModal}
+        onClose={() => setShowImportJsonModal(false)}
+        onImport={handleImportJson}
+      />
 
       {/* Chat Modal (RAG) */}
       <ChatModal isOpen={showChat} onClose={() => setShowChat(false)} />
