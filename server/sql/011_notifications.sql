@@ -15,3 +15,4 @@ create index if not exists idx_kb_notifications_status on kb_notifications(statu
 create index if not exists idx_kb_notifications_entry on kb_notifications(entry_id);
 
 
+

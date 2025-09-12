@@ -1490,7 +1490,8 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             
             // Don't add extra quota types - only carry over missing amounts from existing quota types
             
-            const totalReq = Object.values(cumulativeReqs).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
+            // Use originalQuotas for the main progress display to show the correct daily quota
+            const totalReq = Object.values(originalQuotas).reduce((sum, quota) => sum + (Number(quota) || 0), 0);
             
             
             // Calculate progress counts for each quota type
