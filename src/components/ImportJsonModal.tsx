@@ -45,8 +45,8 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
       <div className="max-w-4xl w-full mx-auto h-[70vh] flex flex-col">
         <div className="flex-1 flex flex-col space-y-4">
           {/* JSON Input Section */}
-          <div className="flex-1 flex flex-col space-y-3">
-            <label htmlFor="json-input" className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <div className="flex-1 flex flex-col space-y-2">
+            <label htmlFor="json-input" className="block text-sm font-semibold text-gray-900 dark:text-gray-100 -mb-1">
               JSON Text
             </label>
             <div className="relative flex-1">
@@ -55,7 +55,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
                 value={jsonText}
                 onChange={(e) => setJsonText(e.target.value)}
                 placeholder="Paste your JSON entry here..."
-                className="h-full font-mono text-sm border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="h-full font-mono text-sm border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:pl-4 placeholder:pt-3"
                 rows={16}
               />
               {jsonText && (
@@ -76,12 +76,12 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
 
           {/* Action Buttons */}
           <div className="flex justify-end items-center pt-4 border-t border-gray-200 dark:border-gray-600">
-            <div className="flex space-x-4">
+            <div className="flex gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleClose}
-                className="px-12 py-4 text-sm font-medium"
+                className="px-4 py-2 text-sm font-medium"
               >
                 Go Back
               </Button>
@@ -89,7 +89,7 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
                 type="button"
                 onClick={handleImport}
                 disabled={!jsonText.trim()}
-                className="px-12 py-4 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
+                className="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
               >
                 Import Entry
               </Button>
