@@ -1,7 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '../ui/Button';
-import { TypeBadges, BadgeItem } from './TypeBadges';
 import { useAuth } from '../../contexts/AuthContext';
 import { isTagarao } from '../../utils/adminUtils';
 
@@ -14,11 +13,9 @@ type Props = {
   onClearToday?: () => void;
   onDateSelect?: (d: Date) => void;
   day1Date?: string | null;
-  // For debug badges
-  badgeItems?: BadgeItem[];
 };
 
-export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, onExportToday, onClearToday, onDateSelect, day1Date, badgeItems }: Props) {
+export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, onExportToday, onClearToday, onDateSelect, day1Date }: Props) {
   const { user } = useAuth();
   
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,12 +44,6 @@ export function DashboardHeader({ date, dayIndex, onChangeDate, onImportPlan, on
               </div>
             </div>
           </div>
-          {/* Debug: stacked badges on the right */}
-          {badgeItems && badgeItems.length > 0 && (
-            <div className="block shrink-0 scale-75 sm:scale-100 origin-right">
-              <TypeBadges items={badgeItems} stacked showAll />
-            </div>
-          )}
         </div>
       </div>
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
