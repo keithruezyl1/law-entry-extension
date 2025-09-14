@@ -41,6 +41,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '2mb' }));
 
+// Handle preflight OPTIONS requests explicitly
+app.options('*', cors(corsOptions));
+
 // JWT authentication middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
