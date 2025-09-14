@@ -12,12 +12,33 @@ import setupDatabase from './setup-db.js';
 
 const app = express();
 
-// Temporarily allow all origins to fix CORS issue
-app.use(cors({ 
-  origin: true, // Allow all origins
+// CORS configuration - allow multiple origins for development and production
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'https://law-entry-extension.vercel.app'
+    ];
+    
+    // Add CORS_ORIGIN from environment if it exists
+    if (process.env.CORS_ORIGIN) {
+      allowedOrigins.push(process.env.CORS_ORIGIN);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'] 
-}));
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '2mb' }));
 
 // JWT authentication middleware
@@ -57,7 +78,7 @@ async function startServer() {
     console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
     console.log('PGSSL:', process.env.PGSSL);
     console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
-    console.log('CORS: Allowing all origins');
+    console.log('CORS: Allowing multiple origins including localhost:3000 and production URL');
     
     // Run database setup first
     console.log('Running database setup...');
