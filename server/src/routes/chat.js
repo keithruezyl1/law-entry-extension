@@ -17,7 +17,7 @@ function buildPrompt(question, matches) {
   return `You are a legal assistant. Answer using ONLY the provided context. If insufficient, say you don't know.\n\nContext:\n${context}\n\nQuestion: ${question}`;
 }
 
-router.post('/chat', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { question } = req.body || {};
     if (!question || !String(question).trim()) return res.status(400).json({ error: 'question is required' });
