@@ -4,16 +4,13 @@ export interface ChatResponse {
   error?: string;
 }
 
-// Resolve backend origin from CHAT_API_URL or API_BASE; ensure '/api' prefix exists
-const ORIGIN = (process.env.REACT_APP_CHAT_API_URL || process.env.REACT_APP_API_BASE || 'http://localhost:4000');
-const API_BASE = ORIGIN.endsWith('/api') ? ORIGIN : `${ORIGIN}/api`;
-// Server currently mounts chat router at '/api/chat' and defines route '/chat' → final '/api/chat/chat'
-const CHAT_ENDPOINT = `${API_BASE}/chat/chat`;
+// Prefer embedded server (/api/chat) when available; fallback to external URL
+const CHAT_BASE_URL = process.env.REACT_APP_CHAT_API_URL || 'http://localhost:4000/api';
 
 export async function askChat(question: string): Promise<ChatResponse> {
   try {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const resp = await fetch(CHAT_ENDPOINT, {
+    const resp = await fetch(`${CHAT_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
