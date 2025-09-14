@@ -13,36 +13,48 @@ import setupDatabase from './setup-db.js';
 const app = express();
 
 // CORS configuration - allow multiple origins for development and production
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001', 
+  'https://law-entry-extension.vercel.app'
+];
+
+// Add CORS_ORIGIN from environment if it exists
+if (process.env.CORS_ORIGIN) {
+  allowedOrigins.push(process.env.CORS_ORIGIN);
+}
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001', 
-      'https://law-entry-extension.vercel.app'
-    ];
-    
-    // Add CORS_ORIGIN from environment if it exists
-    if (process.env.CORS_ORIGIN) {
-      allowedOrigins.push(process.env.CORS_ORIGIN);
-    }
-    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 };
+
+// Apply CORS to all routes
 app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '2mb' }));
 
-// Handle preflight OPTIONS requests explicitly
-app.options('*', cors(corsOptions));
+// Handle preflight OPTIONS requests explicitly for all routes
+app.options('*', (req, res) => {
+  console.log('OPTIONS request received for:', req.url);
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
 // JWT authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -81,7 +93,7 @@ async function startServer() {
     console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
     console.log('PGSSL:', process.env.PGSSL);
     console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
-    console.log('CORS: Allowing multiple origins including localhost:3000 and production URL');
+    console.log('CORS: Allowing origins:', allowedOrigins);
     
     // Run database setup first
     console.log('Running database setup...');
