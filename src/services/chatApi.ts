@@ -9,9 +9,13 @@ const CHAT_BASE_URL = process.env.REACT_APP_CHAT_API_URL || 'http://localhost:40
 
 export async function askChat(question: string): Promise<ChatResponse> {
   try {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const resp = await fetch(`${CHAT_BASE_URL}/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ question }),
     });
     const json = await resp.json();

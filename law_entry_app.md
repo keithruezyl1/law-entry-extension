@@ -309,6 +309,26 @@ npm run migrate
 -- 005_simple_passwords.sql
 ```
 
+### Reindexing Embeddings (RAG)
+
+When embedding coverage changes (e.g., to include more wizard fields), reindex existing rows:
+
+```bash
+# From project root
+cd server
+npm install
+
+# Ensure env vars are set (at minimum: OPENAI_API_KEY, DATABASE_URL)
+OPENAI_API_KEY=your_key \
+DATABASE_URL=postgresql://user:pass@host:5432/db?sslmode=require \
+npm run reindex
+```
+
+- What happens: recomputes `kb_entries.embedding` for every row using the richer builder (core + type-specific + relations) and updates `updated_at`.
+- Safety: non-destructive; underlying entry content is unchanged. Can be run multiple times.
+- Requirements: Postgres with `pgvector` (see `001_init.sql`). Default model is `text-embedding-3-small` (1536 dims). Set `OPENAI_EMBEDDING_MODEL` if different.
+- New behavior: All new creates/updates already use the new embedding builder automatically.
+
 ### Testing Authentication
 1. **Start Backend**: Ensure server is running on port 4000
 2. **Start Frontend**: React app on port 3000

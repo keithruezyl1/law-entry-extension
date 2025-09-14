@@ -8,7 +8,8 @@
     "dev": "node src/index.js",
     "build": "echo 'No build step required'",
     "setup-db": "node src/setup-db.js",
-    "migrate": "node src/migrate-db.js"
+    "migrate": "node src/migrate-db.js",
+    "reindex": "node src/reindex-embeddings.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
+import buildEmbeddingText from '../embedding-builder.js';
 
 const router = Router();
 // List entries (basic projection)
@@ -125,13 +126,7 @@ router.post('/entries', async (req, res) => {
         error: `Entry ID '${parsed.entry_id}' already exists. Please use a different entry ID or update the existing entry.` 
       });
     }
-    const contentForEmbedding = [
-      parsed.title,
-      parsed.canonical_citation || '',
-      parsed.summary || '',
-      parsed.text || '',
-      (parsed.tags || []).join(', '),
-    ].join('\n\n');
+    const contentForEmbedding = buildEmbeddingText(parsed);
     let embeddingLiteral = null;
     try {
       const embedding = await embedText(contentForEmbedding);
@@ -321,13 +316,7 @@ router.put('/entries/:entryId', async (req, res) => {
       defenses: parsed.defenses
     });
 
-    const contentForEmbedding = [
-      parsed.title,
-      parsed.canonical_citation || '',
-      parsed.summary || '',
-      parsed.text || '',
-      (parsed.tags || []).join(', '),
-    ].join('\n\n');
+    const contentForEmbedding = buildEmbeddingText(parsed);
     
     let embeddingLiteral = null;
     try {
