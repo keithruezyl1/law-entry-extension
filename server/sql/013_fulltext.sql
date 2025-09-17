@@ -1,8 +1,15 @@
 -- Full-text search support for kb_entries
 -- Uses a generated tsvector column with weighted fields and a GIN index
 
--- Optional helper extension; if not available in managed DB, the clause is harmless
-create extension if not exists unaccent;
+-- Optional helper extension; on some managed DBs this may not be available. Ignore failures.
+DO $$
+BEGIN
+  BEGIN
+    CREATE EXTENSION IF NOT EXISTS unaccent;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Skipping unaccent extension creation: %', SQLERRM;
+  END;
+END $$;
 
 -- Add generated column for full-text search (idempotent)
 alter table if exists kb_entries
@@ -17,6 +24,15 @@ alter table if exists kb_entries
   ) stored;
 
 -- Index to accelerate ts_rank_cd() queries
-create index if not exists kb_entries_fts_gin on kb_entries using gin (fts);
+-- On low-memory managed Postgres, index build may fail due to maintenance_work_mem.
+-- Wrap in a DO block so failures are non-fatal; the app will still function without this index.
+DO $$
+BEGIN
+  BEGIN
+    CREATE INDEX IF NOT EXISTS kb_entries_fts_gin ON kb_entries USING gin (fts);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Skipping kb_entries_fts_gin creation: %', SQLERRM;
+  END;
+END $$;
 
 

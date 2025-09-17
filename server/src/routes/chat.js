@@ -133,17 +133,27 @@ router.post('/', async (req, res) => {
     }
 
     // Full-text (tsvector) search: compute ts_rank_cd and add to candidate set
-    const ftsRes = await query(
-      `select entry_id, type, title, canonical_citation, summary, text, tags,
-              rule_no, section_no, rights_scope,
-              ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank
-         from kb_entries
-        where fts @@ plainto_tsquery('english', $1)
-        order by fts_rank desc
-        limit 24`,
-      [normQ]
-    );
-    const fts = ftsRes.rows || [];
+    const allowFts = String(process.env.CHAT_USE_FTS || 'true').toLowerCase() !== 'false';
+    let fts = [];
+    if (allowFts) {
+      try {
+        const ftsRes = await query(
+          `select entry_id, type, title, canonical_citation, summary, text, tags,
+                  rule_no, section_no, rights_scope,
+                  ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank
+             from kb_entries
+            where fts @@ plainto_tsquery('english', $1)
+            order by fts_rank desc
+            limit 24`,
+          [normQ]
+        );
+        fts = ftsRes.rows || [];
+      } catch (err) {
+        // Gracefully disable FTS if the column or extension is unavailable
+        console.warn('[chat] FTS unavailable; continuing without it:', String(err?.code || err?.message || err));
+        fts = [];
+      }
+    }
 
     // Merge and compute composite score
     const byId = new Map();
