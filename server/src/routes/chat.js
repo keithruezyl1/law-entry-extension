@@ -122,9 +122,9 @@ router.post('/', async (req, res) => {
       const lexRes = await query(
         `select entry_id, type, title, canonical_citation, summary, text, tags,
                 rule_no, section_no, rights_scope,
-                greatest(similarity(title, $1), similarity(canonical_citation, $1), similarity(text, $1)) as lexsim
+                greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
            from kb_entries
-          where (title % $1 or canonical_citation % $1 or text % $1)
+          where (title % $1::text or canonical_citation % $1::text or text % $1::text)
           order by lexsim desc
           limit 24`,
         [normQ]
