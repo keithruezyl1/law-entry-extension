@@ -132,6 +132,19 @@ router.post('/', async (req, res) => {
       lexical = lexRes.rows || [];
     }
 
+    // Full-text (tsvector) search: compute ts_rank_cd and add to candidate set
+    const ftsRes = await query(
+      `select entry_id, type, title, canonical_citation, summary, text, tags,
+              rule_no, section_no, rights_scope,
+              ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank
+         from kb_entries
+        where fts @@ plainto_tsquery('english', $1)
+        order by fts_rank desc
+        limit 24`,
+      [normQ]
+    );
+    const fts = ftsRes.rows || [];
+
     // Merge and compute composite score
     const byId = new Map();
     for (const m of semantic) byId.set(m.entry_id, { doc: m, vectorSim: Number(m.similarity) || 0, lexsim: 0 });
@@ -141,15 +154,55 @@ router.post('/', async (req, res) => {
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim) });
       else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim });
     }
+    for (const m of fts) {
+      const prev = byId.get(m.entry_id);
+      const ftsRank = Number(m.fts_rank) || 0;
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, ftsRank: Math.max(prev.ftsRank || 0, ftsRank) });
+      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim: 0, ftsRank });
+    }
     const composite = [];
-    for (const { doc, vectorSim, lexsim } of byId.values()) {
+    for (const { doc, vectorSim, lexsim, ftsRank } of byId.values()) {
+      // Normalize fts rank into ~0..1 range with a simple squashing; adjust weight lower than vector/lex
+      const ftsNorm = Math.min(1, (Number(ftsRank) || 0) / 2);
       const finalScore = (vectorSim >= simThreshold)
-        ? (0.7 * vectorSim + 0.3 * lexsim)
-        : (0.4 * vectorSim + 0.6 * lexsim);
-      composite.push({ ...doc, vectorSim, lexsim, finalScore });
+        ? (0.65 * vectorSim + 0.25 * (lexsim || 0) + 0.10 * ftsNorm)
+        : (0.35 * vectorSim + 0.45 * (lexsim || 0) + 0.20 * ftsNorm);
+      composite.push({ ...doc, vectorSim, lexsim, ftsRank, finalScore });
     }
     composite.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
-    const matches = composite.slice(0, topK);
+    let matches = composite.slice(0, topK);
+
+    // Optional reranker using a cheaper model; guarded by env flag
+    const useReranker = String(process.env.CHAT_USE_RERANKER || '').toLowerCase() === 'true';
+    const rerankModel = process.env.CHAT_RERANK_MODEL || 'gpt-4o-mini';
+    if (useReranker && matches.length > 2) {
+      const items = matches.map((m, i) => ({
+        id: m.entry_id,
+        idx: i,
+        title: m.title,
+        citation: m.canonical_citation,
+        snippet: sliceContext(m, normQ).slice(0, 700),
+      }));
+
+      const instructions = `Score each item from 0 to 100 for how well it answers the question strictly from its snippet. Return JSON array of {id, score}. Question: ${question}`;
+      try {
+        const msg = [
+          { role: 'system', content: 'You are a precise reranker. Respond only with valid JSON.' },
+          { role: 'user', content: instructions + '\n\nItems:\n' + JSON.stringify(items) },
+        ];
+        const rr = await openai.chat.completions.create({ model: rerankModel, messages: msg, temperature: 0 });
+        const text = rr.choices?.[0]?.message?.content || '[]';
+        let parsed = [];
+        try { parsed = JSON.parse(text); } catch {}
+        const byIdScore = new Map(parsed.map((r) => [r.id, Number(r.score) || 0]));
+        matches = matches
+          .map((m) => ({ ...m, rrScore: byIdScore.get(m.entry_id) || 0 }))
+          .sort((a, b) => (b.rrScore || 0) - (a.rrScore || 0))
+          .slice(0, Math.min(topK, 8));
+      } catch (e) {
+        console.warn('[chat] reranker failed:', String(e?.message || e));
+      }
+    }
 
     // Build prompt and call Chat Completion
     const prompt = buildPrompt(question, matches);
@@ -177,6 +230,7 @@ router.post('/', async (req, res) => {
       similarity: m.vectorSim ?? m.similarity,
       lexsim: m.lexsim,
       finalScore: m.finalScore,
+      fts_rank: m.ftsRank,
     }));
     // Observability logs (non-sensitive)
     try {
@@ -186,7 +240,7 @@ router.post('/', async (req, res) => {
         bestSim,
         usedLexical: useLexical,
         topKReturned: matches.length,
-        top1: best ? { entry_id: best.entry_id, vectorSim: best.vectorSim, lexsim: best.lexsim, finalScore: best.finalScore } : null,
+        top1: best ? { entry_id: best.entry_id, vectorSim: best.vectorSim, lexsim: best.lexsim, ftsRank: best.ftsRank, finalScore: best.finalScore } : null,
       }));
     } catch {}
     res.json({ answer, sources });
