@@ -399,7 +399,13 @@ export const useLocalStorage = () => {
         // Fast normalization - single pass
         const normalize = (text) => {
           if (!text) return '';
-          let s = String(text).toLowerCase();
+          // Unicode normalize + strip diacritics, then lower case
+          let s = String(text);
+          try { s = s.normalize('NFKD'); } catch {}
+          s = s.replace(/[\u0300-\u036f]/g, '');
+          s = s.toLowerCase();
+          // Normalize smart quotes and dashes
+          s = s.replace(/[“”„‟❛❜❝❞]/g, '"').replace(/[‘’‚‛]/g, "'").replace(/[–—―]/g, '-');
           // Map punctuation variants to words before stripping
           s = s.replace(/[&/]/g, ' and ');
           // Expand common legal abbreviations (with or without dot)
@@ -438,6 +444,22 @@ export const useLocalStorage = () => {
           // vs/versus normalization to 'v'
           if (w === 'vs' || w === 'vs.' || w === 'versus') variants.add('v');
           if (w === 'v') variants.add('vs');
+          // legal synonyms/abbreviations (curated)
+          const syn = {
+            rpc: ['revised', 'penal', 'code', 'revised penal code'],
+            ord: ['ordinance'],
+            ordinance: ['ord'],
+            ca: ['commonwealth', 'act', 'commonwealth act'],
+            'c.a.': ['commonwealth', 'act', 'commonwealth act'],
+            bp: ['batas', 'pambansa', 'batas pambansa'],
+            'b.p.': ['batas', 'pambansa', 'batas pambansa'],
+            pd: ['presidential', 'decree', 'presidential decree'],
+            'p.d.': ['presidential', 'decree', 'presidential decree'],
+            irr: ['implementing', 'rules', 'regulations', 'implementing rules and regulations'],
+            roc: ['rules', 'of', 'court', 'rules of court'],
+            doj: ['department', 'of', 'justice', 'department of justice']
+          };
+          if (syn[w]) syn[w].forEach(v => variants.add(v));
           return Array.from(variants).filter(Boolean);
         };
         const searchWordVariants = new Set(searchWords.flatMap(expandWordVariants));
@@ -488,7 +510,7 @@ export const useLocalStorage = () => {
         return false;
       };
 
-        // Fast scoring system - much simpler than the complex fuzzy matching
+        // Fast scoring system - with calibrated signals
       const scoredEntries = filteredEntries.map(entry => {
           const combinedTags = Array.isArray(entry.tags) ? entry.tags.join(' ') : '';
           const combinedField = [
@@ -507,7 +529,7 @@ export const useLocalStorage = () => {
           { text: entry.law_family, weight: 5 },
           { text: combinedTags, weight: 4 },
           { text: entry.entry_id, weight: 5 },
-          { text: combinedField, weight: 4 },
+          { text: combinedField, weight: 3 },
           { text: entry.summary, weight: 3 },
           { text: entry.effective_date, weight: 3 },
           { text: entry.text, weight: 2 },
@@ -516,6 +538,7 @@ export const useLocalStorage = () => {
         
         let score = 0;
         let hasMatch = false;
+        let phraseBoostApplied = false;
         
           for (const { text, weight } of searchFields) {
           if (!text) continue;
@@ -539,6 +562,11 @@ export const useLocalStorage = () => {
           else if (normalizedText.includes(searchTerm)) {
             score += weight;
             hasMatch = true;
+            // Phrase boost for multi-word queries in title/summary
+            if (!phraseBoostApplied && searchWords.length > 1 && (weight >= 12 || text === entry.summary)) {
+              score += Math.min(20, Math.round(weight * 1.5));
+              phraseBoostApplied = true;
+            }
           }
           // Compact contains: ignore spaces/parentheses differences
           else if (compactText.includes(compactSearch)) {
@@ -556,9 +584,10 @@ export const useLocalStorage = () => {
             const matchedWords = Array.from(searchWordVariants).filter(word =>
               Array.from(textWordVariants).some(tw => tw.includes(word) || word.includes(tw))
             );
-            if (matchedWords.length >= Math.max(1, Math.ceil(searchWords.length * 0.6))) {
-              // Strong partial match (>=60% of query words)
-              score += weight * 0.9;
+            const coverage = matchedWords.length / Math.max(1, searchWords.length);
+            if (coverage >= 0.6) {
+              // Strong partial match scaled by coverage
+              score += weight * (0.6 + 0.4 * Math.min(1, coverage));
               hasMatch = true;
             } else if (matchedWords.length >= 1) {
               // Weak partial match (at least one query word)
@@ -570,15 +599,59 @@ export const useLocalStorage = () => {
               hasMatch = true;
             }
           }
+
+          // Additional scoped fuzzy: per-token edit distance 1 on short tokens for key fields
+          if (!hasMatch && (weight >= 12 || weight >= 6)) {
+            const shortTokens = searchWords.filter(w => w.length >= 3 && w.length <= 6);
+            if (shortTokens.length) {
+              const fuzzyHit = shortTokens.some(qt => textWords.some(tw => {
+                const la = qt.length, lb = tw.length;
+                if (Math.abs(la - lb) > 1) return false;
+                // inline edit distance <=1
+                let i = 0, j = 0, edits = 0;
+                while (i < la && j < lb) {
+                  if (qt[i] === tw[j]) { i++; j++; continue; }
+                  if (edits === 1) return false;
+                  edits++;
+                  if (la > lb) i++; else if (lb > la) j++; else { i++; j++; }
+                }
+                if (i < la || j < lb) edits++;
+                return edits <= 1;
+              }));
+              if (fuzzyHit) {
+                score += weight * 0.6;
+                hasMatch = true;
+              }
+            }
+          }
         }
         
         return { entry, score, hasMatch };
       });
       
       // Filter and sort by score
+      const EPS = 1e-6;
       filteredEntries = scoredEntries
         .filter(({ hasMatch }) => hasMatch)
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => {
+          if (Math.abs(b.score - a.score) > EPS) return b.score - a.score;
+          // tie-breakers: verified > active > newer effective_date > shorter title > lower id
+          const av = a.entry.verified === true ? 1 : 0;
+          const bv = b.entry.verified === true ? 1 : 0;
+          if (bv !== av) return bv - av;
+          const aActive = String(a.entry.status || '').toLowerCase() === 'active' ? 1 : 0;
+          const bActive = String(b.entry.status || '').toLowerCase() === 'active' ? 1 : 0;
+          if (bActive !== aActive) return bActive - aActive;
+          const ad = a.entry.effective_date ? Date.parse(a.entry.effective_date) : 0;
+          const bd = b.entry.effective_date ? Date.parse(b.entry.effective_date) : 0;
+          if (bd !== ad) return bd - ad;
+          const at = (a.entry.title || '').length;
+          const bt = (b.entry.title || '').length;
+          if (at !== bt) return at - bt;
+          const aid = String(a.entry.entry_id || a.entry.id || '');
+          const bid = String(b.entry.entry_id || b.entry.id || '');
+          return aid.localeCompare(bid);
+        })
         .map(({ entry }) => entry);
     }
 
