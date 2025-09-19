@@ -2496,11 +2496,25 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 type="submit" 
                                 disabled={isSubmitting || isUpdatingEntry}
                                 onClick={(e) => {
+                                  console.log('🔍 Create Entry clicked');
+                                  console.log('🔍 nearDuplicates:', nearDuplicates);
+                                  console.log('🔍 dupeDismissed:', (window as any).__dupes_dismissed__);
+                                  console.log('🔍 Form errors:', methods.formState.errors);
+                                  console.log('🔍 Form is valid:', methods.formState.isValid);
+                                  
                                   const dupeDismissed = (window as any).__dupes_dismissed__ === true;
                                   if ((nearDuplicates && nearDuplicates.length > 0) && !dupeDismissed) {
+                                    console.log('🔍 Preventing default, showing dupe confirm');
                                     e.preventDefault();
                                     dupeActionRef.current = () => methods.handleSubmit(onSubmit)();
                                     setShowDupeConfirm(true);
+                                  } else {
+                                    console.log('🔍 Allowing form submission');
+                                    // Force form submission if needed
+                                    if (!methods.formState.isValid) {
+                                      console.log('🔍 Form invalid, triggering validation');
+                                      methods.trigger();
+                                    }
                                   }
                                 }}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
