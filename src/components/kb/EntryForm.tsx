@@ -18,6 +18,7 @@ import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } fr
 import { generateEntryId, generateUniqueEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 import { semanticSearch } from '../../services/vectorApi';
+import { normalizeForMatch, compactString, parentheticalVariant, expandWordVariants } from '../../utils/textNormalizer';
 import { useAuth } from '../../contexts/AuthContext';
 
 type EntryFormProps = {
@@ -1427,30 +1428,80 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             resultsRaw = resp.results;
             console.log('🔍 Using semantic search results:', resultsRaw.length);
           } else {
-            console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
+            console.log('🔍 Semantic search failed or returned no results, using improved local fallback');
 
+            // Build normalized query variants
+            const queryN = normalizeForMatch(q);
+            const queryCompact = compactString(queryN);
+            const queryParen = parentheticalVariant(queryN);
+            const qWords = queryN.split(/\s+/).filter(Boolean);
+            const qWordVariants = new Set(qWords.flatMap(expandWordVariants));
 
-            // Fallback: simple text search through existing entries
-            const searchTerm = q.toLowerCase();
-            resultsRaw = existingEntries
-              .filter(entry => {
-                const searchableText = [
-                  entry.title,
-                  (entry as any).canonical_citation,
-                  (entry as any).section_id,
-                  (entry as any).law_family,
-                  (entry as any).summary
-                ].filter(Boolean).join(' ').toLowerCase();
-                return searchableText.includes(searchTerm);
-              })
-              .map(entry => ({
-                ...entry,
-                similarity: 0.5 // Default similarity for text matches
-              }))
-              .slice(0, 10);
-            console.log('🔍 Fallback text search results:', resultsRaw.length);
+            const scoreEntry = (entry: any) => {
+              const title = normalizeForMatch(entry.title);
+              const citation = normalizeForMatch((entry as any).canonical_citation);
+              const section = normalizeForMatch((entry as any).section_id);
+              const family = normalizeForMatch((entry as any).law_family);
+              const summary = normalizeForMatch((entry as any).summary);
+              const tags = normalizeForMatch(Array.isArray(entry.tags) ? entry.tags.join(' ') : '');
 
+              const fields = [
+                { text: title, w: 12 },
+                { text: citation, w: 9 },
+                { text: section, w: 6 },
+                { text: family, w: 5 },
+                { text: tags, w: 4 },
+                { text: summary, w: 3 },
+              ];
 
+              let score = 0;
+              let matched = false;
+              for (const { text, w } of fields) {
+                if (!text) continue;
+                const compact = compactString(text);
+                const words = text.split(/\s+/).filter(Boolean);
+                const wordSet = new Set(words);
+                // Exact/starts/contains
+                if (text === queryN) { score += w * 3; matched = true; continue; }
+                if (text.startsWith(queryN)) { score += w * 2; matched = true; }
+                if (text.includes(queryN)) { score += w * 1; matched = true; }
+                // Compact / parenthetical variants
+                if (compact.includes(queryCompact)) { score += w * 0.9; matched = true; }
+                if (text.includes(queryParen)) { score += w * 0.9; matched = true; }
+                // Coverage
+                const coverage = Array.from(qWordVariants).filter((qw: any) =>
+                  Array.from(wordSet).some((tw: any) => tw.includes(qw) || qw.includes(tw))
+                ).length / Math.max(1, qWords.length);
+                if (coverage >= 0.6) { score += w * (0.6 + 0.4 * Math.min(1, coverage)); matched = true; }
+                else if (coverage >= 0.2) { score += w * 0.4; matched = true; }
+              }
+              return { score, matched };
+            };
+
+            // Cheap candidate pruning: quick token OR check before scoring
+            const qTokens = new Set(qWords);
+            const quickHit = (entry: any) => {
+              const fields = [entry.title, (entry as any).canonical_citation, (entry as any).section_id, (entry as any).law_family, (entry as any).summary]
+                .filter(Boolean)
+                .map((t: any) => normalizeForMatch(t));
+              const compactFields = fields.map(f => compactString(f));
+              // token OR
+              const tokenPass = fields.some(f => Array.from(qTokens).some(t => f.includes(t)));
+              // compact/parenthetical OR
+              const compactPass = compactFields.some(cf => cf.includes(queryCompact)) || fields.some(f => f.includes(queryParen));
+              return tokenPass || compactPass;
+            };
+
+            const scored = existingEntries
+              .filter((e: any) => quickHit(e))
+              .map((e: any) => ({ e, ...scoreEntry(e) }))
+              .filter(r => r.matched)
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 5)
+              .map(r => ({ ...r.e, similarity: Math.min(0.99, r.score / 20) }));
+
+            resultsRaw = scored;
+            console.log('🔍 Local fallback results:', resultsRaw.length);
           }
           // Smart stopwords - filter out only the most generic words
           const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','at','by','with','from','into','during','including','until','against','among','throughout','despite','towards','upon']);

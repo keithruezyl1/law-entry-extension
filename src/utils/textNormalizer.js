@@ -201,7 +201,74 @@ export const formatTextForDisplay = (text) => {
   return formatted;
 };
 
+// ——— Matching helpers reused by search and possible-matches ———
 
+/**
+ * Normalize for matching: NFKC + strip diacritics, lowercase, smart punctuation, legal abbreviations
+ */
+export const normalizeForMatch = (raw) => {
+  if (!raw) return '';
+  let s = String(raw);
+  try { s = s.normalize('NFKD'); } catch {}
+  s = s.replace(/[\u0300-\u036f]/g, '');
+  s = s.toLowerCase();
+  // Normalize smart quotes/dashes
+  s = s.replace(/[“”„‟❛❜❝❞]/g, '"').replace(/[‘’‚‛]/g, "'").replace(/[–—―]/g, '-');
+  // Punctuation variants → words
+  s = s.replace(/[&\/]/g, ' and ');
+  // Legal abbreviations/expansions
+  s = s
+    .replace(/\bart\.?\b/g, 'article')
+    .replace(/\bart\.\s*/g, 'article ')
+    .replace(/\barticulo\b/g, 'article')
+    .replace(/\bsec\.?\b/g, 'section')
+    .replace(/\bsec\.\s*/g, 'section ')
+    .replace(/\bpar\.?\b/g, 'paragraph')
+    .replace(/\bsubsec\.?\b/g, 'subsection')
+    .replace(/\bsub\.\b/g, 'subsection')
+    .replace(/\br\.?a\.?\b/g, 'republic act')
+    .replace(/\bra\b/g, 'republic act')
+    .replace(/\bno\.?\b/g, 'number');
+  // Strip remaining punctuation
+  s = s.replace(/[^a-z0-9\s]/g, ' ');
+  // Collapse whitespace
+  s = s.replace(/\s+/g, ' ').trim();
+  // Light plural smoothing
+  s = s.split(' ').map(w => (w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w)).join(' ');
+  return s;
+};
 
+export const compactString = (s) => String(s || '').replace(/\s+/g, '');
 
+export const parentheticalVariant = (s) =>
+  String(s || '')
+    .replace(/\b(\d+)\s*([a-z])\b/g, '$1($2)')
+    .replace(/\b(\d+)\s*\(\s*([a-z])\s*\)\b/g, '$1($2)');
 
+export const expandWordVariants = (w) => {
+  const variants = new Set([w]);
+  // anti- prefix optional
+  if (w.startsWith('anti') && w.length > 4) variants.add(w.replace(/^anti[-\s]?/, ''));
+  // vs family
+  if (w === 'vs' || w === 'vs.' || w === 'versus') variants.add('v');
+  if (w === 'v') variants.add('vs');
+  // legal synonyms/abbreviations
+  const syn = {
+    rpc: ['revised', 'penal', 'code', 'revised penal code'],
+    ord: ['ordinance'],
+    ordinance: ['ord'],
+    ca: ['commonwealth', 'act', 'commonwealth act'],
+    'c.a.': ['commonwealth', 'act', 'commonwealth act'],
+    bp: ['batas', 'pambansa', 'batas pambansa'],
+    'b.p.': ['batas', 'pambansa', 'batas pambansa'],
+    pd: ['presidential', 'decree', 'presidential decree'],
+    'p.d.': ['presidential', 'decree', 'presidential decree'],
+    irr: ['implementing', 'rules', 'regulations', 'implementing rules and regulations'],
+    roc: ['rules', 'of', 'court', 'rules of court'],
+    doj: ['department', 'of', 'justice', 'department of justice']
+  };
+  if (syn[w]) syn[w].forEach(v => variants.add(v));
+  return Array.from(variants).filter(Boolean);
+};
+
+export const tokenizeForMatch = (s) => normalizeForMatch(s).split(/\s+/).filter(Boolean);
