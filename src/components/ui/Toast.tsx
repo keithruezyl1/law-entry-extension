@@ -148,7 +148,7 @@ export const Toast: React.FC<ToastProps> = ({
         </div>
         
         {/* Content */}
-        <div className="p-5 sm:p-6 dark:bg-gray-800">
+        <div className="p-0 dark:bg-gray-800">
           {children}
         </div>
       </div>

@@ -245,7 +245,7 @@
 
 /* Duplicate Matches Toast Specific Styling */
 .duplicate-matches-content {
-  padding: 0;
+  padding: 16px 20px;
   margin: 0;
 }
 
@@ -283,7 +283,7 @@
 
 .duplicate-matches-footer {
   margin-top: 16px;
-  padding-top: 12px;
+  padding: 12px 20px 16px 20px;
   border-top: 1px solid #e5e7eb;
 }
 
@@ -319,11 +319,11 @@
 }
 
 .dark .duplicate-match-title {
-  color: #f9fafb;
+  color: #f9fafb !important;
 }
 
 .dark .duplicate-match-citation {
-  color: #9ca3af;
+  color: #9ca3af !important;
 }
 
 .dark .duplicate-matches-footer {
@@ -337,6 +337,23 @@
 .dark .duplicate-matches-view-all:hover {
   color: #fbbf24;
   background-color: #451a03;
+}
+
+/* Force dark mode colors for duplicate matches */
+.dark-mode .duplicate-match-title {
+  color: #f9fafb !important;
+}
+
+.dark-mode .duplicate-match-citation {
+  color: #9ca3af !important;
+}
+
+.dark-mode .duplicate-match-item {
+  border-bottom-color: #374151 !important;
+}
+
+.dark-mode .duplicate-matches-footer {
+  border-top-color: #374151 !important;
 }
 
 /* Responsive adjustments */
@@ -368,6 +385,10 @@
     padding: 0.5rem;
   }
 
+  .duplicate-matches-content {
+    padding: 12px 16px;
+  }
+
   .duplicate-match-item {
     padding: 10px 0;
   }
@@ -378,5 +399,9 @@
 
   .duplicate-match-citation {
     font-size: 11px;
+  }
+
+  .duplicate-matches-footer {
+    padding: 10px 16px 12px 16px;
   }
 }
