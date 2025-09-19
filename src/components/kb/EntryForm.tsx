@@ -1865,7 +1865,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         {/* Toast for possible duplicates */}
         <DuplicateMatchesToast
           isOpen={nearDuplicates && nearDuplicates.length > 0}
-          onClose={() => setNearDuplicates([])}
+          onClose={() => {
+            setNearDuplicates([]);
+            // Mark duplicates dismissed so the next action can proceed
+            try { (window as any).__dupes_dismissed__ = true; } catch {}
+          }}
           matches={nearDuplicates || []}
           maxDisplay={5}
         />
@@ -2492,7 +2496,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 type="submit" 
                                 disabled={isSubmitting || isUpdatingEntry}
                                 onClick={(e) => {
-                                  if (nearDuplicates && nearDuplicates.length > 0) {
+                                  const dupeDismissed = (window as any).__dupes_dismissed__ === true;
+                                  if ((nearDuplicates && nearDuplicates.length > 0) && !dupeDismissed) {
                                     e.preventDefault();
                                     dupeActionRef.current = () => methods.handleSubmit(onSubmit)();
                                     setShowDupeConfirm(true);
