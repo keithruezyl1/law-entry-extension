@@ -540,6 +540,16 @@ export const useLocalStorage = () => {
             score += weight;
             hasMatch = true;
           }
+          // Compact contains: ignore spaces/parentheses differences
+          else if (compactText.includes(compactSearch)) {
+            score += weight * 0.9;
+            hasMatch = true;
+          }
+          // Parenthetical variant contains: map "5 a" -> "5(a)"
+          else if (normalizedText.includes(parentheticalSearch)) {
+            score += weight * 0.9;
+            hasMatch = true;
+          }
           // Token overlap scoring: reward partial multi-word matches
           else {
             // Variant-aware token overlap (handles anti- prefix and vs/versus)
@@ -554,22 +564,11 @@ export const useLocalStorage = () => {
               // Weak partial match (at least one query word)
               score += weight * 0.4;
               hasMatch = true;
+            } else if (simpleFuzzyMatch(text, searchTerm)) {
+              // Simple fuzzy match gets lower score
+              score += weight * 0.5;
+              hasMatch = true;
             }
-          }
-          // Compact contains: ignore spaces/parentheses differences
-          else if (compactText.includes(compactSearch)) {
-            score += weight * 0.9;
-            hasMatch = true;
-          }
-          // Parenthetical variant contains: map "5 a" -> "5(a)"
-          else if (normalizedText.includes(parentheticalSearch)) {
-            score += weight * 0.9;
-            hasMatch = true;
-          }
-            // Simple fuzzy match gets lower score
-            else if (simpleFuzzyMatch(text, searchTerm)) {
-            score += weight * 0.5;
-            hasMatch = true;
           }
         }
         
