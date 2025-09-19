@@ -2496,26 +2496,26 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 type="submit" 
                                 disabled={isSubmitting || isUpdatingEntry}
                                 onClick={(e) => {
+                                  // Always handle submission programmatically to avoid dead-clicks
+                                  e.preventDefault();
+
                                   console.log('🔍 Create Entry clicked');
                                   console.log('🔍 nearDuplicates:', nearDuplicates);
                                   console.log('🔍 dupeDismissed:', (window as any).__dupes_dismissed__);
                                   console.log('🔍 Form errors:', methods.formState.errors);
                                   console.log('🔍 Form is valid:', methods.formState.isValid);
-                                  
+
                                   const dupeDismissed = (window as any).__dupes_dismissed__ === true;
                                   if ((nearDuplicates && nearDuplicates.length > 0) && !dupeDismissed) {
-                                    console.log('🔍 Preventing default, showing dupe confirm');
-                                    e.preventDefault();
+                                    console.log('🔍 Showing dupe confirm');
                                     dupeActionRef.current = () => methods.handleSubmit(onSubmit)();
                                     setShowDupeConfirm(true);
-                                  } else {
-                                    console.log('🔍 Allowing form submission');
-                                    // Force form submission if needed
-                                    if (!methods.formState.isValid) {
-                                      console.log('🔍 Form invalid, triggering validation');
-                                      methods.trigger();
-                                    }
+                                    return;
                                   }
+
+                                  // Submit via RHF which will validate and call onSubmit if valid
+                                  console.log('🔍 Submitting via handleSubmit');
+                                  methods.handleSubmit(onSubmit)();
                                 }}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
                                   isSubmitting || isUpdatingEntry
