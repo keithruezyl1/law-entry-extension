@@ -121,17 +121,17 @@ export const Toast: React.FC<ToastProps> = ({
     >
       <div className={`bg-white dark:bg-gray-800 shadow-2xl rounded-xl border border-gray-200 dark:border-gray-600 min-w-[400px] max-w-[560px] overflow-hidden toast-container ${getAnimationClass()}`}>
         {/* Header with gradient background */}
-        <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
+        <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-8 py-4 relative`}>
           <div className="flex items-center justify-between">
             {/* Left group: Warning icon + title */}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-1 min-w-0 ml-2">
               <Icon className="w-5 h-5 text-white flex-shrink-0" />
               <h3 className="text-lg font-semibold text-white truncate" title={title}>{title}</h3>
             </div>
             
             {/* Right: Close button */}
             <button 
-              className="text-white/80 hover:text-white active:text-white/90 flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent p-2 -m-2 flex-shrink-0"
+              className="text-white/80 hover:text-white active:text-white/90 flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent p-2 -m-2 flex-shrink-0 mr-2"
               onClick={onClose}
               title="Close"
               aria-label="Close"
@@ -199,19 +199,13 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div 
-        className="duplicate-matches-content"
-        style={{
-          padding: '16px 20px',
-          margin: 0
-        }}
-      >
+      <div className="duplicate-matches-content" style={{ padding: '16px 20px', margin: 0 }}>
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
             className="duplicate-match-item"
-            style={{
-              padding: '12px 0',
+            style={{ 
+              padding: '12px 0', 
               borderBottom: index < maxDisplay - 1 ? `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}` : 'none',
               transition: 'all 0.2s ease'
             }}
@@ -249,30 +243,10 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       
       {/* Footer with CTA when there are more results */}
       {hasMore && onViewAll && (
-        <div 
-          className="duplicate-matches-footer"
-          style={{
-            marginTop: '16px',
-            padding: '12px 20px 16px 20px',
-            borderTop: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`
-          }}
-        >
+        <div className="duplicate-matches-footer">
           <button
             onClick={onViewAll}
             className="duplicate-matches-view-all"
-            style={{
-              width: '100%',
-              textAlign: 'center',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: isDarkMode ? '#f59e0b' : '#d97706',
-              background: 'none',
-              border: 'none',
-              padding: '8px 0',
-              cursor: 'pointer',
-              transition: 'color 0.2s ease',
-              borderRadius: '4px'
-            }}
             aria-label={`View all ${matches.length} matches`}
           >
             View all {matches.length} matches →
