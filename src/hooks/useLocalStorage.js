@@ -742,15 +742,53 @@ export const useLocalStorage = () => {
     return entries.filter(entry => entry.offline && entry.offline.pack_include);
   };
 
-  // Export entries
+  // Export entries (respects current filters + search when present)
   const exportEntries = () => {
-    const dataStr = JSON.stringify(entries, null, 2);
+    let toExport = entries;
+    try {
+      const rawFilters = localStorage.getItem('entry_filter_snapshot');
+      const rawQuery = localStorage.getItem('entry_search_query');
+      const filters = rawFilters ? JSON.parse(rawFilters) : {};
+      const query = rawQuery ? String(rawQuery) : '';
+
+      const hasActiveFilters = !!filters && Object.keys(filters).some((k) => {
+        const v = filters[k];
+        // Treat 'all', undefined, null, '' as not active
+        if (v === undefined || v === null) return false;
+        if (typeof v === 'string' && v.trim() === '') return false;
+        if (typeof v === 'string' && v === 'all') return false;
+        if (Array.isArray(v) && v.length === 0) return false;
+        return true;
+      });
+      const hasQuery = typeof query === 'string' && query.trim().length > 0;
+
+      if (hasActiveFilters || hasQuery) {
+        const runSearch = (q, f) => {
+          let filtered = [...entries];
+          // Reuse the same filtering rules as searchEntries
+          // Apply basic text search if query present using the same logic by delegating to searchEntries
+          try {
+            const searchFn = (searchEntries); // closure var above in hook
+            if (typeof searchFn === 'function') {
+              return searchFn(q, f);
+            }
+          } catch {}
+          return filtered;
+        };
+        toExport = runSearch(query, filters);
+      }
+    } catch (e) {
+      // If anything fails, default to exporting all entries
+      toExport = entries;
+    }
+
+    const dataStr = JSON.stringify(toExport, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    // Filename format: KB-existing-entries-<date>.json
-    link.download = `KB-existing-entries-${new Date().toISOString().split('T')[0]}.json`;
+    const suffix = (toExport && toExport.length ? `${toExport.length}-items` : 'all');
+    link.download = `KB-existing-entries-${suffix}-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };

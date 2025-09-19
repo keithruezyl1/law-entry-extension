@@ -252,6 +252,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const [showImportJsonModal, setShowImportJsonModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showEntrySavedModal, setShowEntrySavedModal] = useState(false);
+  const [showEntryLoadingModal, setShowEntryLoadingModal] = useState(false);
   const [savedEntryTitle, setSavedEntryTitle] = useState('');
   const [isUpdatingEntry, setIsUpdatingEntry] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -863,17 +864,25 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           console.warn('Failed to clear localStorage drafts:', e);
         }
         // Vector indexing is already handled by addEntry() above
-        // Show success modal after addEntry completes successfully
+        // Show loading modal first, then success modal after 2 seconds
         setSavedEntryTitle(entryData.title);
-        setShowEntrySavedModal(true);
+        setShowEntryLoadingModal(true);
         setImportedEntryData(null); // Clear imported data after successful save
         sessionStorage.removeItem('importedEntryData'); // Clear from sessionStorage
         sessionStorage.removeItem('cameFromDashboard'); // Clear dashboard access flag
+        
+        // After 2 seconds, hide loading modal and show success modal
+        setTimeout(() => {
+          setShowEntryLoadingModal(false);
+          setShowEntrySavedModal(true);
+        }, 2000);
       }
       try { localStorage.removeItem('kb_entry_draft'); } catch (_) {}
       setEditingEntry(null);
     } catch (err) {
       console.error('Error saving entry:', err);
+      // Hide loading modal if it was shown
+      setShowEntryLoadingModal(false);
       const msg = (err && err.message) ? String(err.message) : 'Please try again.';
       alert(`Failed to save entry: ${msg}`);
     } finally {
@@ -1951,6 +1960,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           </button>
         </div>
       </Modal>
+
+      {/* Entry Loading Modal */}
+      <LoadingModal
+        isOpen={showEntryLoadingModal}
+        title="Creating Entry..."
+        subtitle={`"${savedEntryTitle}" is being saved to the database and indexed.`}
+      />
 
       {/* Entry Saved Modal */}
       <Modal

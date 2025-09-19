@@ -1336,11 +1336,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     });
 
 
-    // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
-    // For ALL entries on create URLs, we should run duplicate detection
-    if (entry && (entry as any).id && !isOnCreateUrl) {
+    // Disable duplicate detection entirely in edit mode to avoid blocking updates
+    if (isEditMode) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
+        console.log('✅ Disabling duplicate detection in edit mode');
       }
       setNearDuplicates([]);
       return;
@@ -2241,7 +2240,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
                         {/* Pro Tip removed as requested */}
 
-                        <div className="kb-action-bar">
+      <div className="kb-action-bar">
                           <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12">
                             <X className="h-4 w-4" />
                             Cancel
@@ -2261,9 +2260,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             <Button 
                               type="button" 
                               onClick={goNext} 
-                              disabled={nearDuplicates && nearDuplicates.length > 0}
+              disabled={!isEditMode && (nearDuplicates && nearDuplicates.length > 0)}
                               className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                nearDuplicates && nearDuplicates.length > 0
+                !isEditMode && (nearDuplicates && nearDuplicates.length > 0)
                                   ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                   : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                               }`}
@@ -2340,9 +2339,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button 
                                 type="button" 
                                 onClick={goNext} 
-                                disabled={nearDuplicates && nearDuplicates.length > 0}
+                                disabled={!isEditMode && (nearDuplicates && nearDuplicates.length > 0)}
                                 className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                  nearDuplicates && nearDuplicates.length > 0
+                                  !isEditMode && (nearDuplicates && nearDuplicates.length > 0)
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                                 }`}
@@ -2397,9 +2396,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button 
                                 type="button" 
                                 onClick={goNext} 
-                                disabled={nearDuplicates && nearDuplicates.length > 0}
+                                disabled={!isEditMode && (nearDuplicates && nearDuplicates.length > 0)}
                                 className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                  nearDuplicates && nearDuplicates.length > 0
+                                  !isEditMode && (nearDuplicates && nearDuplicates.length > 0)
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                                 }`}
@@ -2466,9 +2465,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               )}
                               <Button 
                                 type="submit" 
-                                disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
+                                disabled={isSubmitting || isUpdatingEntry || (!isEditMode && (nearDuplicates && nearDuplicates.length > 0))}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
-                                  isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
+                                  isSubmitting || isUpdatingEntry || (!isEditMode && (nearDuplicates && nearDuplicates.length > 0))
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'
                                 }`}

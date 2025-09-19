@@ -133,6 +133,16 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
     return filtered;
   }, [debouncedSearchQuery, filters, searchEntries, teamMemberNames]);
 
+  // Persist current filters and search so Export can follow them
+  useEffect(() => {
+    try {
+      localStorage.setItem('entry_filter_snapshot', JSON.stringify(filters || {}));
+      localStorage.setItem('entry_search_query', String(debouncedSearchQuery || ''));
+    } catch (e) {
+      // non-fatal
+    }
+  }, [filters, debouncedSearchQuery]);
+
   // Calculate pagination with memoization
   const paginationData = useMemo(() => {
     const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
