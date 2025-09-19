@@ -123,15 +123,18 @@ export const Toast: React.FC<ToastProps> = ({
         {/* Header with gradient background */}
         <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 ml-6">
-              <Icon className="w-5 h-5 text-white" />
-              <h3 className="text-lg font-semibold text-white">{title}</h3>
+            {/* Left group: Warning icon + title */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Icon className="w-5 h-5 text-white flex-shrink-0" />
+              <h3 className="text-lg font-semibold text-white truncate" title={title}>{title}</h3>
             </div>
+            
+            {/* Right: Close button */}
             <button 
-              className="text-white/80 hover:text-white flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -ml-3"
+              className="text-white/80 hover:text-white active:text-white/90 flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent p-2 -m-2 flex-shrink-0"
               onClick={onClose}
-              title="Dismiss notification"
-              aria-label="Dismiss notification"
+              title="Close"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
