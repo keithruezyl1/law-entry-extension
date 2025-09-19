@@ -412,6 +412,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [showDraftSaved, setShowDraftSaved] = useState<boolean>(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
+  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
+  const dupeActionRef = React.useRef<null | (() => void)>(null);
+
+  const handleViewMatches = React.useCallback(() => {
+    setShowDupeConfirm(false);
+    try {
+      if (!nearDuplicates || nearDuplicates.length === 0) {
+        const currentTitle = methods.getValues('title');
+        setValue('title', String(currentTitle || '') + ' ');
+        setTimeout(() => setValue('title', currentTitle as any), 10);
+      }
+    } catch {}
+  }, [nearDuplicates, methods, setValue]);
   const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
   const [formPopulated, setFormPopulated] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
@@ -2259,12 +2272,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             )}
                             <Button 
                               type="button" 
-                              onClick={goNext} 
-                              disabled={nearDuplicates && nearDuplicates.length > 0}
+                              onClick={() => {
+                                if (nearDuplicates && nearDuplicates.length > 0) {
+                                  dupeActionRef.current = goNext;
+                                  setShowDupeConfirm(true);
+                                } else {
+                                  goNext();
+                                }
+                              }}
                               className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                nearDuplicates && nearDuplicates.length > 0
-                                  ? 'bg-gray-400 cursor-not-allowed shadow-none'
-                                  : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                                'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                               }`}
                             >
                               Next
@@ -2338,12 +2355,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                               <Button 
                                 type="button" 
-                                onClick={goNext} 
-                                disabled={nearDuplicates && nearDuplicates.length > 0}
+                                onClick={() => {
+                                  if (nearDuplicates && nearDuplicates.length > 0) {
+                                    dupeActionRef.current = goNext;
+                                    setShowDupeConfirm(true);
+                                  } else {
+                                    goNext();
+                                  }
+                                }}
                                 className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                  nearDuplicates && nearDuplicates.length > 0
-                                    ? 'bg-gray-400 cursor-not-allowed shadow-none'
-                                    : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                                  'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                                 }`}
                               >
                                 Next
@@ -2395,12 +2416,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                               <Button 
                                 type="button" 
-                                onClick={goNext} 
-                                disabled={nearDuplicates && nearDuplicates.length > 0}
+                                onClick={() => {
+                                  if (nearDuplicates && nearDuplicates.length > 0) {
+                                    dupeActionRef.current = goNext;
+                                    setShowDupeConfirm(true);
+                                  } else {
+                                    goNext();
+                                  }
+                                }}
                                 className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                  nearDuplicates && nearDuplicates.length > 0
-                                    ? 'bg-gray-400 cursor-not-allowed shadow-none'
-                                    : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                                  'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                                 }`}
                               >
                                 Next
@@ -2465,9 +2490,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               )}
                               <Button 
                                 type="submit" 
-                                disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
+                                disabled={isSubmitting || isUpdatingEntry}
+                                onClick={(e) => {
+                                  if (nearDuplicates && nearDuplicates.length > 0) {
+                                    e.preventDefault();
+                                    dupeActionRef.current = () => methods.handleSubmit(onSubmit)();
+                                    setShowDupeConfirm(true);
+                                  }
+                                }}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
-                                  isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
+                                  isSubmitting || isUpdatingEntry
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'
                                 }`}
@@ -2497,6 +2529,33 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         <Modal isOpen={showDraftSaved} onClose={() => setShowDraftSaved(false)} title="Draft saved" subtitle={null}>
           <div className="text-center p-4">
             <p className="text-sm text-gray-600">Your draft has been saved locally.</p>
+          </div>
+        </Modal>
+        {/* Duplicate confirmation modal */}
+        <Modal
+          isOpen={showDupeConfirm}
+          onClose={() => setShowDupeConfirm(false)}
+          title="Possible matches found"
+          subtitle="Proceeding may create a duplicate entry."
+        >
+          <div className="p-4 space-y-4">
+            <p className="text-sm text-gray-700 dark:text-gray-200">
+              We detected possible existing entries that look similar to this one. Do you want to proceed anyway?
+            </p>
+            <div className="flex justify-between gap-3">
+              <button className="modal-button" onClick={handleViewMatches}>View matches</button>
+              <button className="modal-button cancel" onClick={() => setShowDupeConfirm(false)}>Review first</button>
+              <button
+                className="modal-button danger"
+                onClick={() => {
+                  const fn = dupeActionRef.current;
+                  setShowDupeConfirm(false);
+                  if (fn) fn();
+                }}
+              >
+                Proceed anyway
+              </button>
+            </div>
           </div>
         </Modal>
 
