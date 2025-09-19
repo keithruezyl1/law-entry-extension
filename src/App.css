@@ -1391,3 +1391,19 @@ body {
 .mt-3 {
   margin-top: 1.5rem;
 }
+
+/* Center the KB entry form container explicitly (Tailwind-like classes are not processed) */
+.kb-form {
+  max-width: 1120px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Ensure the grid wrapper remains centered as well */
+.kb-form-layout {
+  margin-left: auto;
+  margin-right: auto;
+}
