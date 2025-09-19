@@ -1408,14 +1408,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         setSearchingDupes(true);
         console.log('🔍 Starting semantic search with query:', q);
         console.log('🔍 Existing entries count:', existingEntries.length);
-        
-        // If no existing entries, skip duplicate detection
-        if (!existingEntries || existingEntries.length === 0) {
-          console.log('🔍 No existing entries available for duplicate detection');
-          setNearDuplicates([]);
-          setSearchingDupes(false);
-          return;
-        }
 
 
 

@@ -22,6 +22,7 @@ import ChatModal from './components/kb/ChatModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { checkAdminAndAlert, isTagarao } from './utils/adminUtils';
 import { Toast } from './components/ui/Toast';
+import { useAuthErrorHandler } from './hooks/useAuthErrorHandler';
 
 function HeaderNotificationsButton() {
   const [open, setOpen] = useState(false);
@@ -191,6 +192,9 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  
+  // Set up global authentication error handling
+  useAuthErrorHandler();
   
   const [currentView] = useState(initialView);
   const [selectedEntryId, setSelectedEntryId] = useState(initialEntryId);

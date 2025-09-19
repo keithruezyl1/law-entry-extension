@@ -1,3 +1,5 @@
+import { apiRequestJson, authenticatedFetch } from '../utils/apiUtils';
+
 const ORIGIN_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:4000';
 const API_BASE = ORIGIN_BASE.endsWith('/api') ? ORIGIN_BASE : `${ORIGIN_BASE}/api`;
 
@@ -68,43 +70,15 @@ export const getCurrentUser = async (token: string): Promise<User> => {
 
 // Get user's daily quota validation
 export const getUserQuota = async (userId: number, date?: string): Promise<QuotaItem[]> => {
-  const token = localStorage.getItem('auth_token');
-  if (!token) throw new Error('No authentication token');
-
   const dateParam = date || new Date().toISOString().split('T')[0];
-  const response = await fetch(`${API_BASE}/auth/quota/${userId}?date=${dateParam}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get user quota');
-  }
-
-  const data = await response.json();
+  const data = await apiRequestJson(`${API_BASE}/auth/quota/${userId}?date=${dateParam}`);
   return data.quota;
 };
 
 // Get team progress for a date
 export const getTeamProgress = async (date?: string): Promise<TeamProgressItem[]> => {
-  const token = localStorage.getItem('auth_token');
-  if (!token) throw new Error('No authentication token');
-
   const dateParam = date || new Date().toISOString().split('T')[0];
-  const response = await fetch(`${API_BASE}/auth/team-progress?date=${dateParam}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get team progress');
-  }
-
-  const data = await response.json();
+  const data = await apiRequestJson(`${API_BASE}/auth/team-progress?date=${dateParam}`);
   return data.progress;
 };
 

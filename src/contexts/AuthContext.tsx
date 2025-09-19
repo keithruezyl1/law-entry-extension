@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, getCurrentUser } from '../services/authApi';
+import { clearAllUserData, clearAuthData } from '../utils/storageUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -40,9 +41,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setToken(storedToken);
           setUser(userInfo);
         } catch (error) {
-          // Token is invalid, clear storage
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_info');
+          // Token is invalid, clear all user data
+          clearAllUserData();
         }
       }
       setIsLoading(false);
@@ -61,35 +61,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_info');
-    
-    // Clear all app-related localStorage data
-    try {
-      localStorage.removeItem('law_entries');
-      localStorage.removeItem('team_progress');
-      localStorage.removeItem('daily_quotas');
-      localStorage.removeItem('kb_entry_draft');
-      localStorage.removeItem('kb_draft');
-      localStorage.removeItem('kb_drafts');
-      localStorage.removeItem('importedEntryData');
-      localStorage.removeItem('cameFromDashboard');
-      
-      // Clear any other app-related keys
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('kb_entry_') || 
-            key.startsWith('entry_draft_') || 
-            key.startsWith('kb_draft') ||
-            key.includes('draft') ||
-            key.includes('autosave')) {
-          localStorage.removeItem(key);
-        }
-      });
-      
-      console.log('🧹 Cleared all app data on logout');
-    } catch (e) {
-      console.warn('Failed to clear app data on logout:', e);
-    }
+    // Clear all user data from localStorage and sessionStorage
+    clearAllUserData();
   };
 
   const value: AuthContextType = {
