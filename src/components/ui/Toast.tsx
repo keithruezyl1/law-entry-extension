@@ -128,7 +128,7 @@ export const Toast: React.FC<ToastProps> = ({
               <h3 className="text-lg font-semibold text-white">{title}</h3>
             </div>
             <button 
-              className="w-8 h-8 text-white/80 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-3"
+              className="text-white/80 hover:text-white flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-3"
               onClick={onClose}
               title="Dismiss notification"
               aria-label="Dismiss notification"
@@ -191,32 +191,30 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="px-4 py-1.5">
+      <div className="duplicate-matches-content">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
-            className="mb-2 last:mb-0 flex items-start gap-3"
+            className="duplicate-match-item"
           >
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm leading-snug">
-                {match.title}
-              </div>
-              {match.canonical_citation && (
-                <div className="text-xs text-gray-600 dark:text-gray-400 leading-snug mt-0.5">
-                  {match.canonical_citation}
-                </div>
-              )}
+            <div className="duplicate-match-title">
+              {match.title}
             </div>
+            {match.canonical_citation && (
+              <div className="duplicate-match-citation">
+                {match.canonical_citation}
+              </div>
+            )}
           </div>
         ))}
       </div>
       
       {/* Footer with CTA when there are more results */}
       {hasMore && onViewAll && (
-        <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700">
+        <div className="duplicate-matches-footer">
           <button
             onClick={onViewAll}
-            className="w-full text-center text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200 dark:focus:ring-amber-600 focus:ring-offset-1 dark:focus:ring-offset-gray-800 rounded-md py-2 transition-colors duration-150"
+            className="duplicate-matches-view-all"
             aria-label={`View all ${matches.length} matches`}
           >
             View all {matches.length} matches →

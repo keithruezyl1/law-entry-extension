@@ -1762,28 +1762,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               }
             })();
 
-            // Comprehensive matching logic - made more sensitive to catch actual duplicates
+            // Comprehensive matching logic - balanced to catch actual duplicates without false positives
             const shouldShow = 
               // Exact matches (highest priority)
               exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName ||
 
-              // High semantic similarity (lowered from 0.7 to 0.6)
-              sim >= 0.6 ||
+              // High semantic similarity
+              sim >= 0.7 ||
 
-              // Good semantic similarity with decent token overlap (lowered thresholds)
-              (sim >= 0.4 && tokOverlap >= 0.15) ||
+              // Good semantic similarity with decent token overlap
+              (sim >= 0.5 && tokOverlap >= 0.25) ||
 
-              // Same type with good token overlap (lowered thresholds)
-              (sameType && tokOverlap >= 0.25 && sim >= 0.35) ||
+              // Same type with good token overlap
+              (sameType && tokOverlap >= 0.35 && sim >= 0.45) ||
 
-              // High token overlap (lowered from 0.4 to 0.3)
-              tokOverlap >= 0.3 ||
+              // High token overlap
+              tokOverlap >= 0.4 ||
 
-              // Date range match with good similarity (lowered from 0.6 to 0.5)
-              (dateRangeMatch && sim >= 0.5) ||
+              // Date range match with good similarity
+              (dateRangeMatch && sim >= 0.6) ||
 
-              // Tag overlap with good similarity (lowered from 0.5 to 0.4)
-              (tagOverlap && sim >= 0.4) ||
+              // Tag overlap with good similarity
+              (tagOverlap && sim >= 0.5) ||
 
               // Content similarity
               summarySimilarity || textSimilarity ||
@@ -1797,8 +1797,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               // Legal document specific matching
               legalBasesMatch || relatedSectionsMatch || jurisprudenceMatch || topicsMatch || formsMatch ||
 
-              // Additional fallback: if similarity is decent and we have some token overlap
-              (sim >= 0.3 && tokOverlap >= 0.1);
+              // Conservative fallback: only if similarity is good and we have decent token overlap
+              (sim >= 0.5 && tokOverlap >= 0.2);
 
             // Debug logging for enhanced matching
             if (process.env.NODE_ENV === 'development') {
@@ -1816,12 +1816,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               // Show why it's being filtered out
               filterReasons: {
                 exactMatch: exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName,
-                highSimilarity: sim >= 0.6,
-                goodSimilarityWithOverlap: sim >= 0.4 && tokOverlap >= 0.15,
-                sameTypeWithOverlap: sameType && tokOverlap >= 0.25 && sim >= 0.35,
-                highTokenOverlap: tokOverlap >= 0.3,
-                dateRangeWithSimilarity: dateRangeMatch && sim >= 0.5,
-                tagOverlapWithSimilarity: tagOverlap && sim >= 0.4,
+                highSimilarity: sim >= 0.7,
+                goodSimilarityWithOverlap: sim >= 0.5 && tokOverlap >= 0.25,
+                sameTypeWithOverlap: sameType && tokOverlap >= 0.35 && sim >= 0.45,
+                highTokenOverlap: tokOverlap >= 0.4,
+                dateRangeWithSimilarity: dateRangeMatch && sim >= 0.6,
+                tagOverlapWithSimilarity: tagOverlap && sim >= 0.5,
                 contentSimilarity: summarySimilarity || textSimilarity,
                 fineAmountMatch: fineAmountMatch,
                 penaltyElementsMatch: penaltyElementsMatch,
@@ -1830,7 +1830,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 jurisprudenceMatch: jurisprudenceMatch,
                 topicsMatch: topicsMatch,
                 formsMatch: formsMatch,
-                fallbackMatch: sim >= 0.3 && tokOverlap >= 0.1
+                fallbackMatch: sim >= 0.5 && tokOverlap >= 0.2
               }
             });
             }

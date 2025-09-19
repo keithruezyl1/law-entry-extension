@@ -243,6 +243,102 @@
   border-color: #6b7280;
 }
 
+/* Duplicate Matches Toast Specific Styling */
+.duplicate-matches-content {
+  padding: 0;
+  margin: 0;
+}
+
+.duplicate-match-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.duplicate-match-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.duplicate-match-item:first-child {
+  padding-top: 0;
+}
+
+.duplicate-match-title {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #111827;
+  margin-bottom: 4px;
+  word-wrap: break-word;
+}
+
+.duplicate-match-citation {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #6b7280;
+  font-weight: 400;
+  word-wrap: break-word;
+}
+
+.duplicate-matches-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.duplicate-matches-view-all {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #d97706;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  border-radius: 4px;
+}
+
+.duplicate-matches-view-all:hover {
+  color: #b45309;
+  background-color: #fef3c7;
+}
+
+.duplicate-matches-view-all:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #fbbf24;
+  ring-offset: 1px;
+}
+
+/* Dark mode for duplicate matches */
+.dark .duplicate-match-item {
+  border-bottom-color: #374151;
+}
+
+.dark .duplicate-match-title {
+  color: #f9fafb;
+}
+
+.dark .duplicate-match-citation {
+  color: #9ca3af;
+}
+
+.dark .duplicate-matches-footer {
+  border-top-color: #374151;
+}
+
+.dark .duplicate-matches-view-all {
+  color: #f59e0b;
+}
+
+.dark .duplicate-matches-view-all:hover {
+  color: #fbbf24;
+  background-color: #451a03;
+}
+
 /* Responsive adjustments */
 @media (max-width: 640px) {
   .toast-container {
@@ -270,5 +366,17 @@
   
   .citation-box {
     padding: 0.5rem;
+  }
+
+  .duplicate-match-item {
+    padding: 10px 0;
+  }
+
+  .duplicate-match-title {
+    font-size: 13px;
+  }
+
+  .duplicate-match-citation {
+    font-size: 11px;
   }
 }
