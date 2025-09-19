@@ -1407,3 +1407,44 @@ body {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Sticky action bar on review step */
+.kb-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  background: transparent;
+}
+
+/* Provide a subtle gradient/background to ensure buttons are readable over content */
+.kb-action-bar::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  right: -24px;
+  bottom: 0;
+  top: -16px;
+  background: linear-gradient(to top, rgba(17,24,39,0.9), rgba(17,24,39,0));
+  border-top: 1px solid rgba(255,255,255,0.2);
+  pointer-events: none;
+}
+
+.dark-mode .kb-action-bar::before {
+  background: linear-gradient(to top, rgba(17,24,39,0.95), rgba(17,24,39,0));
+  border-top-color: rgba(255,255,255,0.15);
+}
+
+.kb-action-bar > * {
+  position: relative; /* keep buttons above gradient */
+}
+
+@media (max-width: 768px) {
+  .kb-action-bar {
+    padding: 0.75rem 0;
+    gap: 0.5rem;
+  }
+}
