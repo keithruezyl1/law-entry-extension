@@ -185,6 +185,11 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
   const displayCount = Math.min(matches.length, maxDisplay);
   const hasMore = matches.length > maxDisplay;
   const titleText = matches.length === 1 ? "Possible match" : `Possible matches (${matches.length})`;
+  
+  // Detect dark mode
+  const isDarkMode = document.documentElement.classList.contains('dark') || 
+                     document.documentElement.classList.contains('dark-mode') ||
+                     window.matchMedia('(prefers-color-scheme: dark)').matches;
 
   return (
     <Toast
@@ -194,17 +199,47 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="duplicate-matches-content">
+      <div 
+        className="duplicate-matches-content"
+        style={{
+          padding: '16px 20px',
+          margin: 0
+        }}
+      >
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
             className="duplicate-match-item"
+            style={{
+              padding: '12px 0',
+              borderBottom: index < maxDisplay - 1 ? `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}` : 'none',
+              transition: 'all 0.2s ease'
+            }}
           >
-            <div className="duplicate-match-title">
+            <div 
+              className="duplicate-match-title"
+              style={{
+                fontWeight: 600,
+                fontSize: '14px',
+                lineHeight: 1.4,
+                color: isDarkMode ? '#f9fafb' : '#111827',
+                marginBottom: '4px',
+                wordWrap: 'break-word'
+              }}
+            >
               {match.title}
             </div>
             {match.canonical_citation && (
-              <div className="duplicate-match-citation">
+              <div 
+                className="duplicate-match-citation"
+                style={{
+                  fontSize: '12px',
+                  lineHeight: 1.3,
+                  color: isDarkMode ? '#9ca3af' : '#6b7280',
+                  fontWeight: 400,
+                  wordWrap: 'break-word'
+                }}
+              >
                 {match.canonical_citation}
               </div>
             )}
@@ -214,10 +249,30 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       
       {/* Footer with CTA when there are more results */}
       {hasMore && onViewAll && (
-        <div className="duplicate-matches-footer">
+        <div 
+          className="duplicate-matches-footer"
+          style={{
+            marginTop: '16px',
+            padding: '12px 20px 16px 20px',
+            borderTop: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`
+          }}
+        >
           <button
             onClick={onViewAll}
             className="duplicate-matches-view-all"
+            style={{
+              width: '100%',
+              textAlign: 'center',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: isDarkMode ? '#f59e0b' : '#d97706',
+              background: 'none',
+              border: 'none',
+              padding: '8px 0',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              borderRadius: '4px'
+            }}
             aria-label={`View all ${matches.length} matches`}
           >
             View all {matches.length} matches →
