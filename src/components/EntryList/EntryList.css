@@ -249,6 +249,19 @@
   color: #666;
 }
 
+/* Dark mode: empty state */
+.dark-mode .no-results {
+  background: #111827; /* slate-900-ish */
+  border-color: #374151; /* slate-700 */
+  box-shadow: none;
+}
+.dark-mode .no-results h3 {
+  color: #e5e7eb; /* text-gray-200 */
+}
+.dark-mode .no-results p {
+  color: #9ca3af; /* text-gray-400 */
+}
+
 .entry-type-badge {
   background: #667eea;
   color: white;

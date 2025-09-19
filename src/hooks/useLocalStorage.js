@@ -399,20 +399,61 @@ export const useLocalStorage = () => {
         // Fast normalization - single pass
         const normalize = (text) => {
           if (!text) return '';
-          return String(text)
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+          let s = String(text).toLowerCase();
+          // Map punctuation variants to words before stripping
+          s = s.replace(/[&/]/g, ' and ');
+          // Expand common legal abbreviations (with or without dot)
+          s = s
+            .replace(/\bart\.?\b/g, 'article')
+            .replace(/\bart\.\s*/g, 'article ')
+            .replace(/\barticulo\b/g, 'article')
+            .replace(/\bsec\.?\b/g, 'section')
+            .replace(/\bsec\.\s*/g, 'section ')
+            .replace(/\bpar\.?\b/g, 'paragraph')
+            .replace(/\bsubsec\.?\b/g, 'subsection')
+            .replace(/\bsub\.\b/g, 'subsection')
+            .replace(/\br\.?a\.?\b/g, 'republic act')
+            .replace(/\bra\b/g, 'republic act')
+            .replace(/\bno\.?\b/g, 'number');
+          // Remove remaining punctuation
+          s = s.replace(/[^a-z0-9\s]/g, ' ');
+          // Collapse whitespace
+          s = s.replace(/\s+/g, ' ').trim();
+          // Light plural normalization: singularize simple trailing 's' (avoid 'ss')
+          s = s
+            .split(' ')
+            .map(w => (w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w))
+            .join(' ');
+          return s;
         };
         
-        const searchTerm = normalize(query);
+        let searchTerm = normalize(query);
         const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+        // Generate simple synonym/variant expansions (non-destructive)
+        const removeAntiPrefix = (w) => w.startsWith('anti') && w.length > 4 ? w.replace(/^anti[-\s]?/, '') : w;
+        const expandWordVariants = (w) => {
+          const variants = new Set([w]);
+          // anti- prefix variant: "anti-torture" ~ "torture"
+          variants.add(removeAntiPrefix(w));
+          // vs/versus normalization to 'v'
+          if (w === 'vs' || w === 'vs.' || w === 'versus') variants.add('v');
+          if (w === 'v') variants.add('vs');
+          return Array.from(variants).filter(Boolean);
+        };
+        const searchWordVariants = new Set(searchWords.flatMap(expandWordVariants));
+        // Generate compact and parenthetical variants for matching
+        const compactSearch = searchTerm.replace(/\s+/g, '');
+        // Insert parentheses between trailing number-letter patterns for better match to canonical forms
+        const parentheticalSearch = searchTerm
+          .replace(/\b(\d+)\s*([a-z])\b/g, '$1($2)')
+          .replace(/\b(\d+)\s*\(\s*([a-z])\s*\)\b/g, '$1($2)');
         
         // Fast simple fuzzy matching - no complex algorithms
         const simpleFuzzyMatch = (text, query) => {
           if (!text || !query) return false;
           const normalized = normalize(text);
+          const compactNormalized = normalized.replace(/\s+/g, '');
+          const compactQuery = String(query).replace(/\s+/g, '');
           
           // Exact match
           if (normalized === query) return true;
@@ -422,6 +463,13 @@ export const useLocalStorage = () => {
           
           // Contains
           if (normalized.includes(query)) return true;
+
+          // Compact contains (treat spaces and parentheses as optional)
+          if (compactNormalized.includes(compactQuery)) return true;
+
+          // Special: number-letter adjacency (e.g., "5 a" vs "5a" or "5(a)")
+          const numberLetterVariant = query.replace(/\b(\d+)\s*([a-z])\b/g, '$1$2');
+          if (normalized.includes(numberLetterVariant) || compactNormalized.includes(numberLetterVariant)) return true;
           
           // Word boundary matching
           const words = normalized.split(/\s+/);
@@ -442,17 +490,28 @@ export const useLocalStorage = () => {
 
         // Fast scoring system - much simpler than the complex fuzzy matching
       const scoredEntries = filteredEntries.map(entry => {
+          const combinedTags = Array.isArray(entry.tags) ? entry.tags.join(' ') : '';
+          const combinedField = [
+            entry.title,
+            entry.canonical_citation,
+            entry.section_id,
+            entry.law_family,
+            combinedTags,
+            entry.summary
+          ].filter(Boolean).join(' ');
           const searchFields = [
-          { text: entry.title, weight: 10 },
-          { text: entry.entry_id, weight: 8 },
-          { text: entry.law_family, weight: 6 },
-          { text: entry.canonical_citation, weight: 6 },
-          { text: entry.section_id, weight: 5 },
-          { text: entry.summary, weight: 4 },
-          { text: entry.text, weight: 2 },
-          { text: entry.text_raw, weight: 2 },
+          // Hierarchy: title > citation > tags > section > law family > id > others
+          { text: entry.title, weight: 12 },
+          { text: entry.canonical_citation, weight: 9 },
+          { text: entry.section_id, weight: 6 },
+          { text: entry.law_family, weight: 5 },
+          { text: combinedTags, weight: 4 },
+          { text: entry.entry_id, weight: 5 },
+          { text: combinedField, weight: 4 },
+          { text: entry.summary, weight: 3 },
           { text: entry.effective_date, weight: 3 },
-          { text: Array.isArray(entry.tags) ? entry.tags.join(' ') : '', weight: 5 }
+          { text: entry.text, weight: 2 },
+          { text: entry.text_raw, weight: 2 }
         ];
         
         let score = 0;
@@ -462,6 +521,9 @@ export const useLocalStorage = () => {
           if (!text) continue;
           
           const normalizedText = normalize(text);
+          const compactText = normalizedText.replace(/\s+/g, '');
+          const textWords = normalizedText.split(/\s+/).filter(Boolean);
+          const textWordVariants = new Set(textWords.flatMap(expandWordVariants));
           
           // Exact match gets highest score
           if (normalizedText === searchTerm) {
@@ -476,6 +538,32 @@ export const useLocalStorage = () => {
           // Contains gets medium score
           else if (normalizedText.includes(searchTerm)) {
             score += weight;
+            hasMatch = true;
+          }
+          // Token overlap scoring: reward partial multi-word matches
+          else {
+            // Variant-aware token overlap (handles anti- prefix and vs/versus)
+            const matchedWords = Array.from(searchWordVariants).filter(word =>
+              Array.from(textWordVariants).some(tw => tw.includes(word) || word.includes(tw))
+            );
+            if (matchedWords.length >= Math.max(1, Math.ceil(searchWords.length * 0.6))) {
+              // Strong partial match (>=60% of query words)
+              score += weight * 0.9;
+              hasMatch = true;
+            } else if (matchedWords.length >= 1) {
+              // Weak partial match (at least one query word)
+              score += weight * 0.4;
+              hasMatch = true;
+            }
+          }
+          // Compact contains: ignore spaces/parentheses differences
+          else if (compactText.includes(compactSearch)) {
+            score += weight * 0.9;
+            hasMatch = true;
+          }
+          // Parenthetical variant contains: map "5 a" -> "5(a)"
+          else if (normalizedText.includes(parentheticalSearch)) {
+            score += weight * 0.9;
             hasMatch = true;
           }
             // Simple fuzzy match gets lower score

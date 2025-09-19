@@ -2505,31 +2505,45 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <p className="text-sm text-gray-600">Your previous draft has been restored. All your inputs have been preserved.</p>
           </div>
         </Modal>
-        <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Are you sure you want to cancel?" subtitle="This will delete all your current inputs in the forms.">
+        <Modal
+          isOpen={showCancelConfirm}
+          onClose={() => setShowCancelConfirm(false)}
+          title={isEditMode ? 'Discard changes?' : 'Are you sure you want to cancel?'}
+          subtitle={isEditMode ? 'This will discard your unsaved edits and exit edit mode. The saved entry remains unchanged.' : 'This will delete all your current inputs in the forms.'}
+        >
           <div className="modal-buttons">
-            <button className="modal-button danger" onClick={() => { 
-              // Clear all draft data comprehensively
-              try {
-                localStorage.removeItem('kb_entry_draft');
-                localStorage.removeItem('kb_draft');
-                localStorage.removeItem('kb_drafts');
-                // Clear any other draft-related keys
-                Object.keys(localStorage).forEach(key => {
-                  if (key.startsWith('kb_entry_') || 
-                      key.startsWith('entry_draft_') || 
-                      key.startsWith('kb_draft') ||
-                      key.includes('draft') ||
-                      key.includes('autosave')) {
-                    localStorage.removeItem(key);
+            <button
+              className="modal-button danger"
+              onClick={() => {
+                if (!isEditMode) {
+                  // Create mode: clear drafts
+                  try {
+                    localStorage.removeItem('kb_entry_draft');
+                    localStorage.removeItem('kb_draft');
+                    localStorage.removeItem('kb_drafts');
+                    Object.keys(localStorage).forEach(key => {
+                      if (
+                        key.startsWith('kb_entry_') ||
+                        key.startsWith('entry_draft_') ||
+                        key.startsWith('kb_draft') ||
+                        key.includes('draft') ||
+                        key.includes('autosave')
+                      ) {
+                        localStorage.removeItem(key);
+                      }
+                    });
+                    console.log('🧹 Cleared all drafts on modal cancel (create mode)');
+                  } catch (e) {
+                    console.warn('Failed to clear drafts on modal cancel:', e);
                   }
-                });
-                console.log('🧹 Cleared all drafts on modal cancel');
-              } catch (e) {
-                console.warn('Failed to clear drafts on modal cancel:', e);
-              }
-              setShowCancelConfirm(false); 
-              onCancel(); 
-            }}>Yes, go to home</button>
+                }
+                // Edit mode: do not clear anything; just exit
+                setShowCancelConfirm(false);
+                onCancel();
+              }}
+            >
+              {isEditMode ? 'Discard changes' : 'Yes, go to home'}
+            </button>
             <button className="modal-button cancel" onClick={() => setShowCancelConfirm(false)}>No, stay here</button>
           </div>
         </Modal>
