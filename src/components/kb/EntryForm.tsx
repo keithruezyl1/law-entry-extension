@@ -239,7 +239,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const initialStep = getInitialStep();
 
   const methods = useForm<Entry>({
-    resolver: zodResolver(EntrySchema as any),
+    // In edit mode, relax schema validation to avoid blocking updates for legacy entries
+    resolver: isEditMode ? undefined as any : (zodResolver(EntrySchema as any) as any),
     defaultValues: {
       type: '',
       entry_id: '',
@@ -294,6 +295,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       related_sections: [],
     } as any,
     mode: 'onChange',
+    reValidateMode: 'onChange',
   });
 
 
@@ -1066,8 +1068,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
 
-    // First, validate all required fields
-    const validationErrors = validateAllRequiredFields(data);
+    // First, validate all required fields (skip strict check in edit mode)
+    const validationErrors = isEditMode ? [] : validateAllRequiredFields(data);
 
     if (validationErrors.length > 0) {
       // Create alert message
@@ -1181,7 +1183,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     // Publish gating
-    if (!sanitized.source_urls || sanitized.source_urls.length < 1) {
+    if (!isEditMode && (!sanitized.source_urls || sanitized.source_urls.length < 1)) {
       alert('Please add at least one Source URL before publishing.');
       setIsSubmitting(false);
       isSubmittingRef.current = false;
@@ -1189,7 +1191,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
 
     // Rights advisory requires at least one legal basis
-    if ((sanitized as any).type === 'rights_advisory') {
+    if (!isEditMode && (sanitized as any).type === 'rights_advisory') {
       const lbs = (sanitized as any).legal_bases || [];
       if (!Array.isArray(lbs) || lbs.length < 1) {
         alert('Rights Advisory entries require at least one legal basis.');
@@ -1200,7 +1202,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
 
     console.log('Validating business rules...');
-    const errs = validateBusinessRules(sanitized);
+    const errs = isEditMode ? [] : validateBusinessRules(sanitized);
     if (errs.length) {
       console.log('Business rule validation errors:', errs);
       alert(errs.join('\n'));

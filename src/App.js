@@ -791,16 +791,18 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
         console.log('Yesterday mode or incomplete entries: Setting created_at to', entryData.created_at);
       }
       
-      if (editingEntry) {
+      // Treat as update if we have an editing entry in state OR we're on the edit route with a selectedEntryId
+      const effectiveEditId = (editingEntry && editingEntry.id) || selectedEntryId || null;
+      if (effectiveEditId) {
         console.log('🔄 UPDATE FLOW STARTED');
-        console.log('📝 Editing entry ID:', editingEntry.id);
+        console.log('📝 Editing entry ID:', effectiveEditId);
         console.log('📊 Update data:', entryData);
         
         // Show loading state for update
         setIsUpdatingEntry(true);
         
         try {
-          await updateEntry(editingEntry.id, entryData);
+          await updateEntry(effectiveEditId, entryData);
           console.log('✅ Entry updated successfully:', entryData);
           
           // Clear editing state after successful update
