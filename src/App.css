@@ -1410,13 +1410,15 @@ body {
 
 /* Sticky action bar on review step */
 .kb-action-bar {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  z-index: 40;
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 0;
+  padding: 1rem 24px;
   background: transparent;
 }
 
@@ -1424,8 +1426,8 @@ body {
 .kb-action-bar::before {
   content: '';
   position: absolute;
-  left: -24px;
-  right: -24px;
+  left: 0;
+  right: 0;
   bottom: 0;
   top: -16px;
   background: linear-gradient(to top, rgba(17,24,39,0.9), rgba(17,24,39,0));
@@ -1444,7 +1446,12 @@ body {
 
 @media (max-width: 768px) {
   .kb-action-bar {
-    padding: 0.75rem 0;
+    padding: 0.75rem 16px;
     gap: 0.5rem;
   }
+}
+
+/* Prevent overlap with fixed action bar */
+.kb-form {
+  padding-bottom: 96px; /* space for fixed buttons */
 }
