@@ -2486,7 +2486,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             </div>
                             <div className="flex gap-3">
                               {!entry && (
-                                <Button type="button" variant="outline" className="h-12 px-10 min-w-[130px]">Save draft</Button>
+                                <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
                               <Button 
                                 type="submit" 
