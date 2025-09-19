@@ -121,20 +121,17 @@ export const Toast: React.FC<ToastProps> = ({
     >
       <div className={`bg-white dark:bg-gray-800 shadow-2xl rounded-xl border border-gray-200 dark:border-gray-600 min-w-[400px] max-w-[560px] overflow-hidden toast-container ${getAnimationClass()}`}>
         {/* Header with gradient background */}
-        <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-8 py-4 relative`}>
+        <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
-            {/* Left group: Warning icon + title */}
-            <div className="flex items-center gap-2 flex-1 min-w-0 ml-2">
-              <Icon className="w-5 h-5 text-white flex-shrink-0" />
-              <h3 className="text-lg font-semibold text-white truncate" title={title}>{title}</h3>
+            <div className="flex items-center gap-2">
+              <Icon className="w-5 h-5 text-white" />
+              <h3 className="text-lg font-semibold text-white">{title}</h3>
             </div>
-            
-            {/* Right: Close button */}
             <button 
-              className="text-white/80 hover:text-white active:text-white/90 flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent p-2 -m-2 flex-shrink-0 mr-2"
+              className="text-white/80 hover:text-white flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30"
               onClick={onClose}
-              title="Close"
-              aria-label="Close"
+              title="Dismiss notification"
+              aria-label="Dismiss notification"
             >
               <X className="w-5 h-5" />
             </button>
@@ -185,11 +182,6 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
   const displayCount = Math.min(matches.length, maxDisplay);
   const hasMore = matches.length > maxDisplay;
   const titleText = matches.length === 1 ? "Possible match" : `Possible matches (${matches.length})`;
-  
-  // Detect dark mode
-  const isDarkMode = document.documentElement.classList.contains('dark') || 
-                     document.documentElement.classList.contains('dark-mode') ||
-                     window.matchMedia('(prefers-color-scheme: dark)').matches;
 
   return (
     <Toast
@@ -199,41 +191,17 @@ export const DuplicateMatchesToast: React.FC<DuplicateMatchesToastProps> = ({
       type="warning"
       position="top-right"
     >
-      <div className="duplicate-matches-content" style={{ padding: '16px 20px', margin: 0 }}>
+      <div className="duplicate-matches-content">
         {matches.slice(0, maxDisplay).map((match, index) => (
           <div 
             key={`${match.entry_id || index}-${index}`} 
             className="duplicate-match-item"
-            style={{ 
-              padding: '12px 0', 
-              borderBottom: index < maxDisplay - 1 ? `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}` : 'none',
-              transition: 'all 0.2s ease'
-            }}
           >
-            <div 
-              className="duplicate-match-title"
-              style={{
-                fontWeight: 600,
-                fontSize: '14px',
-                lineHeight: 1.4,
-                color: isDarkMode ? '#f9fafb' : '#111827',
-                marginBottom: '4px',
-                wordWrap: 'break-word'
-              }}
-            >
+            <div className="duplicate-match-title">
               {match.title}
             </div>
             {match.canonical_citation && (
-              <div 
-                className="duplicate-match-citation"
-                style={{
-                  fontSize: '12px',
-                  lineHeight: 1.3,
-                  color: isDarkMode ? '#9ca3af' : '#6b7280',
-                  fontWeight: 400,
-                  wordWrap: 'break-word'
-                }}
-              >
+              <div className="duplicate-match-citation">
                 {match.canonical_citation}
               </div>
             )}

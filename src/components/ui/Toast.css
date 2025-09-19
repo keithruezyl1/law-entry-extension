@@ -244,9 +244,9 @@
 }
 
 /* Duplicate Matches Toast Specific Styling */
-.toast-container .duplicate-matches-content {
-  padding: 16px 20px !important;
-  margin: 0 !important;
+.duplicate-matches-content {
+  padding: 16px 20px;
+  margin: 0;
 }
 
 .duplicate-match-item {
@@ -264,21 +264,21 @@
   padding-top: 0;
 }
 
-.toast-container .duplicate-match-title {
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  line-height: 1.4 !important;
-  color: #111827 !important;
-  margin-bottom: 4px !important;
-  word-wrap: break-word !important;
+.duplicate-match-title {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #111827;
+  margin-bottom: 4px;
+  word-wrap: break-word;
 }
 
-.toast-container .duplicate-match-citation {
-  font-size: 12px !important;
-  line-height: 1.3 !important;
-  color: #6b7280 !important;
-  font-weight: 400 !important;
-  word-wrap: break-word !important;
+.duplicate-match-citation {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #6b7280;
+  font-weight: 400;
+  word-wrap: break-word;
 }
 
 .duplicate-matches-footer {
@@ -340,36 +340,19 @@
 }
 
 /* Force dark mode colors for duplicate matches */
-.dark-mode .toast-container .duplicate-match-title {
+.dark-mode .duplicate-match-title {
   color: #f9fafb !important;
 }
 
-.dark-mode .toast-container .duplicate-match-citation {
+.dark-mode .duplicate-match-citation {
   color: #9ca3af !important;
 }
 
-.dark-mode .toast-container .duplicate-match-item {
+.dark-mode .duplicate-match-item {
   border-bottom-color: #374151 !important;
 }
 
-.dark-mode .toast-container .duplicate-matches-footer {
-  border-top-color: #374151 !important;
-}
-
-/* Additional dark mode selectors for better coverage */
-.dark .toast-container .duplicate-match-title {
-  color: #f9fafb !important;
-}
-
-.dark .toast-container .duplicate-match-citation {
-  color: #9ca3af !important;
-}
-
-.dark .toast-container .duplicate-match-item {
-  border-bottom-color: #374151 !important;
-}
-
-.dark .toast-container .duplicate-matches-footer {
+.dark-mode .duplicate-matches-footer {
   border-top-color: #374151 !important;
 }
 

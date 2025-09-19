@@ -18,7 +18,6 @@ import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } fr
 import { generateEntryId, generateUniqueEntryId } from 'lib/kb/entryId';
 import './EntryForm.css';
 import { semanticSearch } from '../../services/vectorApi';
-import { normalizeForMatch, compactString, parentheticalVariant, expandWordVariants } from '../../utils/textNormalizer';
 import { useAuth } from '../../contexts/AuthContext';
 
 type EntryFormProps = {
@@ -1337,10 +1336,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     });
 
 
-    // Hard-disable duplicate detection when in edit mode regardless of URL state
-    if (isEditMode || (entry && (entry as any).id && !isOnCreateUrl)) {
+    // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
+    // For ALL entries on create URLs, we should run duplicate detection
+    if (entry && (entry as any).id && !isOnCreateUrl) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Disabling duplicate detection while editing');
+        console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
       }
       setNearDuplicates([]);
       return;
@@ -1428,80 +1428,30 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             resultsRaw = resp.results;
             console.log('🔍 Using semantic search results:', resultsRaw.length);
           } else {
-            console.log('🔍 Semantic search failed or returned no results, using improved local fallback');
+            console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
 
-            // Build normalized query variants
-            const queryN = normalizeForMatch(q);
-            const queryCompact = compactString(queryN);
-            const queryParen = parentheticalVariant(queryN);
-            const qWords = queryN.split(/\s+/).filter(Boolean);
-            const qWordVariants = new Set(qWords.flatMap(expandWordVariants));
 
-            const scoreEntry = (entry: any) => {
-              const title = normalizeForMatch(entry.title);
-              const citation = normalizeForMatch((entry as any).canonical_citation);
-              const section = normalizeForMatch((entry as any).section_id);
-              const family = normalizeForMatch((entry as any).law_family);
-              const summary = normalizeForMatch((entry as any).summary);
-              const tags = normalizeForMatch(Array.isArray(entry.tags) ? entry.tags.join(' ') : '');
+            // Fallback: simple text search through existing entries
+            const searchTerm = q.toLowerCase();
+            resultsRaw = existingEntries
+              .filter(entry => {
+                const searchableText = [
+                  entry.title,
+                  (entry as any).canonical_citation,
+                  (entry as any).section_id,
+                  (entry as any).law_family,
+                  (entry as any).summary
+                ].filter(Boolean).join(' ').toLowerCase();
+                return searchableText.includes(searchTerm);
+              })
+              .map(entry => ({
+                ...entry,
+                similarity: 0.5 // Default similarity for text matches
+              }))
+              .slice(0, 10);
+            console.log('🔍 Fallback text search results:', resultsRaw.length);
 
-              const fields = [
-                { text: title, w: 12 },
-                { text: citation, w: 9 },
-                { text: section, w: 6 },
-                { text: family, w: 5 },
-                { text: tags, w: 4 },
-                { text: summary, w: 3 },
-              ];
 
-              let score = 0;
-              let matched = false;
-              for (const { text, w } of fields) {
-                if (!text) continue;
-                const compact = compactString(text);
-                const words = text.split(/\s+/).filter(Boolean);
-                const wordSet = new Set(words);
-                // Exact/starts/contains
-                if (text === queryN) { score += w * 3; matched = true; continue; }
-                if (text.startsWith(queryN)) { score += w * 2; matched = true; }
-                if (text.includes(queryN)) { score += w * 1; matched = true; }
-                // Compact / parenthetical variants
-                if (compact.includes(queryCompact)) { score += w * 0.9; matched = true; }
-                if (text.includes(queryParen)) { score += w * 0.9; matched = true; }
-                // Coverage
-                const coverage = Array.from(qWordVariants).filter((qw: any) =>
-                  Array.from(wordSet).some((tw: any) => tw.includes(qw) || qw.includes(tw))
-                ).length / Math.max(1, qWords.length);
-                if (coverage >= 0.6) { score += w * (0.6 + 0.4 * Math.min(1, coverage)); matched = true; }
-                else if (coverage >= 0.2) { score += w * 0.4; matched = true; }
-              }
-              return { score, matched };
-            };
-
-            // Cheap candidate pruning: quick token OR check before scoring
-            const qTokens = new Set(qWords);
-            const quickHit = (entry: any) => {
-              const fields = [entry.title, (entry as any).canonical_citation, (entry as any).section_id, (entry as any).law_family, (entry as any).summary]
-                .filter(Boolean)
-                .map((t: any) => normalizeForMatch(t));
-              const compactFields = fields.map(f => compactString(f));
-              // token OR
-              const tokenPass = fields.some(f => Array.from(qTokens).some(t => f.includes(t)));
-              // compact/parenthetical OR
-              const compactPass = compactFields.some(cf => cf.includes(queryCompact)) || fields.some(f => f.includes(queryParen));
-              return tokenPass || compactPass;
-            };
-
-            const scored = existingEntries
-              .filter((e: any) => quickHit(e))
-              .map((e: any) => ({ e, ...scoreEntry(e) }))
-              .filter(r => r.matched)
-              .sort((a, b) => b.score - a.score)
-              .slice(0, 5)
-              .map(r => ({ ...r.e, similarity: Math.min(0.99, r.score / 20) }));
-
-            resultsRaw = scored;
-            console.log('🔍 Local fallback results:', resultsRaw.length);
           }
           // Smart stopwords - filter out only the most generic words
           const STOPWORDS = new Set(['the','of','and','or','to','for','in','on','at','by','with','from','into','during','including','until','against','among','throughout','despite','towards','upon']);
@@ -1762,28 +1712,28 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               }
             })();
 
-            // Comprehensive matching logic - balanced to catch actual duplicates without false positives
+            // Comprehensive matching logic - made more sensitive to catch actual duplicates
             const shouldShow = 
               // Exact matches (highest priority)
               exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName ||
 
-              // High semantic similarity
-              sim >= 0.7 ||
+              // High semantic similarity (lowered from 0.7 to 0.6)
+              sim >= 0.6 ||
 
-              // Good semantic similarity with decent token overlap
-              (sim >= 0.5 && tokOverlap >= 0.25) ||
+              // Good semantic similarity with decent token overlap (lowered thresholds)
+              (sim >= 0.4 && tokOverlap >= 0.15) ||
 
-              // Same type with good token overlap
-              (sameType && tokOverlap >= 0.35 && sim >= 0.45) ||
+              // Same type with good token overlap (lowered thresholds)
+              (sameType && tokOverlap >= 0.25 && sim >= 0.35) ||
 
-              // High token overlap
-              tokOverlap >= 0.4 ||
+              // High token overlap (lowered from 0.4 to 0.3)
+              tokOverlap >= 0.3 ||
 
-              // Date range match with good similarity
-              (dateRangeMatch && sim >= 0.6) ||
+              // Date range match with good similarity (lowered from 0.6 to 0.5)
+              (dateRangeMatch && sim >= 0.5) ||
 
-              // Tag overlap with good similarity
-              (tagOverlap && sim >= 0.5) ||
+              // Tag overlap with good similarity (lowered from 0.5 to 0.4)
+              (tagOverlap && sim >= 0.4) ||
 
               // Content similarity
               summarySimilarity || textSimilarity ||
@@ -1797,8 +1747,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               // Legal document specific matching
               legalBasesMatch || relatedSectionsMatch || jurisprudenceMatch || topicsMatch || formsMatch ||
 
-              // Conservative fallback: only if similarity is good and we have decent token overlap
-              (sim >= 0.5 && tokOverlap >= 0.2);
+              // Additional fallback: if similarity is decent and we have some token overlap
+              (sim >= 0.3 && tokOverlap >= 0.1);
 
             // Debug logging for enhanced matching
             if (process.env.NODE_ENV === 'development') {
@@ -1816,12 +1766,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               // Show why it's being filtered out
               filterReasons: {
                 exactMatch: exactSection || exactCitation || exactDate || exactJurisdiction || exactLawFamily || exactViolationCode || exactViolationName,
-                highSimilarity: sim >= 0.7,
-                goodSimilarityWithOverlap: sim >= 0.5 && tokOverlap >= 0.25,
-                sameTypeWithOverlap: sameType && tokOverlap >= 0.35 && sim >= 0.45,
-                highTokenOverlap: tokOverlap >= 0.4,
-                dateRangeWithSimilarity: dateRangeMatch && sim >= 0.6,
-                tagOverlapWithSimilarity: tagOverlap && sim >= 0.5,
+                highSimilarity: sim >= 0.6,
+                goodSimilarityWithOverlap: sim >= 0.4 && tokOverlap >= 0.15,
+                sameTypeWithOverlap: sameType && tokOverlap >= 0.25 && sim >= 0.35,
+                highTokenOverlap: tokOverlap >= 0.3,
+                dateRangeWithSimilarity: dateRangeMatch && sim >= 0.5,
+                tagOverlapWithSimilarity: tagOverlap && sim >= 0.4,
                 contentSimilarity: summarySimilarity || textSimilarity,
                 fineAmountMatch: fineAmountMatch,
                 penaltyElementsMatch: penaltyElementsMatch,
@@ -1830,7 +1780,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 jurisprudenceMatch: jurisprudenceMatch,
                 topicsMatch: topicsMatch,
                 formsMatch: formsMatch,
-                fallbackMatch: sim >= 0.5 && tokOverlap >= 0.2
+                fallbackMatch: sim >= 0.3 && tokOverlap >= 0.1
               }
             });
             }
@@ -2556,45 +2506,31 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <p className="text-sm text-gray-600">Your previous draft has been restored. All your inputs have been preserved.</p>
           </div>
         </Modal>
-        <Modal
-          isOpen={showCancelConfirm}
-          onClose={() => setShowCancelConfirm(false)}
-          title={isEditMode ? 'Discard changes?' : 'Are you sure you want to cancel?'}
-          subtitle={isEditMode ? 'This will discard your unsaved edits and exit edit mode. The saved entry remains unchanged.' : 'This will delete all your current inputs in the forms.'}
-        >
+        <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Are you sure you want to cancel?" subtitle="This will delete all your current inputs in the forms.">
           <div className="modal-buttons">
-            <button
-              className="modal-button danger"
-              onClick={() => {
-                if (!isEditMode) {
-                  // Create mode: clear drafts
-                  try {
-                    localStorage.removeItem('kb_entry_draft');
-                    localStorage.removeItem('kb_draft');
-                    localStorage.removeItem('kb_drafts');
-                    Object.keys(localStorage).forEach(key => {
-                      if (
-                        key.startsWith('kb_entry_') ||
-                        key.startsWith('entry_draft_') ||
-                        key.startsWith('kb_draft') ||
-                        key.includes('draft') ||
-                        key.includes('autosave')
-                      ) {
-                        localStorage.removeItem(key);
-                      }
-                    });
-                    console.log('🧹 Cleared all drafts on modal cancel (create mode)');
-                  } catch (e) {
-                    console.warn('Failed to clear drafts on modal cancel:', e);
+            <button className="modal-button danger" onClick={() => { 
+              // Clear all draft data comprehensively
+              try {
+                localStorage.removeItem('kb_entry_draft');
+                localStorage.removeItem('kb_draft');
+                localStorage.removeItem('kb_drafts');
+                // Clear any other draft-related keys
+                Object.keys(localStorage).forEach(key => {
+                  if (key.startsWith('kb_entry_') || 
+                      key.startsWith('entry_draft_') || 
+                      key.startsWith('kb_draft') ||
+                      key.includes('draft') ||
+                      key.includes('autosave')) {
+                    localStorage.removeItem(key);
                   }
-                }
-                // Edit mode: do not clear anything; just exit
-                setShowCancelConfirm(false);
-                onCancel();
-              }}
-            >
-              {isEditMode ? 'Discard changes' : 'Yes, go to home'}
-            </button>
+                });
+                console.log('🧹 Cleared all drafts on modal cancel');
+              } catch (e) {
+                console.warn('Failed to clear drafts on modal cancel:', e);
+              }
+              setShowCancelConfirm(false); 
+              onCancel(); 
+            }}>Yes, go to home</button>
             <button className="modal-button cancel" onClick={() => setShowCancelConfirm(false)}>No, stay here</button>
           </div>
         </Modal>
