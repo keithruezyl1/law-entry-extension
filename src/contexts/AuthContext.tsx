@@ -63,6 +63,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_info');
+    
+    // Clear all app-related localStorage data
+    try {
+      localStorage.removeItem('law_entries');
+      localStorage.removeItem('team_progress');
+      localStorage.removeItem('daily_quotas');
+      localStorage.removeItem('kb_entry_draft');
+      localStorage.removeItem('kb_draft');
+      localStorage.removeItem('kb_drafts');
+      localStorage.removeItem('importedEntryData');
+      localStorage.removeItem('cameFromDashboard');
+      
+      // Clear any other app-related keys
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('kb_entry_') || 
+            key.startsWith('entry_draft_') || 
+            key.startsWith('kb_draft') ||
+            key.includes('draft') ||
+            key.includes('autosave')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      console.log('🧹 Cleared all app data on logout');
+    } catch (e) {
+      console.warn('Failed to clear app data on logout:', e);
+    }
   };
 
   const value: AuthContextType = {
