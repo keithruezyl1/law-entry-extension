@@ -1112,6 +1112,16 @@ body {
     width: 100vw;
     overflow-x: hidden;
   }
+
+  /* Prevent iOS auto-zoom on focus by keeping form controls at >=16px */
+  .form-group input,
+  .form-group select,
+  .form-group textarea,
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
   
   /* Ensure all containers are mobile-first */
   .App {

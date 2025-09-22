@@ -608,6 +608,11 @@
   
   .search-input {
     height: 44px;
+    font-size: 1rem; /* Prevent iOS zoom on focus */
+  }
+
+  .filter-group select {
+    font-size: 1rem; /* Prevent iOS zoom on focus */
   }
   
   /* Mobile entry card improvements */
