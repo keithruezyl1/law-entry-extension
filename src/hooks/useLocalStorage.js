@@ -19,17 +19,11 @@ export const useLocalStorage = () => {
   const [teamProgress, setTeamProgress] = useState({});
   const [dailyQuotas, setDailyQuotas] = useState({});
 
-  // Load entries from localStorage on mount, then refresh from DB (DB-first)
+  // Load progress and quotas from localStorage; entries will come from DB only
   useEffect(() => {
     try {
-      const storedEntries = localStorage.getItem(STORAGE_KEY);
       const storedProgress = localStorage.getItem(TEAM_PROGRESS_KEY);
       const storedQuotas = localStorage.getItem(DAILY_QUOTAS_KEY);
-      
-      if (storedEntries) {
-        const parsedEntries = JSON.parse(storedEntries);
-        setEntries(Array.isArray(parsedEntries) ? parsedEntries : []);
-      }
       
       if (storedProgress) {
         const parsedProgress = JSON.parse(storedProgress);
@@ -68,23 +62,7 @@ export const useLocalStorage = () => {
     refresh();
   }, []);
 
-  // Save entries to localStorage whenever entries change
-  useEffect(() => {
-    if (!loading) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-        // Clear any previous localStorage errors when save succeeds
-        if (error && error.includes('storage')) {
-          setError(null);
-        }
-      } catch (err) {
-        console.error('Error saving entries to localStorage:', err);
-        // Don't show localStorage errors to users - these are not critical
-        // The entries are still working fine from the database
-        // Only log the error for debugging purposes
-      }
-    }
-  }, [entries, loading, error]);
+  // No longer persisting entries to localStorage (DB is source of truth)
 
   // Save team progress to localStorage whenever it changes
   useEffect(() => {

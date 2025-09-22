@@ -1111,7 +1111,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           if (!resp?.success) console.warn('Vector clear all failed:', resp?.error);
           clearAllEntries();
           // Refresh from DB
-          try { localStorage.setItem('law_entries', JSON.stringify([])); } catch {}
+          try { localStorage.removeItem('law_entries'); } catch {}
           alert('All entries have been cleared from the database.');
         });
       } else {
@@ -1123,7 +1123,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
             const entryDate = new Date(entry.created_at).toISOString().split('T')[0];
             return entryDate !== today;
           });
-          try { localStorage.setItem('law_entries', JSON.stringify(remaining)); } catch {}
+          try { localStorage.removeItem('law_entries'); } catch {}
           alert('Today\'s entries have been cleared from the database.');
         });
       }
