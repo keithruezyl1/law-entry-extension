@@ -596,7 +596,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       type="button"
                       className="text-xs rounded-md border border-red-500 text-red-700 px-3 py-1.5 hover:bg-red-50 hover:border-red-600"
                       onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
-                      title={`KB match found: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id}`}
+                      title={`Internal match:\n${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}\n${inlineMatches[i][0]?.canonical_citation || ''}`}
+                      aria-label={`Convert to internal: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}`}
                     >
                       This law is in the KB. Add as internal instead?
                     </button>
