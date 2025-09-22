@@ -2142,10 +2142,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       </button>
     )}
   </div>
-  <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
-  {!isEditMode && (
-    <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
-  )}
+  <div className="mt-2 w-full">
+    <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
+    {!isEditMode && (
+      <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
+    )}
+  </div>
 </header>
 
           <div className="kb-form-layout grid grid-cols-12 gap-6 md:gap-8 items-stretch justify-center">
