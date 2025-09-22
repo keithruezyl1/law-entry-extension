@@ -29,6 +29,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     index: number | null;
     matches: EntryLite[];
   }>({ open: false, index: null, matches: [] });
+  const [inlineMatches, setInlineMatches] = useState<Record<number, EntryLite[]>>({});
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
   
@@ -352,9 +353,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     if (!ext || ext.type !== 'external') return;
     if (suppressDetectForExternal.current.has(idx)) return;
     const matches = findSimilarEntriesForExternal(ext);
-    if (matches.length > 0) {
-      setExternalToast({ open: true, index: idx, matches });
-    }
+    setInlineMatches(prev => ({ ...prev, [idx]: matches }));
+    // keep toast optional off by default
   };
 
   const handleDetectExternalMatchesDebounced = (idx: number) => {
@@ -576,6 +576,16 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
               <div key={f.id} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="kb-form-subtitle text-sm font-medium">External Citation #{externalIndex}</div>
+                  {!!inlineMatches[i]?.length && (
+                    <button
+                      type="button"
+                      className="text-xs rounded-md border px-2 py-1 hover:bg-orange-50"
+                      onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
+                      title={`KB match found: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id}`}
+                    >
+                      This law is in the KB. Add as internal instead?
+                    </button>
+                  )}
                 </div>
                 <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
                 
