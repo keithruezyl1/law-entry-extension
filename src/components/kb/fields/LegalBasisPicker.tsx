@@ -357,6 +357,21 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     // keep toast optional off by default
   };
 
+  const clearInlineIfEmpty = (idx: number) => {
+    const ext = items?.[idx];
+    const c = String(ext?.citation || '').trim();
+    const u = String(ext?.url || '').trim();
+    const t = String(ext?.title || '').trim();
+    if (!c && !u && !t) {
+      setInlineMatches(prev => {
+        if (!prev[idx]) return prev;
+        const next = { ...prev } as Record<number, EntryLite[]>;
+        delete next[idx];
+        return next;
+      });
+    }
+  };
+
   const handleDetectExternalMatchesDebounced = (idx: number) => {
     const existing = detectTimersRef.current[idx];
     if (existing) {
@@ -579,7 +594,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   {!!inlineMatches[i]?.length && (
                     <button
                       type="button"
-                      className="text-xs rounded-md border px-2 py-1 hover:bg-orange-50"
+                      className="text-xs rounded-md border border-red-500 text-red-700 px-3 py-1.5 hover:bg-red-50 hover:border-red-600"
                       onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
                       title={`KB match found: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id}`}
                     >
@@ -595,7 +610,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
-                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -603,7 +618,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -611,7 +626,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.title` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -642,7 +657,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() => remove(i)}
+                    onClick={() => { setInlineMatches(prev => { const next = { ...prev }; delete next[i]; return next; }); remove(i); }}
                     className={`h-11 rounded-xl ${externalCount > 1 ? 'flex-1 mb-2' : 'w-11 mb-2'}`}
                   >
                     <Trash2 className="h-4 w-4" />
