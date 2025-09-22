@@ -1220,12 +1220,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
     // Check for invalid internal/external relation entries (robust requireds)
     const invalidExternalEntries: string[] = [];
-    const requireFields = (obj: any, fields: string[]) => fields.every(f => typeof obj?.[f] === 'string' ? obj[f].trim() !== '' : Boolean(obj?.[f]));
+    const coerceTrim = (v: any) => typeof v === 'string' ? v.trim() : v;
+    const requireFields = (obj: any, fields: string[]) => fields.every(f => {
+      const val = coerceTrim(obj?.[f]);
+      return typeof val === 'string' ? val.length > 0 : Boolean(val);
+    });
 
     // Check legal_bases
     if (sanitizedAny.legal_bases) {
       sanitizedAny.legal_bases.forEach((item: any, index: number) => {
         if (!item) return;
+        // Normalize fields defensively before checks
+        if (item.citation != null) item.citation = coerceTrim(item.citation);
+        if (item.title != null) item.title = coerceTrim(item.title);
+        if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
         if (item.type === 'external') {
           // Essential: citation and title. URL and note recommended but not blocking.
           if (!requireFields(item, ['citation', 'title'])) {
@@ -1244,6 +1252,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     if (sanitizedAny.related_sections) {
       sanitizedAny.related_sections.forEach((item: any, index: number) => {
         if (!item) return;
+        if (item.citation != null) item.citation = coerceTrim(item.citation);
+        if (item.title != null) item.title = coerceTrim(item.title);
+        if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
         if (item.type === 'external') {
           if (!requireFields(item, ['citation', 'title'])) {
             invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation and title.`);

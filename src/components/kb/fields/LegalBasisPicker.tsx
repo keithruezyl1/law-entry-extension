@@ -401,6 +401,9 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
             
             return (
               <div key={f.id} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="kb-form-subtitle text-sm font-medium">Citation #{i + 1}</div>
+                </div>
                 <input type="hidden" value="internal" {...register(`${name}.${i}.type` as const)} />
                 
                 <div className="grid gap-3">
@@ -553,6 +556,9 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
             
             return (
               <div key={f.id} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="kb-form-subtitle text-sm font-medium">Citation #{i + 1}</div>
+                </div>
                 <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
                 
                 <div className="grid gap-3">
