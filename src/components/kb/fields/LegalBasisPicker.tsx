@@ -398,11 +398,12 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
             
             const internalFields = fields.filter((_, idx) => items?.[idx]?.type !== 'external');
             const isLastInternal = f.id === internalFields[internalFields.length - 1]?.id;
+            const internalIndex = Math.max(1, internalFields.findIndex((row) => row.id === f.id) + 1);
             
             return (
               <div key={f.id} className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="kb-form-subtitle text-sm font-medium">Citation #{i + 1}</div>
+                  <div className="kb-form-subtitle text-sm font-medium">Internal Citation #{internalIndex}</div>
                 </div>
                 <input type="hidden" value="internal" {...register(`${name}.${i}.type` as const)} />
                 
@@ -553,11 +554,12 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
             
             const externalFields = fields.filter((_, idx) => items?.[idx]?.type === 'external');
             const isLastExternal = f.id === externalFields[externalFields.length - 1]?.id;
+            const externalIndex = Math.max(1, externalFields.findIndex((row) => row.id === f.id) + 1);
             
             return (
               <div key={f.id} className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="kb-form-subtitle text-sm font-medium">Citation #{i + 1}</div>
+                  <div className="kb-form-subtitle text-sm font-medium">External Citation #{externalIndex}</div>
                 </div>
                 <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
                 

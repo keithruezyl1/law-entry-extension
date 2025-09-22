@@ -1225,6 +1225,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       const val = coerceTrim(obj?.[f]);
       return typeof val === 'string' ? val.length > 0 : Boolean(val);
     });
+    const isExternalBlank = (obj: any) => {
+      const c = coerceTrim(obj?.citation) || '';
+      const t = coerceTrim(obj?.title) || '';
+      const u = coerceTrim(obj?.url) || '';
+      const n = coerceTrim(obj?.note) || '';
+      return String(c).length === 0 && String(t).length === 0 && String(u).length === 0 && String(n).length === 0;
+    };
+    const isInternalBlank = (obj: any) => {
+      const id = coerceTrim(obj?.entry_id) || '';
+      const t = coerceTrim(obj?.title) || '';
+      const u = coerceTrim(obj?.url) || '';
+      const n = coerceTrim(obj?.note) || '';
+      return String(id).length === 0 && String(t).length === 0 && String(u).length === 0 && String(n).length === 0;
+    };
 
     // Check legal_bases
     if (sanitizedAny.legal_bases) {
@@ -1235,11 +1249,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         if (item.title != null) item.title = coerceTrim(item.title);
         if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
         if (item.type === 'external') {
+          if (isExternalBlank(item)) return; // skip untouched blank rows
           // Require citation, title, url, and note for external citations
           if (!requireFields(item, ['citation', 'title', 'url', 'note'])) {
             invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation, title, URL, and note.`);
           }
         } else if (item.type === 'internal') {
+          if (isInternalBlank(item)) return; // skip untouched blank rows
           // Require entry_id, title, url, and note for internal citations
           if (!requireFields(item, ['entry_id', 'title', 'url', 'note'])) {
             invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id, title, URL, and note.`);
@@ -1256,10 +1272,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         if (item.title != null) item.title = coerceTrim(item.title);
         if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
         if (item.type === 'external') {
+          if (isExternalBlank(item)) return; // skip untouched blank rows
           if (!requireFields(item, ['citation', 'title', 'url', 'note'])) {
             invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation, title, URL, and note.`);
           }
         } else if (item.type === 'internal') {
+          if (isInternalBlank(item)) return; // skip untouched blank rows
           if (!requireFields(item, ['entry_id', 'title', 'url', 'note'])) {
             invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id, title, URL, and note.`);
           }
