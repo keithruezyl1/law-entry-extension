@@ -9,6 +9,25 @@
 	padding: 32px 24px;
 }
 
+/* Mobile-first tweaks for create/edit form */
+@media (max-width: 640px) {
+    .kb-form-container {
+        padding: 16px 14px;
+    }
+    .kb-form-title {
+        font-size: 1.625rem; /* 26px */
+        line-height: 1.2;
+    }
+    .kb-form-subtitle { 
+        font-size: 0.8125rem; /* 13px */
+        margin: 6px 0 12px 0;
+    }
+    .ds-card {
+        padding: 12px !important;
+        border-radius: 14px !important;
+    }
+}
+
 @media (min-width: 768px) {
 	.kb-form-container {
 		padding: 40px 32px;
@@ -16,11 +35,8 @@
 }
 
 .kb-form-header {
-	display: flex;
-	align-items: flex-end;
-	justify-content: space-between;
-	gap: 16px;
-	margin-bottom: 32px;
+    display: block; /* stack rows on small screens */
+    margin-bottom: 32px;
 }
 
 @media (min-width: 640px) {
