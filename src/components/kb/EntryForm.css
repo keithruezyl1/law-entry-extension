@@ -59,9 +59,11 @@
         flex-wrap: wrap;
         gap: 0.5rem;
     }
-    .kb-form-header button[aria-label="Import entry JSON"] {
-        width: 36px !important;
-        height: 36px !important;
+    /* Inline import button that appears after the title on small screens */
+    .kb-import-inline {
+        width: 30px !important;
+        height: 30px !important;
+        vertical-align: middle;
     }
 }
 

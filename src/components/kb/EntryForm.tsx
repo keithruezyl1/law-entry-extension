@@ -2123,11 +2123,30 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         <div className="kb-form-container">
 <header className="kb-form-header mb-6" style={{ display: 'block' }}>
   <div className="flex items-center justify-between gap-4 w-full">
-    <h1 className="kb-form-title whitespace-nowrap">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
+    <h1 className="kb-form-title whitespace-nowrap">
+      {isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}
+      {!isEditMode && (
+        <button
+          type="button"
+          className="kb-import-inline inline-flex md:hidden align-middle items-center justify-center rounded-full ml-2 border border-gray-300 text-gray-600 hover:bg-gray-50"
+          title="Import entry JSON"
+          aria-label="Import entry JSON"
+          onClick={() => {
+            try { window.dispatchEvent(new Event('open-import-json-modal')); } catch {}
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12"/>
+            <path d="m8 11 4 4 4-4"/>
+            <path d="M20 21H4a2 2 0 0 1-2-2V7"/>
+          </svg>
+        </button>
+      )}
+    </h1>
     {!isEditMode && (
       <button
         type="button"
-        className="inline-flex items-center justify-center rounded-full h-10 w-10 border border-gray-300 text-gray-600 hover:bg-gray-50"
+        className="hidden md:inline-flex items-center justify-center rounded-full h-10 w-10 border border-gray-300 text-gray-600 hover:bg-gray-50"
         title="Import entry JSON"
         aria-label="Import entry JSON"
         onClick={() => {
