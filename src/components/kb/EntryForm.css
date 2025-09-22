@@ -41,8 +41,8 @@
         padding: 16px 14px;
     }
     .kb-form-title {
-        font-size: 1.35rem; /* smaller so it fits */
-        line-height: 1.25;
+        font-size: 1.2rem; /* smaller so it fits */
+        line-height: 1.2;
         white-space: normal; /* allow wrapping */
         word-break: break-word;
     }
@@ -61,9 +61,10 @@
     }
     /* Inline import button that appears after the title on small screens */
     .kb-import-inline {
-        width: 30px !important;
-        height: 30px !important;
+        width: 26px !important;
+        height: 26px !important;
         vertical-align: middle;
+        margin-left: 6px; /* slight space between title and button */
     }
 }
 
