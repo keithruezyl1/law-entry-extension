@@ -1136,6 +1136,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
     };
 
+    // Ensure we reliably capture arrays from RHF even if some fields were not part of the current step validation map
+    const rawLegalBases = Array.isArray((data as any).legal_bases)
+      ? (data as any).legal_bases
+      : (typeof getValues === 'function' ? (getValues('legal_bases') as any[]) : []);
+    const rawRelatedSections = Array.isArray((data as any).related_sections)
+      ? (data as any).related_sections
+      : (typeof getValues === 'function' ? (getValues('related_sections') as any[]) : []);
+
     const sanitized: Entry = {
       ...data,
       // Normalize common string fields to prevent null values
@@ -1149,8 +1157,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       source_urls: (data as any).source_urls?.filter((u: string) => !!u && u.trim().length > 0) || [],
       tags: (data as any).tags?.filter((t: string) => !!t && t.trim().length > 0) || [],
       // Normalize relations to fix entry_id: null issues
-      legal_bases: normalizeRelations((data as any).legal_bases),
-      related_sections: normalizeRelations((data as any).related_sections),
+      legal_bases: normalizeRelations(rawLegalBases),
+      related_sections: normalizeRelations(rawRelatedSections),
     } as any;
 
     // Only normalize type-specific string fields that are relevant for this entry type
