@@ -2113,15 +2113,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           </div>
         )}
         <div className="kb-form-container">
-          <header className="kb-form-header mb-6">
-      <div className="flex items-center justify-between gap-4">
-              <div>
-                <h1 className="kb-form-title">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
-                <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
-                {!isEditMode && (
-                  <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
-                )}
-              </div>
+<header className="kb-form-header mb-6">
+  <div className="flex items-center justify-between gap-4">
+    <h1 className="kb-form-title">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
     {!isEditMode && (
       <button
         type="button"
@@ -2139,8 +2133,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         </svg>
       </button>
     )}
-            </div>
-          </header>
+  </div>
+  <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
+  {!isEditMode && (
+    <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
+  )}
+</header>
 
           <div className="kb-form-layout grid grid-cols-12 gap-6 md:gap-8 items-stretch justify-center">
             {/* Top row: Progress (left) and Preview (right), reduced progress width */}
