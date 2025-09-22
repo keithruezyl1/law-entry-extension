@@ -417,7 +417,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { required: 'URL is required' })}
+                      {...register(`${name}.${i}.url` as const)}
                     />
                   </div>
                   <div>
@@ -433,7 +433,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="short note or descriptor"
-                      {...register(`${name}.${i}.note` as const, { required: 'Note is required' })}
+                      {...register(`${name}.${i}.note` as const)}
                     />
                   </div>
                 </div>
@@ -569,7 +569,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.url` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -585,7 +585,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="short note or descriptor"
-                      {...register(`${name}.${i}.note` as const, { required: 'Note is required' })}
+                      {...register(`${name}.${i}.note` as const)}
                     />
                   </div>
                 </div>
