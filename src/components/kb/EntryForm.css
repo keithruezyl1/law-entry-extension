@@ -41,8 +41,10 @@
         padding: 16px 14px;
     }
     .kb-form-title {
-        font-size: 1.625rem; /* 26px */
-        line-height: 1.2;
+        font-size: 1.35rem; /* smaller so it fits */
+        line-height: 1.25;
+        white-space: normal; /* allow wrapping */
+        word-break: break-word;
     }
     .kb-form-subtitle { 
         font-size: 0.8125rem; /* 13px */
@@ -51,6 +53,15 @@
     .ds-card {
         padding: 12px !important;
         border-radius: 14px !important;
+    }
+    /* Ensure header row wraps and the import button stays visible */
+    .kb-form-header .flex {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .kb-form-header button[aria-label="Import entry JSON"] {
+        width: 36px !important;
+        height: 36px !important;
     }
 }
 
