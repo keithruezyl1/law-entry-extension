@@ -995,11 +995,15 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
       setShowImportLoadingModal(false);
       
       if (result.success) {
-        // Store the imported data in sessionStorage and redirect to form
+        // Store the imported data and update state so the form prefills immediately
         sessionStorage.setItem('importedEntryData', JSON.stringify(result.data));
+        setImportedEntryData(result.data);
         // Set the cameFromDashboard flag to allow access to the form
         sessionStorage.setItem('cameFromDashboard', 'true');
-        navigate('/law-entry/1'); // Go to step 1 (start from beginning)
+        // Ensure we're on the form step; if already there, state update is enough
+        if (!window.location.pathname.startsWith('/law-entry/')) {
+          navigate('/law-entry/1');
+        }
       } else {
         // Show error
         alert(`Import failed: ${result.error}`);

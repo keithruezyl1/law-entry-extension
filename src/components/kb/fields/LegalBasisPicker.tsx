@@ -322,9 +322,25 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     const searchTerms = getSearchTerms(q);
     if (searchTerms.length === 0) return [];
     const pool = (allEntries && allEntries.length ? allEntries : existingEntries);
+    const exactCitation = normalizeSearchText(String(ext?.citation || ''));
+    const exactTitle = normalizeSearchText(String(ext?.title || ''));
+
     const scored = pool
-      .map(entry => ({ entry, score: calculateMatchScore(entry, searchTerms) }))
-      .filter(item => item.score >= 12)
+      .map(entry => {
+        const base = calculateMatchScore(entry, searchTerms);
+        // Strong exact/near-exact boosts
+        const entryTitle = normalizeSearchText(entry.title || '');
+        const entryCite = normalizeSearchText(entry.canonical_citation || '');
+        let boost = 0;
+        if (exactCitation && (entryCite === exactCitation || entryTitle === exactCitation)) boost += 12;
+        if (exactTitle && (entryTitle === exactTitle || entryCite === exactTitle)) boost += 10;
+        // Starts-with/light contains bonuses
+        if (exactCitation && (entryCite.startsWith(exactCitation) || entryTitle.startsWith(exactCitation))) boost += 6;
+        if (exactTitle && (entryTitle.startsWith(exactTitle) || entryCite.startsWith(exactTitle))) boost += 5;
+        return { entry, score: base + boost };
+      })
+      // Lower the floor slightly to surface good candidates
+      .filter(item => item.score >= 8)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .map(s => s.entry);
