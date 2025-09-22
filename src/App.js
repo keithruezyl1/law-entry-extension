@@ -976,6 +976,13 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     setShowImportJsonModal(true);
   };
 
+  // Allow other components/pages to open the Import JSON modal via a global event
+  useEffect(() => {
+    const openImportListener = () => setShowImportJsonModal(true);
+    window.addEventListener('open-import-json-modal', openImportListener);
+    return () => window.removeEventListener('open-import-json-modal', openImportListener);
+  }, []);
+
   const handleImportJson = async (jsonText) => {
     // Show loading modal
     setShowImportLoadingModal(true);

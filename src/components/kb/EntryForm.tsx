@@ -2114,20 +2114,32 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         )}
         <div className="kb-form-container">
           <header className="kb-form-header mb-6">
-            <div>
-              <h1 className="kb-form-title">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
-              <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="kb-form-title">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
+                <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
+                {!isEditMode && (
+                  <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
+                )}
+              </div>
               {!isEditMode && (
-                <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50"
+                  title="Import entry JSON"
+                  onClick={() => {
+                    try { window.dispatchEvent(new Event('open-import-json-modal')); } catch {}
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3v12"/>
+                    <path d="m8 11 4 4 4-4"/>
+                    <path d="M20 21H4a2 2 0 0 1-2-2V7"/>
+                  </svg>
+                  <span>Import</span>
+                </button>
               )}
             </div>
-            {/* Auto-saving indicator */}
-            {!isEditMode && isAutoSaving && (
-              <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
-                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span>Auto-saving...</span>
-              </div>
-            )}
           </header>
 
           <div className="kb-form-layout grid grid-cols-12 gap-6 md:gap-8 items-stretch justify-center">
