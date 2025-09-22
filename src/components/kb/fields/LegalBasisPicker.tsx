@@ -4,6 +4,7 @@ import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Trash2, Plus, Search, ArrowLeft } from 'lucide-react';
 import { fetchEntryById, fetchAllEntriesFromDb } from '../../../services/kbApi';
+import { semanticSearch } from '../../../services/vectorApi';
 import { Toast } from '../../ui/Toast';
 
 type EntryLite = { id?: string; entry_id: string; title: string; type?: string; canonical_citation?: string };
@@ -317,7 +318,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     return parts.filter(Boolean).join(' ').slice(0, 400);
   };
 
-  const findSimilarEntriesForExternal = (ext: any): EntryLite[] => {
+  const findSimilarEntriesForExternal = async (ext: any): Promise<EntryLite[]> => {
     const q = buildExternalQuery(ext).trim();
     if (!q) return [];
     const searchTerms = getSearchTerms(q);
@@ -326,7 +327,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     const exactCitation = normalizeSearchText(String(ext?.citation || ''));
     const exactTitle = normalizeSearchText(String(ext?.title || ''));
 
-    const scored = pool
+    // Local scoring
+    const localScored = pool
       .map(entry => {
         const base = calculateMatchScore(entry, searchTerms);
         // Strong exact/near-exact boosts
@@ -340,19 +342,46 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         if (exactTitle && (entryTitle.startsWith(exactTitle) || entryCite.startsWith(exactTitle))) boost += 5;
         return { entry, score: base + boost };
       })
-      // Lower the floor slightly to surface good candidates
-      .filter(item => item.score >= 8)
-      .sort((a, b) => b.score - a.score)
+      .filter(item => item.score >= 8);
+
+    // Semantic scoring via API (best-effort)
+    let semanticScored: { entry: any; score: number }[] = [];
+    try {
+      const resp = await semanticSearch(q, 5);
+      if (resp?.success && Array.isArray(resp.results)) {
+        semanticScored = resp.results.map((r: any) => ({ entry: r, score: Number(r.similarity || r.score || 0) * 100 }));
+      }
+    } catch {}
+
+    // Merge and rank by score, prefer entries with exact boosts
+    // Merge while tracking both local and semantic scores
+    const merged = {} as Record<string, { entry: any; local: number; semantic: number }>;
+    for (const it of localScored) {
+      const id = it.entry.entry_id || it.entry.id || it.entry.title;
+      const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 };
+      merged[id] = { entry: it.entry, local: Math.max(prev.local, it.score), semantic: prev.semantic };
+    }
+    for (const it of semanticScored) {
+      const id = it.entry.entry_id || it.entry.id || it.entry.title;
+      const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 };
+      merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
+    }
+
+    // Require both signals: semantic >= 0.6 and local >= 8
+    const SEM_THRESHOLD = 60; // scaled by 100 above
+    const LOC_THRESHOLD = 8;
+    return Object.values(merged)
+      .filter(m => m.semantic >= SEM_THRESHOLD && m.local >= LOC_THRESHOLD)
+      .sort((a, b) => (b.semantic + b.local) - (a.semantic + a.local))
       .slice(0, 5)
-      .map(s => s.entry);
-    return scored;
+      .map(m => m.entry as EntryLite);
   };
 
-  const handleDetectExternalMatches = (idx: number) => {
+  const handleDetectExternalMatches = async (idx: number) => {
     const ext = items?.[idx];
     if (!ext || ext.type !== 'external') return;
     if (suppressDetectForExternal.current.has(idx)) return;
-    const matches = findSimilarEntriesForExternal(ext);
+    const matches = await findSimilarEntriesForExternal(ext);
     setInlineMatches(prev => ({ ...prev, [idx]: matches }));
     // keep toast optional off by default
   };
@@ -611,7 +640,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
-                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -619,7 +648,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -627,7 +656,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.title` as const, { onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
