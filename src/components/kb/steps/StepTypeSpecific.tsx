@@ -21,7 +21,7 @@ const FIELDS_BY_TYPE_STATIC: Record<NonNullable<Entry['type']>, string[]> = {
     'legal_bases',
   ],
   city_ordinance_section: ['elements', 'penalties', 'defenses', 'related_sections', 'legal_bases'],
-  rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'related_sections'],
+  rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'legal_bases', 'related_sections'],
   agency_circular: ['circular_no', 'section_no', 'applicability', 'legal_bases', 'supersedes'],
   doj_issuance: ['issuance_no', 'applicability', 'legal_bases', 'supersedes'],
   executive_issuance: ['instrument_no', 'applicability', 'legal_bases', 'supersedes'],

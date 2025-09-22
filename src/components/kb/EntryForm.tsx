@@ -2115,7 +2115,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         <div className="kb-form-container">
 <header className="kb-form-header mb-6">
   <div className="flex items-center justify-between gap-4">
-    <h1 className="kb-form-title">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
+    <h1 className="kb-form-title whitespace-nowrap">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
     {!isEditMode && (
       <button
         type="button"
