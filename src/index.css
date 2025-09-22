@@ -9,6 +9,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html, body {
+  width: 100%;
+  max-width: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (max-width: 640px) {
+  /* Ensure mobile viewport fills width and prevents leftover desktop scaling */
+  body {
+    font-size: 16px; /* enforce readable base size on mobile */
+    overflow-x: hidden;
+  }
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;

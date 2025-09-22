@@ -86,6 +86,13 @@
 	}
 }
 
+/* On very small screens, stack progress and preview and reduce inner spacing */
+@media (max-width: 768px) {
+    .kb-form-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (min-width: 1024px) {
 	.kb-form-layout {
 		gap: 48px;
