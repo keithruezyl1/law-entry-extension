@@ -3,6 +3,32 @@
 	background-color: #ffffff;
 }
 
+/* Mobile viewport safety for create/edit form */
+@media (max-width: 768px) {
+	.kb-form {
+		width: 100vw;
+		max-width: 100vw;
+		overflow-x: hidden;
+	}
+
+	/* Keep form controls >=16px to prevent iOS auto-zoom */
+	.kb-form .kb-input,
+	.kb-form input[type="text"],
+	.kb-form input[type="url"],
+	.kb-form input[type="date"],
+	.kb-form select,
+	.kb-form textarea,
+	.kb-form-select,
+	.kb-form-input {
+		font-size: 16px !important;
+	}
+
+	/* Compact some large paddings for small screens */
+	.kb-step-header { padding: 16px 18px; }
+	.kb-step-title { font-size: 1.25rem; }
+	.kb-step-description { font-size: 0.95rem; }
+}
+
 .kb-form-container {
 	max-width: 1320px;
 	margin: 0 auto;
