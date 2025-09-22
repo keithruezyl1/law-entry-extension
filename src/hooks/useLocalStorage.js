@@ -513,6 +513,8 @@ export const useLocalStorage = () => {
         // Fast scoring system - with calibrated signals
       const scoredEntries = filteredEntries.map(entry => {
           const combinedTags = Array.isArray(entry.tags) ? entry.tags.join(' ') : '';
+          const combinedTitleCitation = (entry.title && entry.canonical_citation) ? `${entry.title} ${entry.canonical_citation}` : '';
+          const reverseTitleCitation = (entry.title && entry.canonical_citation) ? `${entry.canonical_citation} ${entry.title}` : '';
           const combinedField = [
             entry.title,
             entry.canonical_citation,
@@ -524,6 +526,9 @@ export const useLocalStorage = () => {
           const searchFields = [
           // Hierarchy: title > citation > tags > section > law family > id > others
           { text: entry.title, weight: 12 },
+          // Treat explicit title+citation as its own searchable field with high weight
+          { text: combinedTitleCitation, weight: 13 },
+          { text: reverseTitleCitation, weight: 12 },
           { text: entry.canonical_citation, weight: 9 },
           { text: entry.section_id, weight: 6 },
           { text: entry.law_family, weight: 5 },
@@ -539,6 +544,14 @@ export const useLocalStorage = () => {
         let score = 0;
         let hasMatch = false;
         let phraseBoostApplied = false;
+        // If the query exactly equals the title+citation, force a very high score
+        try {
+          const norm = (s) => normalize(s);
+          if ((combinedTitleCitation && norm(combinedTitleCitation) === searchTerm) || (reverseTitleCitation && norm(reverseTitleCitation) === searchTerm)) {
+            score += 1000; // ranks above others deterministically
+            hasMatch = true;
+          }
+        } catch {}
         
           for (const { text, weight } of searchFields) {
           if (!text) continue;

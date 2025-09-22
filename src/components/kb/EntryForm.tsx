@@ -1218,17 +1218,22 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     console.log('Legal bases:', sanitizedAny.legal_bases);
     console.log('Related sections:', sanitizedAny.related_sections);
 
-    // Check for invalid external entries
+    // Check for invalid internal/external relation entries (require all fields)
     const invalidExternalEntries: string[] = [];
+    const requireFields = (obj: any, fields: string[]) => fields.every(f => typeof obj?.[f] === 'string' ? obj[f].trim() !== '' : Boolean(obj?.[f]));
 
     // Check legal_bases
     if (sanitizedAny.legal_bases) {
       sanitizedAny.legal_bases.forEach((item: any, index: number) => {
-        if (item && item.type === 'external' && (!item.citation || item.citation.trim() === '')) {
-          invalidExternalEntries.push(`Legal Basis ${index + 1}: External entries require a citation`);
-        }
-        if (item && item.type === 'internal' && (!item.entry_id || item.entry_id.trim() === '')) {
-          invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal entries require an entry_id`);
+        if (!item) return;
+        if (item.type === 'external') {
+          if (!requireFields(item, ['citation', 'url', 'title', 'note'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation, URL, title, and note.`);
+          }
+        } else if (item.type === 'internal') {
+          if (!requireFields(item, ['entry_id', 'url', 'title', 'note'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id, URL, title, and note.`);
+          }
         }
       });
     }
@@ -1236,11 +1241,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Check related_sections
     if (sanitizedAny.related_sections) {
       sanitizedAny.related_sections.forEach((item: any, index: number) => {
-        if (item && item.type === 'external' && (!item.citation || item.citation.trim() === '')) {
-          invalidExternalEntries.push(`Related Section ${index + 1}: External entries require a citation`);
-        }
-        if (item && item.type === 'internal' && (!item.entry_id || item.entry_id.trim() === '')) {
-          invalidExternalEntries.push(`Related Section ${index + 1}: Internal entries require an entry_id`);
+        if (!item) return;
+        if (item.type === 'external') {
+          if (!requireFields(item, ['citation', 'url', 'title', 'note'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation, URL, title, and note.`);
+          }
+        } else if (item.type === 'internal') {
+          if (!requireFields(item, ['entry_id', 'url', 'title', 'note'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id, URL, title, and note.`);
+          }
         }
       });
     }

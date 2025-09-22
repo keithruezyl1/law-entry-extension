@@ -1,195 +1,470 @@
-## Law Entry App – Testing Guide
+# 🧪 Civilify Law Entry App - Comprehensive Testing Documentation
 
-This guide walks you through running and testing the app end-to-end:
-- Frontend (React app, DB-first CRUD)
-- Embedded Vector Server (Express + Postgres + pgvector)
-- Chat (embedded endpoint by default, optional external microservice)
+## Overview
+
+This document provides comprehensive information about the testing strategy, setup, and execution for the Civilify Law Entry App. The testing suite includes unit tests, integration tests, performance tests, and end-to-end tests to ensure the application's reliability, performance, and user experience.
+
+## 🏗️ Testing Architecture
+
+### Testing Stack
+- **Unit & Integration Tests**: Jest + React Testing Library
+- **End-to-End Tests**: Cypress
+- **Performance Tests**: Puppeteer + Lighthouse
+- **Mock Service Worker**: MSW for API mocking
+- **Coverage**: Istanbul for code coverage
+
+### Test Categories
+
+1. **Unit Tests** - Individual component and utility function testing
+2. **Integration Tests** - Component interaction and workflow testing
+3. **Performance Tests** - Load time, memory usage, and optimization testing
+4. **End-to-End Tests** - Complete user journey testing
+5. **Accessibility Tests** - WCAG compliance and usability testing
+
+## 📁 Test Structure
+
+```
+law-entry-app/
+├── src/
+│   ├── __tests__/                    # Main test directory
+│   │   ├── App.test.js              # Main app component tests
+│   │   └── integration/             # Integration test suites
+│   │       └── EntryWorkflow.test.js
+│   ├── components/__tests__/         # Component-specific tests
+│   ├── hooks/__tests__/             # Custom hook tests
+│   │   └── useLocalStorage.test.js
+│   ├── utils/__tests__/             # Utility function tests
+│   │   └── validation.test.js
+│   └── services/__tests__/          # API service tests
+│       └── kbApi.test.js
+├── cypress/                         # E2E test configuration
+│   ├── e2e/                        # E2E test suites
+│   │   ├── authentication.cy.js
+│   │   ├── entry-creation.cy.js
+│   │   ├── entry-management.cy.js
+│   │   └── team-progress.cy.js
+│   ├── support/                    # Cypress support files
+│   │   ├── commands.js
+│   │   └── e2e.js
+│   └── fixtures/                   # Test data fixtures
+├── scripts/                        # Performance and utility scripts
+│   ├── performance-tests.js
+│   └── lighthouse-tests.js
+├── __mocks__/                      # Jest mocks
+│   └── fileMock.js
+├── jest.config.js                  # Jest configuration
+├── cypress.config.js              # Cypress configuration
+└── TESTING.md                     # This documentation
+```
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ and npm
-- PostgreSQL 15+ with the `pgvector` extension installed
-- OpenAI API key with access to embeddings and GPT models
+- Node.js 18+ 
+- npm or yarn
+- Chrome browser (for E2E tests)
 
-Tip: Keep the embedding model consistent for indexing and querying. Default here is `text-embedding-3-small` (1536 dimensions).
-
----
-
-## 1) Backend: Vector Server
-
-Location: `server/`
-
-1. Create environment file
+### Installation
 ```bash
-cd server
-cp env.example .env
-# Edit .env values:
-# - PORT=4000 (default)
-# - CORS_ORIGIN=http://localhost:3000 (frontend URL)
-# - DATABASE_URL=postgres://user:password@localhost:5432/civilify_kb
-# - PGSSL=false (set true if your DB requires SSL)
-# - OPENAI_API_KEY=sk-... (your key)
-# - OPENAI_EMBEDDING_MODEL=text-embedding-3-small (1536 dims)
+# Install dependencies
+npm install
+
+# Install additional testing dependencies
+npm install --save-dev puppeteer chrome-launcher
 ```
 
-2. Install dependencies
+### Running Tests
+
+#### Unit and Integration Tests
 ```bash
-npm i
+# Run all unit tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in CI mode
+npm run test:ci
+
+# Run tests in watch mode
+npm test -- --watch
 ```
 
-3. Initialize database schema (pgvector, table, indexes)
+#### End-to-End Tests
 ```bash
-# Ensure pgvector extension is available in your Postgres installation
-# Then run the SQL files (replace DB name if needed)
-psql "$DATABASE_URL" -f sql/001_init.sql
-psql "$DATABASE_URL" -f sql/002_match_fn.sql
+# Run E2E tests headlessly
+npm run test:e2e
+
+# Open Cypress test runner
+npm run test:e2e:open
+
+# Run specific test file
+npx cypress run --spec "cypress/e2e/authentication.cy.js"
 ```
 
-4. Start the server
+#### Performance Tests
 ```bash
-npm run dev
-# Verify health
-curl http://localhost:4000/health
-# → {"ok":true}
+# Run performance tests
+npm run test:performance
+
+# Run Lighthouse tests
+npm run test:lighthouse
+
+# Run all performance tests
+npm run test:performance && npm run test:lighthouse
 ```
 
-Common issues:
-- If you see `ERROR: extension "vector" does not exist`, install pgvector for your Postgres and re-run step 3.
-- If you switch to `text-embedding-3-small`, change the column type to `vector(1536)` in `sql/001_init.sql` and re-create the table/column.
-
----
-
-## 2) Frontend: React App (DB-first)
-
-Location: project root (this folder)
-
-1. Configure environment for the frontend
+#### Run All Tests
 ```bash
-# Create a file named .env.local in the project root with:
-REACT_APP_VECTOR_API_URL=http://localhost:4000
-# Optional: override chat server (default uses embedded /api/chat)
-# REACT_APP_CHAT_API_URL=http://localhost:5050
+# Run complete test suite
+npm run test:all
 ```
 
-2. Install dependencies and start
-```bash
-npm i
-npm start
-# App runs at http://localhost:3000
+## 📊 Test Coverage
+
+### Coverage Targets
+- **Statements**: 70%
+- **Branches**: 70%
+- **Functions**: 70%
+- **Lines**: 70%
+
+### Coverage Reports
+Coverage reports are generated in multiple formats:
+- **Terminal**: Real-time coverage during test runs
+- **HTML**: Detailed coverage report in `coverage/lcov-report/index.html`
+- **JSON**: Machine-readable coverage data in `coverage/coverage-final.json`
+
+## 🧪 Test Suites
+
+### 1. Unit Tests
+
+#### App Component Tests (`src/__tests__/App.test.js`)
+- Component rendering
+- Authentication flow
+- Navigation behavior
+- Theme toggle functionality
+- Error handling
+
+#### Hook Tests (`src/hooks/__tests__/useLocalStorage.test.js`)
+- Local storage operations
+- Entry CRUD operations
+- Search functionality
+- Import/export operations
+- Error handling
+
+#### Utility Tests (`src/utils/__tests__/validation.test.js`)
+- Entry validation
+- Entry type validation
+- Jurisdiction validation
+- Type-specific field validation
+- Edge case handling
+
+#### Service Tests (`src/services/__tests__/kbApi.test.js`)
+- API endpoint testing
+- Request/response handling
+- Error handling
+- Authentication token management
+- Network error scenarios
+
+### 2. Integration Tests
+
+#### Entry Workflow Tests (`src/__tests__/integration/EntryWorkflow.test.js`)
+- Complete entry creation flow
+- Form validation workflow
+- Entry management operations
+- Authentication integration
+- Error handling workflows
+- Team progress integration
+
+### 3. End-to-End Tests
+
+#### Authentication Flow (`cypress/e2e/authentication.cy.js`)
+- Login form validation
+- Successful authentication
+- Invalid credential handling
+- Logout functionality
+- Session management
+- Session expiration handling
+
+#### Entry Creation (`cypress/e2e/entry-creation.cy.js`)
+- Multi-step form navigation
+- Field validation
+- Form submission
+- Draft saving
+- Entry type handling
+- Progress indicators
+
+#### Entry Management (`cypress/e2e/entry-management.cy.js`)
+- Entry listing
+- Search functionality
+- Filtering and sorting
+- Entry editing
+- Entry deletion
+- Bulk operations
+- Export functionality
+
+#### Team Progress (`cypress/e2e/team-progress.cy.js`)
+- Progress display
+- Quota tracking
+- Real-time updates
+- Team member management
+- Completion status
+- Carryover handling
+
+### 4. Performance Tests
+
+#### Page Load Performance
+- Initial page load times
+- First Contentful Paint (FCP)
+- Largest Contentful Paint (LCP)
+- Time to Interactive (TTI)
+- Cumulative Layout Shift (CLS)
+
+#### Form Performance
+- Form rendering time
+- Field interaction response
+- Validation performance
+- Submission processing
+
+#### Search Performance
+- Search query response time
+- Result rendering performance
+- Filter application speed
+
+#### Memory Usage
+- Initial memory footprint
+- Memory growth during usage
+- Memory leak detection
+
+### 5. Lighthouse Tests
+
+#### Performance Metrics
+- Performance score (target: 90+)
+- Accessibility score (target: 95+)
+- Best Practices score (target: 90+)
+- SEO score (target: 90+)
+
+#### Core Web Vitals
+- Largest Contentful Paint (LCP) < 2.5s
+- First Input Delay (FID) < 100ms
+- Cumulative Layout Shift (CLS) < 0.1
+
+## 🎯 Test Data Management
+
+### Mock Data
+- **Authentication**: Mock user credentials and JWT tokens
+- **Entries**: Sample legal entries for testing
+- **Team Members**: Mock team member data
+- **API Responses**: Mocked API responses for consistent testing
+
+### Test Fixtures
+```javascript
+// Example test entry
+const mockEntry = {
+  id: 1,
+  entry_id: 'TEST-001',
+  title: 'Test Statute',
+  type: 'statute_section',
+  jurisdiction: 'PH',
+  law_family: 'Test Law',
+  canonical_citation: 'Test Citation',
+  summary: 'Test summary',
+  text: 'Test text content',
+  source_urls: ['https://example.com'],
+  tags: ['test'],
+  effective_date: '2025-01-01',
+  last_reviewed: '2025-01-01'
+};
 ```
 
-3. Import a plan (required before creating entries)
-- Click "Import Plan" and select your Excel plan, then set Day 1 and confirm import.
-- "Create New Entry" is enabled only after a plan is imported and Day 1 is set.
+## 🔧 Configuration
 
-4. Create and save a KB entry (DB-first)
-- Click "Create New Entry" and complete the wizard (most fields optional; only Title is required).
-- Click "Create Entry" on the last step.
-- The app upserts to the database first, then refreshes the list from DB (source of truth).
-
-5. Confirm it indexed
-```bash
-curl -X POST http://localhost:4000/api/kb/search \
-  -H "Content-Type: application/json" \
-  -d '{"query":"theft","limit":5}'
-
-# Expect results array with your entry if the text is semantically similar
+### Jest Configuration (`jest.config.js`)
+```javascript
+module.exports = {
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.js'],
+  moduleNameMapping: {
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/__mocks__/fileMock.js',
+  },
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx,ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/index.js',
+    '!src/reportWebVitals.js',
+    '!src/setupTests.js',
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  }
+};
 ```
 
-6. Near-duplicate suggestions (optional)
-- While editing Title/Canonical Citation, the app issues a debounced semantic search
-- If close matches exist, you’ll see "Possible matches" under the Title
+### Cypress Configuration (`cypress.config.js`)
+```javascript
+const { defineConfig } = require('cypress');
 
----
-
-## 3) Chat (RAG) Test
-
-Default: The embedded server exposes `POST /api/chat` and the UI uses it by default. It embeds your question, retrieves top matches from `kb_entries`, and builds a grounded prompt that includes title, type, canonical citation, tags, summary, and legal text.
-
-Optional external chat server (instead of embedded):
-```bash
-cd rag-reference/chat
-cp env.example .env
-# In .env set:
-# - OPENAI_API_KEY=sk-...
-# - VECTOR_API_URL=http://localhost:4000
-npm i
-npm run dev
-# Chat server runs on http://localhost:5050
-```
-Back in the app, set `REACT_APP_CHAT_API_URL=http://localhost:5050` to use the external server. Otherwise, it will call the embedded `/api/chat`.
-Click "Ask Villy (RAG)", type a question, and you should get an answer grounded on the top matches.
-
----
-
-## 4) Manual API Tests (curl)
-
-Upsert an entry directly (bypassing the UI):
-```bash
-curl -X POST http://localhost:4000/api/kb/entries \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entry_id": "RPC-Art308",
-    "type": "statute_section",
-    "title": "RPC Art. 308 — Theft",
-    "canonical_citation": "RPC Art. 308",
-    "summary": "Defines and penalizes theft.",
-    "text": "Any person who shall take...",
-    "tags": ["theft","property"],
-    "jurisdiction": "PH",
-    "law_family": "Revised Penal Code"
-  }'
+module.exports = defineConfig({
+  e2e: {
+    baseUrl: 'http://localhost:3000',
+    supportFile: 'cypress/support/e2e.js',
+    specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
+    viewportWidth: 1280,
+    viewportHeight: 720,
+    video: true,
+    screenshotOnRunFailure: true,
+    defaultCommandTimeout: 10000,
+    requestTimeout: 10000,
+    responseTimeout: 10000,
+  }
+});
 ```
 
-List all entries:
+## 📈 Performance Benchmarks
+
+### Page Load Performance
+- **Login Page**: < 2 seconds
+- **Dashboard**: < 3 seconds
+- **Entry Form**: < 2.5 seconds
+
+### Form Performance
+- **Form Rendering**: < 500ms
+- **Field Interaction**: < 100ms
+- **Validation**: < 200ms
+- **Submission**: < 2 seconds
+
+### Search Performance
+- **Search Response**: < 1 second
+- **Result Rendering**: < 500ms
+- **Filter Application**: < 300ms
+
+### Memory Usage
+- **Initial Load**: < 50MB
+- **Memory Growth**: < 10MB per session
+- **Memory Leaks**: None detected
+
+## 🐛 Debugging Tests
+
+### Common Issues and Solutions
+
+#### Test Failures
+1. **Timeout Issues**: Increase timeout values in test configuration
+2. **Element Not Found**: Ensure proper data-testid attributes
+3. **Async Operations**: Use proper wait strategies (waitFor, cy.wait)
+
+#### Performance Issues
+1. **Slow Tests**: Optimize test data and reduce unnecessary operations
+2. **Memory Leaks**: Ensure proper cleanup in test teardown
+3. **Network Issues**: Use proper mocking for external dependencies
+
+#### E2E Test Issues
+1. **Flaky Tests**: Add proper waits and retries
+2. **Browser Issues**: Ensure consistent browser environment
+3. **Data Cleanup**: Clear test data between test runs
+
+### Debug Commands
 ```bash
-curl http://localhost:4000/api/kb/entries | jq
+# Run tests with verbose output
+npm test -- --verbose
+
+# Run specific test file
+npm test -- --testPathPattern=App.test.js
+
+# Debug Cypress tests
+npx cypress open --config video=false
+
+# Run performance tests with detailed output
+node scripts/performance-tests.js --verbose
 ```
 
-Get a single entry:
-```bash
-curl http://localhost:4000/api/kb/entries/RPC-Art308 | jq
+## 📋 Test Checklist
+
+### Before Committing
+- [ ] All unit tests pass
+- [ ] Integration tests pass
+- [ ] E2E tests pass
+- [ ] Performance tests meet benchmarks
+- [ ] Code coverage meets thresholds
+- [ ] No console errors in tests
+- [ ] Test documentation updated
+
+### Before Deployment
+- [ ] Full test suite passes
+- [ ] Performance benchmarks met
+- [ ] Accessibility tests pass
+- [ ] Cross-browser compatibility verified
+- [ ] Load testing completed
+- [ ] Security testing performed
+
+## 🔄 Continuous Integration
+
+### GitHub Actions Workflow
+```yaml
+name: Test Suite
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+      - run: npm ci
+      - run: npm run test:ci
+      - run: npm run test:e2e
+      - run: npm run test:performance
 ```
 
-Search semantically:
-```bash
-curl -X POST http://localhost:4000/api/kb/search \
-  -H "Content-Type: application/json" \
-  -d '{"query":"elements of theft","limit":5}'
-```
+### Test Reports
+- **Unit Tests**: Jest coverage reports
+- **E2E Tests**: Cypress test results and videos
+- **Performance**: Lighthouse reports and performance metrics
+- **Coverage**: Code coverage reports and trends
 
-Delete a single entry:
-```bash
-curl -X DELETE http://localhost:4000/api/kb/entries/RPC-Art308
-```
+## 📚 Best Practices
 
-Bulk delete:
-```bash
-# Clear all
-curl -X DELETE http://localhost:4000/api/kb/entries
+### Writing Tests
+1. **Arrange-Act-Assert**: Structure tests clearly
+2. **Descriptive Names**: Use clear, descriptive test names
+3. **Single Responsibility**: Test one thing per test
+4. **Mock External Dependencies**: Isolate units under test
+5. **Clean Up**: Ensure proper test cleanup
 
-# Clear today's entries only
-curl -X DELETE "http://localhost:4000/api/kb/entries?date=$(date +%F)"
-```
+### Test Data
+1. **Realistic Data**: Use realistic test data
+2. **Edge Cases**: Test boundary conditions
+3. **Error Scenarios**: Test error handling
+4. **Data Isolation**: Ensure test data doesn't interfere
 
----
+### Performance Testing
+1. **Baseline Metrics**: Establish performance baselines
+2. **Regular Monitoring**: Monitor performance trends
+3. **Realistic Scenarios**: Test realistic user scenarios
+4. **Resource Monitoring**: Monitor memory and CPU usage
 
-## 5) Troubleshooting
+## 🎉 Conclusion
 
-- CORS error from frontend → Set `CORS_ORIGIN` in `server/.env` to your frontend URL (e.g., `http://localhost:3000`) and restart the server.
-- 400 from `/api/kb/entries` → Ensure `entry_id` is present. The UI auto-generates this based on Type/Law Family/Section.
-- OpenAI errors → Check API key, network restrictions, or model allowances.
-- Dimension mismatch → Model `text-embedding-3-small` requires `vector(1536)`; `text-embedding-3-large` would require `vector(3072)`.
-- No search results → Index may be empty or the query is unrelated. Try a broader query or verify upserts in server logs.
-- Create button disabled → Import a plan and set Day 1 first; the UI is plan-gated.
-- Import skipped entries → The importer adds only entries whose `entry_id` does not already exist in DB.
-- DB-first sync → If the list looks stale, ensure the server is running and `REACT_APP_VECTOR_API_URL` points to it; check `GET /api/kb/entries`.
+This comprehensive testing suite ensures the Civilify Law Entry App maintains high quality, performance, and reliability. The multi-layered approach covers all aspects of the application from individual components to complete user workflows.
 
----
+### Key Benefits
+- **Quality Assurance**: Comprehensive test coverage ensures reliability
+- **Performance Monitoring**: Continuous performance tracking
+- **User Experience**: E2E tests validate user workflows
+- **Maintainability**: Well-structured tests support ongoing development
+- **Documentation**: Tests serve as living documentation
 
-## 6) What to Expect
-- DB-first CRUD: create/edit/delete hit the server and the list refreshes from DB.
-- "Possible matches" appears under Title when similar entries exist.
-- Chat answers are grounded on vector matches and include both summary and legal text in the prompt.
+### Next Steps
+1. **Expand Coverage**: Add more edge case tests
+2. **Performance Optimization**: Use test results to optimize performance
+3. **Accessibility**: Enhance accessibility testing
+4. **Load Testing**: Add load testing for production scenarios
+5. **Security Testing**: Implement security-focused tests
 
-
-
+For questions or issues with the testing suite, please refer to the development team or create an issue in the project repository.

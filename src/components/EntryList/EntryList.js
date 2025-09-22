@@ -85,8 +85,6 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
       };
     }
   }, [selectedEntry, entryStack]);
-  console.log('EntryList received entries:', entries);
-  console.log('EntryList entries length:', entries.length);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -124,12 +122,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   // const allTags = getAllTags();
 
   const filteredEntries = useMemo(() => {
-    console.log('EntryList filtering with:', { debouncedSearchQuery, filters, teamMemberNames });
-    console.log('Team member names object:', teamMemberNames);
-    console.log('Team member names keys:', Object.keys(teamMemberNames));
     const filtered = searchEntries(debouncedSearchQuery, filters);
-    console.log('Filtered entries:', filtered);
-    console.log('Filtered entries length:', filtered.length);
     return filtered;
   }, [debouncedSearchQuery, filters, searchEntries, teamMemberNames]);
 
@@ -226,7 +219,11 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
         e.canonical_citation,
         e.section_id,
         e.law_family,
-        Array.isArray(e.tags) ? e.tags.join(' ') : ''
+        Array.isArray(e.tags) ? e.tags.join(' ') : '',
+        // Also consider exact matches where the user types "Title — Citation"
+        (e.title && e.canonical_citation) ? `${e.title} ${e.canonical_citation}` : '',
+        // And the reverse order just in case
+        (e.title && e.canonical_citation) ? `${e.canonical_citation} ${e.title}` : ''
       ];
       return haystacks.some(h => normalize(h) === searchTerm);
     });

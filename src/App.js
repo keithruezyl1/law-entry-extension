@@ -414,7 +414,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
           doneByType
         };
         incomplete.push(incompleteEntry);
-        console.log(`Found incomplete entry for ${personName} (P${personId}): ${totalDone}/${totalReq}`, incompleteEntry);
       }
     });
     
@@ -423,11 +422,10 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
     // Store in sessionStorage for use in EntryForm
     try {
       sessionStorage.setItem('incompleteEntries', JSON.stringify(incomplete));
-      console.log('Stored incomplete entries in sessionStorage:', incomplete);
     } catch (e) {
       console.error('Failed to store incomplete entries in sessionStorage:', e);
     }
-  }, [planRows, day1Date, entries, now]);
+  }, [planRows, day1Date, entries]);
 
   // Check incomplete entries when data changes
   useEffect(() => {

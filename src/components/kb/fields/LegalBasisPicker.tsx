@@ -409,7 +409,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., ROC-113-5 or RPC-308"
-                      {...register(`${name}.${i}.entry_id` as const)}
+                      {...register(`${name}.${i}.entry_id` as const, { required: 'Entry ID is required' })}
                     />
                   </div>
                   <div>
@@ -417,7 +417,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const)}
+                      {...register(`${name}.${i}.url` as const, { required: 'URL is required' })}
                     />
                   </div>
                   <div>
@@ -425,7 +425,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const)}
+                      {...register(`${name}.${i}.title` as const, { required: 'Title is required' })}
                     />
                   </div>
                   <div>
@@ -433,7 +433,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="short note or descriptor"
-                      {...register(`${name}.${i}.note` as const)}
+                      {...register(`${name}.${i}.note` as const, { required: 'Note is required' })}
                     />
                   </div>
                 </div>
@@ -561,7 +561,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
-                      {...register(`${name}.${i}.citation` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -569,7 +569,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -577,7 +577,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.title` as const, { required: 'Title is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -585,7 +585,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="short note or descriptor"
-                      {...register(`${name}.${i}.note` as const)}
+                      {...register(`${name}.${i}.note` as const, { required: 'Note is required' })}
                     />
                   </div>
                 </div>
