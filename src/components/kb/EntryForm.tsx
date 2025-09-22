@@ -2122,7 +2122,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         )}
         <div className="kb-form-container">
 <header className="kb-form-header mb-6">
-  <div className="flex items-center justify-between gap-4">
+  <div className="flex items-center justify-between gap-4 w-full">
     <h1 className="kb-form-title whitespace-nowrap">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
     {!isEditMode && (
       <button
@@ -2142,7 +2142,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       </button>
     )}
   </div>
-  <div className="mt-2 w-full">
+  <div className="mt-2 w-full block">
     <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
     {!isEditMode && (
       <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
