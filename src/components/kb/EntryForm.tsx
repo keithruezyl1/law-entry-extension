@@ -1235,14 +1235,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         if (item.title != null) item.title = coerceTrim(item.title);
         if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
         if (item.type === 'external') {
-          // Essential: citation and title. URL and note recommended but not blocking.
-          if (!requireFields(item, ['citation', 'title'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation and title.`);
+          // Require citation, title, url, and note for external citations
+          if (!requireFields(item, ['citation', 'title', 'url', 'note'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation, title, URL, and note.`);
           }
         } else if (item.type === 'internal') {
-          // Essential: entry_id and title
-          if (!requireFields(item, ['entry_id', 'title'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id and title.`);
+          // Require entry_id, title, url, and note for internal citations
+          if (!requireFields(item, ['entry_id', 'title', 'url', 'note'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id, title, URL, and note.`);
           }
         }
       });
@@ -1256,12 +1256,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         if (item.title != null) item.title = coerceTrim(item.title);
         if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
         if (item.type === 'external') {
-          if (!requireFields(item, ['citation', 'title'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation and title.`);
+          if (!requireFields(item, ['citation', 'title', 'url', 'note'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation, title, URL, and note.`);
           }
         } else if (item.type === 'internal') {
-          if (!requireFields(item, ['entry_id', 'title'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id and title.`);
+          if (!requireFields(item, ['entry_id', 'title', 'url', 'note'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id, title, URL, and note.`);
           }
         }
       });
