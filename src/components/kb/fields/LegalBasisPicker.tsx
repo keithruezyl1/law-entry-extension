@@ -429,7 +429,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { required: 'Title is required' })}
+                      {...register(`${name}.${i}.title` as const)}
                     />
                   </div>
                   <div>
@@ -437,7 +437,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="short note or descriptor"
-                      {...register(`${name}.${i}.note` as const, { required: 'Note is required' })}
+                      {...register(`${name}.${i}.note` as const)}
                     />
                   </div>
                 </div>
@@ -585,7 +585,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { required: 'Title is required', onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
+                      {...register(`${name}.${i}.title` as const, { onBlur: () => handleDetectExternalMatches(i), onChange: () => handleDetectExternalMatchesDebounced(i) })}
                     />
                   </div>
                   <div>
@@ -593,7 +593,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="short note or descriptor"
-                      {...register(`${name}.${i}.note` as const, { required: 'Note is required' })}
+                      {...register(`${name}.${i}.note` as const)}
                     />
                   </div>
                 </div>

@@ -1255,15 +1255,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const t = String(item.type || '').toLowerCase();
         if (t === 'external') {
           if (isExternalBlank(item)) return; // skip untouched blank rows
-          // Require citation, title, url, and note for external citations
-          if (!requireFields(item, ['citation', 'title', 'url', 'note'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation, title, URL, and note.`);
+          // Require citation and URL only for external citations
+          if (!requireFields(item, ['citation', 'url'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation and URL.`);
           }
         } else if (t === 'internal') {
           if (isInternalBlank(item)) return; // skip untouched blank rows
-          // Require entry_id, title, url, and note for internal citations
-          if (!requireFields(item, ['entry_id', 'title', 'url', 'note'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id, title, URL, and note.`);
+          // Require entry_id and URL only for internal citations
+          if (!requireFields(item, ['entry_id', 'url'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id and URL.`);
           }
         }
       });
@@ -1282,13 +1282,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const t = String(item.type || '').toLowerCase();
         if (t === 'external') {
           if (isExternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['citation', 'title', 'url', 'note'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation, title, URL, and note.`);
+          if (!requireFields(item, ['citation', 'url'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation and URL.`);
           }
         } else if (t === 'internal') {
           if (isInternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['entry_id', 'title', 'url', 'note'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id, title, URL, and note.`);
+          if (!requireFields(item, ['entry_id', 'url'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id and URL.`);
           }
         }
       });
