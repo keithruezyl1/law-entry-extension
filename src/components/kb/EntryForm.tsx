@@ -1129,9 +1129,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         const totalExternal = legalBases.filter((item: any) => item && item.type === 'external').length + 
                              relatedSections.filter((item: any) => item && item.type === 'external').length;
         if (totalExternal === 1) {
-          message = 'External Citation might exist in the KB';
+          message = 'External Citation detected';
         } else {
-          message = `External Citations (${totalExternal} found) might exist in the KB`;
+          message = `External Citations (${totalExternal} found)`;
         }
       } else {
         message = parts.join(', ');
@@ -2473,10 +2473,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 type="button" 
                                 onClick={goNext} 
                                 disabled={nearDuplicates && nearDuplicates.length > 0}
-                                className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
+                                variant="default"
+                                className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 ${
                                   nearDuplicates && nearDuplicates.length > 0
-                                    ? 'bg-gray-400 cursor-not-allowed shadow-none'
-                                    : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
+                                    : ''
                                 }`}
                               >
                                 Next
@@ -2589,19 +2590,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                         <div>
                           <div className="bg-muted/30 rounded-xl p-6 text-center">
                             <div className="text-sm text-muted-foreground leading-relaxed">
-                              Use the live preview on the right to verify all fields are correct before publishing your entry.
+                              Use the live preview above to verify all fields are correct before publishing your entry.
                             </div>
                           </div>
 
                           <div className="kb-action-bar">
                             <div className="flex gap-3">
                               <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
-                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
-                            </div>
-                            <div className="flex gap-3">
                               {!entry && (
                                 <Button type="button" variant="outline" className="h-12 px-10 min-w-[130px]">Save draft</Button>
                               )}
+                            </div>
+                            <div className="flex gap-3">
+                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
                               <Button 
                                 type="submit" 
                                 disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
