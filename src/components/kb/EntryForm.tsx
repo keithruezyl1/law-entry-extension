@@ -693,6 +693,22 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 (draft?.title && resetData.title && String(draft.title).trim().toLowerCase() === String(resetData.title).trim().toLowerCase())
               );
               if (sameEntry) {
+                // Load deletion tombstones to avoid resurrecting user-deleted relations after import
+                let deletedLB = new Set<string>();
+                let deletedRS = new Set<string>();
+                try {
+                  const rawT = localStorage.getItem('kb_deleted_relations');
+                  const tombstones: any[] = rawT ? JSON.parse(rawT) : [];
+                  if (Array.isArray(tombstones)) {
+                    tombstones.filter(Boolean).forEach(t => {
+                      const key = String(t?.key || '').toLowerCase();
+                      const scope = String(t?.scope || '').toLowerCase();
+                      if (scope.includes('legal_bases')) deletedLB.add(key);
+                      if (scope.includes('related_sections')) deletedRS.add(key);
+                    });
+                  }
+                } catch {}
+                const relationKey = (it: any) => String(it?.entry_id || it?.citation || it?.title || it?.url || JSON.stringify(it)).toLowerCase();
                 const prefer = (a: any, b: any) => {
                   // Prefer draft 'a' when it is non-empty/non-null; else keep imported 'b'
                   if (Array.isArray(a)) return a.length ? a : b;
@@ -700,11 +716,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                   return a != null && a !== '' ? a : b;
                 };
                 // Merge relations by union while keeping order (imported first, then new from draft)
-                const mergeRelations = (base: any[], add: any[]) => {
-                  const out: any[] = Array.isArray(base) ? [...base] : [];
-                  const seen = new Set(out.map((it: any) => (it?.entry_id || it?.citation || it?.title || JSON.stringify(it)).toLowerCase?.() || String(it)));
+                const mergeRelations = (base: any[], add: any[], kind: 'lb' | 'rs') => {
+                  const deleted = kind === 'lb' ? deletedLB : deletedRS;
+                  const cleanedBase = (Array.isArray(base) ? base : []).filter(it => !deleted.has(relationKey(it)));
+                  const out: any[] = [...cleanedBase];
+                  const seen = new Set(out.map((it: any) => relationKey(it)));
                   (Array.isArray(add) ? add : []).forEach((it: any) => {
-                    const key = (it?.entry_id || it?.citation || it?.title || JSON.stringify(it)).toLowerCase?.() || String(it);
+                    const key = relationKey(it);
+                    if (deleted.has(key)) return; // respect deletions
                     if (!seen.has(key)) {
                       out.push(it);
                       seen.add(key);
@@ -725,8 +744,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                   text: prefer(draft.text, resetData.text),
                   source_urls: prefer(draft.source_urls, resetData.source_urls),
                   tags: prefer(draft.tags, resetData.tags),
-                  legal_bases: mergeRelations(resetData.legal_bases, draft.legal_bases),
-                  related_sections: mergeRelations(resetData.related_sections, draft.related_sections),
+                  legal_bases: mergeRelations(resetData.legal_bases, draft.legal_bases, 'lb'),
+                  related_sections: mergeRelations(resetData.related_sections, draft.related_sections, 'rs'),
                 } as any;
               }
             }
