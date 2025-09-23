@@ -2173,12 +2173,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               type="button"
               onClick={() => {
                 console.log('🔍 Force triggering duplicate detection...');
-
-
-                // Force trigger by updating a form field
-                const currentTitle = methods.getValues('title');
-                setValue('title', currentTitle + ' ');
-                setTimeout(() => setValue('title', currentTitle), 10);
+                // Dispatch custom event to trigger duplicate detection without form manipulation
+                window.dispatchEvent(new CustomEvent('trigger-duplicate-detection'));
               }}
               className="bg-orange-500 text-white px-3 py-1 rounded text-xs"
             >

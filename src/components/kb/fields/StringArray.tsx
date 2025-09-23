@@ -57,7 +57,8 @@ export function StringArray({ control, name, label, help, placeholder = "Enter i
       // Parse the input and replace the current field with the first tag
       const parsedTags = parseTags(value);
       if (parsedTags.length > 0) {
-        setValue(`${name}.${index}`, parsedTags[0]);
+        // Use setTimeout to make setValue non-blocking and prevent flickering
+        setTimeout(() => setValue(`${name}.${index}`, parsedTags[0]), 0);
         
         // Add remaining tags if any
         const existingTags = new Set(currentValues.map((tag: string) => tag.toLowerCase()));
@@ -65,7 +66,8 @@ export function StringArray({ control, name, label, help, placeholder = "Enter i
         uniqueNewTags.forEach(tag => append(tag));
       }
     } else {
-      setValue(`${name}.${index}`, value);
+      // Use setTimeout to make setValue non-blocking and prevent flickering
+      setTimeout(() => setValue(`${name}.${index}`, value), 0);
     }
   };
 

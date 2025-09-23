@@ -614,7 +614,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     // Set flag to indicate this external citation has internal suggestions
     if (matches.length > 0) {
       try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') console.log(`🔍 Setting _hasInternalSuggestion=true for external citation at index ${idx}:`, ext.title || ext.citation); } catch {}
-      update(idx, { ...ext, _hasInternalSuggestion: true });
+      // Use setTimeout to make update non-blocking and prevent flickering
+      setTimeout(() => update(idx, { ...ext, _hasInternalSuggestion: true }), 0);
       try {
         // Surface a global hint so the create form can gate submission even if
         // this specific row hasn't been re-rendered yet
@@ -622,7 +623,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       } catch {}
     } else {
       try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') console.log(`🔍 Setting _hasInternalSuggestion=false for external citation at index ${idx}:`, ext.title || ext.citation); } catch {}
-      update(idx, { ...ext, _hasInternalSuggestion: false });
+      // Use setTimeout to make update non-blocking and prevent flickering
+      setTimeout(() => update(idx, { ...ext, _hasInternalSuggestion: false }), 0);
     }
     // keep toast optional off by default
   }, [items, update]);
