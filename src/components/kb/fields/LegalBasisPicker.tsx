@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
-import { Trash2, Plus, Search, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Search, ArrowLeft, X } from 'lucide-react';
 import { fetchEntryById, fetchAllEntriesFromDb } from '../../../services/kbApi';
 import { semanticSearch } from '../../../services/vectorApi';
 import { Toast } from '../../ui/Toast';
@@ -961,9 +961,20 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       void convertExternalToInternal(externalToast.index, m);
                     }
                   }}
-                  className="h-9"
+                  className="h-9 inline-flex items-center gap-2 pr-2"
                 >
-                  Add as Internal Instead
+                  <span>Add as Internal Instead</span>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExternalToast({ open: false, index: null, matches: [] });
+                    }}
+                    className="ml-2 pl-2 border-l border-white/30 text-white/90 hover:text-white cursor-pointer"
+                    aria-label="Close"
+                    title="Close"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </span>
                 </Button>
                 <Button
                   type="button"

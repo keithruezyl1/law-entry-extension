@@ -182,13 +182,10 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
       <div className="kb-action-bar">
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={onCancel} className="h-12 px-10 min-w-[130px]">Cancel</Button>
-          {!isEditing && (
-            <Button type="button" variant="outline" onClick={onSaveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
-          )}
         </div>
         <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={onPrevious} className="h-12 px-10 min-w-[130px]">Previous</Button>
-          <Button type="button" onClick={onNext} variant="default" className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12">
+          <Button type="button" variant="outline" onClick={onPrevious} className="h-12 px-10 min-w-[130px] !text-black dark:!text-white border-2 border-orange-500">Previous</Button>
+          <Button type="button" onClick={onNext} variant="default" className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 text-white">
             Next
             <ChevronRight className="h-4 w-4" />
           </Button>

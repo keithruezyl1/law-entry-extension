@@ -2463,12 +2463,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                           <div className="kb-action-bar">
                             <div className="flex gap-3">
                               <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
-                              {!entry && (
-                                <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
-                              )}
                             </div>
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
+                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px] !text-black dark:!text-white border-2 border-orange-500">Previous</Button>
                               <Button 
                                 type="button" 
                                 onClick={goNext} 
@@ -2537,10 +2534,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                 type="button" 
                                 onClick={goNext} 
                                 disabled={nearDuplicates && nearDuplicates.length > 0}
-                                className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                  nearDuplicates && nearDuplicates.length > 0
-                                    ? 'bg-gray-400 cursor-not-allowed shadow-none'
-                                    : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                                variant="default"
+                                className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 text-white ${
+                                  nearDuplicates && nearDuplicates.length > 0 ? 'bg-gray-400 cursor-not-allowed shadow-none' : ''
                                 }`}
                               >
                                 Next
@@ -2594,15 +2590,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             </div>
                           </div>
 
-                          <div className="kb-action-bar">
+                            <div className="kb-action-bar">
                             <div className="flex gap-3">
                               <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
-                              {!entry && (
-                                <Button type="button" variant="outline" className="h-12 px-10 min-w-[130px]">Save draft</Button>
-                              )}
                             </div>
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px]">Previous</Button>
+                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px] !text-black dark:!text-white border-2 border-orange-500">Previous</Button>
                               <Button 
                                 type="submit" 
                                 disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
