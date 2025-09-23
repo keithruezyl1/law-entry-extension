@@ -907,7 +907,17 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
-                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => void handleDetectExternalMatches(i) })}
+                      onChange={(e) => {
+                        // Let the register handle the value change first
+                        const { onChange } = register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => void handleDetectExternalMatches(i) });
+                        onChange(e);
+                        // Then trigger detection asynchronously to prevent flickering
+                        setTimeout(() => {
+                          handleDetectExternalMatchesDebounced(i);
+                          setTimeout(() => clearInlineIfEmpty(i), 0);
+                        }, 0);
+                      }}
                     />
                   </div>
                   <div>
@@ -915,7 +925,17 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => void handleDetectExternalMatches(i) })}
+                      onChange={(e) => {
+                        // Let the register handle the value change first
+                        const { onChange } = register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => void handleDetectExternalMatches(i) });
+                        onChange(e);
+                        // Then trigger detection asynchronously to prevent flickering
+                        setTimeout(() => {
+                          handleDetectExternalMatchesDebounced(i);
+                          setTimeout(() => clearInlineIfEmpty(i), 0);
+                        }, 0);
+                      }}
                     />
                   </div>
                   <div>
@@ -923,7 +943,17 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.title` as const, { onBlur: () => void handleDetectExternalMatches(i) })}
+                      onChange={(e) => {
+                        // Let the register handle the value change first
+                        const { onChange } = register(`${name}.${i}.title` as const, { onBlur: () => void handleDetectExternalMatches(i) });
+                        onChange(e);
+                        // Then trigger detection asynchronously to prevent flickering
+                        setTimeout(() => {
+                          handleDetectExternalMatchesDebounced(i);
+                          setTimeout(() => clearInlineIfEmpty(i), 0);
+                        }, 0);
+                      }}
                     />
                   </div>
                   <div>

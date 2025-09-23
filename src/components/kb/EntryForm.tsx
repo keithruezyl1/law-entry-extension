@@ -430,6 +430,34 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const isSubmittingRef = React.useRef<boolean>(false);
   const [didImportAutosave, setDidImportAutosave] = useState<boolean>(false);
 
+  // Helper function to apply tombstoning to form data before reset
+  const applyTombstoning = (data: any) => {
+    try {
+      const rawT = localStorage.getItem('kb_deleted_relations');
+      const tombstones: any[] = rawT ? JSON.parse(rawT) : [];
+      if (!Array.isArray(tombstones) || tombstones.length === 0) return data;
+
+      const deletedLB = new Set<string>();
+      const deletedRS = new Set<string>();
+      
+      tombstones.filter(Boolean).forEach(t => {
+        const key = String(t?.key || '').toLowerCase();
+        const scope = String(t?.scope || '').toLowerCase();
+        if (scope.includes('legal_bases')) deletedLB.add(key);
+        if (scope.includes('related_sections')) deletedRS.add(key);
+      });
+
+      const relationKey = (it: any) => String(it?.entry_id || it?.citation || it?.title || it?.url || JSON.stringify(it)).toLowerCase();
+      
+      return {
+        ...data,
+        legal_bases: (data.legal_bases || []).filter((it: any) => !deletedLB.has(relationKey(it))),
+        related_sections: (data.related_sections || []).filter((it: any) => !deletedRS.has(relationKey(it)))
+      };
+    } catch {
+      return data;
+    }
+  };
 
   //
 
@@ -552,7 +580,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       if (process.env.NODE_ENV === 'development') {
       console.log('Comprehensive reset data:', resetData);
       }
-      methods.reset(resetData as any);
+      methods.reset(applyTombstoning(resetData) as any);
 
       // Set amendment state for edit mode
       setHasAmendment(!!entry.amendment_date);
@@ -751,7 +779,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             }
           } catch {}
 
-          methods.reset(resetData as any);
+          methods.reset(applyTombstoning(resetData) as any);
           setFormPopulated(true);
 
           // One-time autosave after successful import so user won't lose imported form on refresh
@@ -860,7 +888,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             if (process.env.NODE_ENV === 'development') {
             console.log('Merged draft data with defaults:', mergedData);
             }
-            methods.reset(mergedData as any);
+            methods.reset(applyTombstoning(mergedData) as any);
 
             // Show notification that draft was loaded (CREATE MODE ONLY)
             setShowDraftLoaded(true);
