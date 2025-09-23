@@ -782,7 +782,7 @@
 	border-color: #15803d !important;
 }
 
-/* UI Button component dark mode styling */
+/* UI Button component dark mode styling - keep orange for active states */
 .dark-mode .bg-orange-500,
 .dark-mode .bg-primary {
 	background: #f97316 !important; /* Orange background */
@@ -844,6 +844,22 @@
 .kb-internal-match-btn:hover {
 	background: #fde68a !important; /* Slightly darker yellow on hover */
 	border-color: #d97706 !important; /* Darker yellow border on hover */
+}
+
+/* Delete button variant - ensure red styling in both light and dark modes */
+.bg-red-600 {
+	background: #dc2626 !important; /* Red background */
+	color: #ffffff !important; /* White text */
+}
+.dark-mode .bg-red-600 {
+	background: #dc2626 !important; /* Red background */
+	color: #ffffff !important; /* White text */
+}
+.bg-red-600:hover {
+	background: #b91c1c !important; /* Darker red on hover */
+}
+.dark-mode .bg-red-600:hover {
+	background: #b91c1c !important; /* Darker red on hover */
 }
 
 /* Progress and Preview cards styling */

@@ -536,12 +536,12 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   {isLastInternal && showAddInternalButton && (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="default"
                       onClick={() => { 
                         setShowAddInternalButton(false);
                         setShowInternalSearch(true);
                       }}
-                      className="h-11 rounded-xl flex-1 mb-2 kb-btn-outline"
+                      className="h-11 rounded-xl flex-1 mb-2"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add internal citation
@@ -549,7 +549,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   )}
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="delete"
                     onClick={() => remove(i)}
                     className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1 mb-2' : 'flex-1 mb-2'}`}
                   >
@@ -703,11 +703,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   {isLastExternal && (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="default"
                       onClick={() => { 
                         append({ type: 'external', citation: '', url: '', title: '', note: '' });
                       }}
-                      className="h-11 rounded-xl flex-1 mb-2 kb-btn-outline"
+                      className="h-11 rounded-xl flex-1 mb-2"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add external citation
@@ -715,7 +715,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   )}
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="delete"
                     onClick={() => { setInlineMatches(prev => { const next = { ...prev }; delete next[i]; return next; }); remove(i); }}
                     className={`h-11 rounded-xl ${externalCount > 1 ? 'flex-1 mb-2' : 'w-11 mb-2'}`}
                   >
@@ -731,11 +731,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           {externalCount === 0 && (
             <Button
               type="button"
-              variant="outline"
+              variant="default"
               onClick={() => { 
                 append({ type: 'external', citation: '', url: '', title: '', note: '' });
               }}
-              className="w-full h-11 rounded-xl mt-4 kb-btn-outline"
+              className="w-full h-11 rounded-xl mt-4"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add external citation

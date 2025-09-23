@@ -137,7 +137,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
           <div className="space-y-4">
             <div className="mt-6">
               <div className="flex items-center justify-between">
-                <h3 className="kb-form-section-title kb-title-compact mt-4">Relations</h3>
+                <h3 className="kb-form-section-title kb-title-compact mt-6">Relations</h3>
                 {relationsRequired ? (
                   <span className="text-xs rounded-md px-2 py-1 bg-red-100 text-red-700 mt-1">Required for Rights Advisory. Add at least one Legal Basis (internal or external).</span>
                 ) : (
