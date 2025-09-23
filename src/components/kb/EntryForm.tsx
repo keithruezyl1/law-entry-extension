@@ -13,7 +13,6 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { DuplicateMatchesToast } from '../ui/Toast';
-import { InternalCitationModal } from '../ui/InternalCitationModal';
 import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
 import { generateEntryId, generateUniqueEntryId } from 'lib/kb/entryId';
@@ -240,8 +239,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const initialStep = getInitialStep();
 
   const methods = useForm<Entry>({
-    // In edit mode, relax schema validation to avoid blocking updates for legacy entries
-    resolver: isEditMode ? undefined as any : (zodResolver(EntrySchema as any) as any),
+    resolver: zodResolver(EntrySchema as any),
     defaultValues: {
       type: '',
       entry_id: '',
@@ -296,7 +294,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       related_sections: [],
     } as any,
     mode: 'onChange',
-    reValidateMode: 'onChange',
   });
 
 
@@ -311,19 +308,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const effectiveDate = watch('effective_date');
   const entry_id = watch('entry_id');
 
-  // Clear type-specific fields when entry type changes (but not when importing)
+  // Clear type-specific fields when entry type changes
   const [previousType, setPreviousType] = useState<string | undefined>(type);
 
   useEffect(() => {
     if (previousType && type && previousType !== type) {
-      // Don't clear type-specific fields if this is an imported entry
-      // The form reset will handle populating all fields including type-specific ones
-      if (isImportedEntry) {
-        console.log(`Entry type changed from ${previousType} to ${type}, but skipping field clearing for imported entry`);
-        setPreviousType(type);
-        return;
-      }
-
       console.log(`Entry type changed from ${previousType} to ${type}, clearing type-specific fields`);
 
       // Clear all type-specific fields when type changes with correct default values
@@ -372,7 +361,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       });
     }
     setPreviousType(type);
-  }, [type, previousType, methods, isImportedEntry]);
+  }, [type, previousType, methods]);
 
   // Auto-generate entry ID and set last_reviewed for new entries (CREATE MODE ONLY)
   useEffect(() => {
@@ -422,6 +411,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   }, [entry, currentStep]);
   const [showDraftSaved, setShowDraftSaved] = useState<boolean>(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+  const [showInternalCitationModal, setShowInternalCitationModal] = useState<boolean>(false);
   const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
   const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
   const [formPopulated, setFormPopulated] = useState(false);
@@ -430,237 +420,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [hasAmendment, setHasAmendment] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const isSubmittingRef = React.useRef<boolean>(false);
-  const [showInternalCitationModal, setShowInternalCitationModal] = useState<boolean>(false);
-  const [internalSuggestions, setInternalSuggestions] = useState<{legalBases: number, relatedSections: number}>({legalBases: 0, relatedSections: 0});
 
-  // Handle internal suggestions detection
-  const handleInternalSuggestionsDetected = (type: 'legalBases' | 'relatedSections', hasSuggestions: boolean, count: number) => {
-    setInternalSuggestions(prev => ({
-      ...prev,
-      [type]: hasSuggestions ? count : 0
-    }));
-  };
-
-  // Check if we should show the internal citation modal before saving
-  const checkForInternalSuggestions = () => {
-    const totalSuggestions = internalSuggestions.legalBases + internalSuggestions.relatedSections;
-    if (totalSuggestions > 0 && isCreateMode) {
-      setShowInternalCitationModal(true);
-      return true; // Indicate that we should not proceed with save
-    }
-    return false; // Proceed with save
-  };
-
-  // Actual save function that can be called from modal
-  const performSave = async (data: Entry) => {
-    console.log('🚀 FORM SUBMISSION STARTED');
-    console.log('📝 Form mode:', { isEditMode, isCreateMode, hasEntry: !!entry });
-    console.log('📊 Form data:', data);
-
-    setIsSubmitting(true);
-    isSubmittingRef.current = true;
-
-    console.log('Form data being submitted:', data);
-    console.log('Form data type:', typeof data);
-    console.log('Form data keys:', Object.keys(data));
-
-    // First, validate all required fields (skip strict check in edit mode)
-    const validationErrors = isEditMode ? [] : validateAllRequiredFields(data);
-
-    if (validationErrors.length > 0) {
-      // Create alert message
-      const errorMessage = validationErrors.map((error: any) => 
-        `${error.field} (Step ${error.step}: ${error.stepName})`
-      ).join('\n');
-
-      alert(`Missing required fields:\n${errorMessage}`);
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      return;
-    }
-
-    // Normalize string fields to prevent null values
-    const normalizeStringField = (value: any): string => {
-      if (value === null || value === undefined) return '';
-      return String(value);
-    };
-
-    // Normalize relations to fix entry_id: null issues
-    const normalizeRelations = (arr: any[] | undefined) => {
-      if (!Array.isArray(arr)) return [] as any[];
-      return arr.map((it) => {
-        if (!it) return it;
-        // Strings -> assume internal relation id
-        if (typeof it === 'string') {
-          return { type: 'internal', entry_id: it };
-        }
-        // Default missing type to internal when entry_id is present
-        if (!it.type && it.entry_id) {
-          return { ...it, type: 'internal' };
-        }
-        // Legacy external stored under entry_id
-        if (it.type === 'external' && it.entry_id && !it.citation) {
-          return { ...it, citation: it.entry_id, entry_id: undefined };
-        }
-        // Handle external entries with title but no citation (for related_sections)
-        if (it.type === 'external' && it.title && !it.citation) {
-          return { ...it, citation: it.title };
-        }
-        // Clean up external entries - remove entry_id field if it's null or empty
-        if (it.type === 'external') {
-          const { entry_id, ...cleanEntry } = it;
-          return cleanEntry;
-        }
-        // Legacy 'topic' -> new 'title'
-        if (it.topic && !it.title) {
-          const { topic, ...rest } = it;
-          return { ...rest, title: topic };
-        }
-        return it;
-      });
-    };
-
-    // Type-specific field mapping
-    const typeSpecificFields: Record<string, string[]> = {
-      constitution_provision: ['topics', 'related_sections', 'jurisprudence'],
-      statute_section: ['elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof', 'related_sections', 'legal_bases'],
-      city_ordinance_section: ['elements', 'penalties', 'defenses', 'related_sections', 'legal_bases'],
-      rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'related_sections'],
-      agency_circular: ['circular_no', 'section_no', 'applicability', 'legal_bases', 'supersedes'],
-      doj_issuance: ['issuance_no', 'applicability', 'legal_bases', 'supersedes'],
-      executive_issuance: ['instrument_no', 'applicability', 'legal_bases', 'supersedes'],
-      rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
-    };
-
-    // Ensure we reliably capture arrays from RHF even if some fields were not part of the current step validation map
-    const rawLegalBases = Array.isArray((data as any).legal_bases)
-      ? (data as any).legal_bases
-      : (typeof getValues === 'function' ? (getValues('legal_bases') as any[]) : []);
-    const rawRelatedSections = Array.isArray((data as any).related_sections)
-      ? (data as any).related_sections
-      : (typeof getValues === 'function' ? (getValues('related_sections') as any[]) : []);
-
-    const sanitized: Entry = {
-      ...data,
-      // Normalize common string fields to prevent null values
-      title: normalizeStringField(data.title),
-      canonical_citation: normalizeStringField(data.canonical_citation),
-      summary: normalizeStringField(data.summary),
-      text: normalizeStringField(data.text),
-      law_family: normalizeStringField(data.law_family),
-      section_id: normalizeStringField(data.section_id),
-      jurisdiction: normalizeStringField(data.jurisdiction),
-      // Normalize relations
-      legal_bases: normalizeRelations(rawLegalBases),
-      related_sections: normalizeRelations(rawRelatedSections),
-      // Normalize other arrays
-      tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
-      source_urls: Array.isArray(data.source_urls) ? data.source_urls.filter(Boolean) : [],
-    };
-
-    // Validate external citations for imported entries
-    if (isImportedEntry) {
-      const invalidExternalEntries: string[] = [];
-      
-      // Check legal bases
-      sanitized.legal_bases?.forEach((item: any, index: number) => {
-        const t = item?.type;
-        if (t === 'external') {
-          if (isExternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['citation', 'url'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation and URL.`);
-          }
-        } else if (t === 'internal') {
-          if (isInternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['entry_id', 'url'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id and URL.`);
-          }
-        }
-      });
-
-      // Check related sections
-      sanitized.related_sections?.forEach((item: any, index: number) => {
-        const t = item?.type;
-        if (t === 'external') {
-          if (isExternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['citation', 'url'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation and URL.`);
-          }
-        } else if (t === 'internal') {
-          if (isInternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['entry_id', 'url'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id and URL.`);
-          }
-        }
-      });
-
-      if (invalidExternalEntries.length > 0) {
-        console.log('Invalid external entries found:', invalidExternalEntries);
-        alert('Validation errors found:\n' + invalidExternalEntries.join('\n'));
-        setIsSubmitting(false);
-        isSubmittingRef.current = false;
-        return;
-      }
-      console.log('Imported entry validation passed');
-    }
-
-    // Clear draft
-    try {
-      localStorage.removeItem('kb_entry_draft');
-    } catch (e) {
-      console.error('Failed to clear draft', e);
-    }
-
-    const withMember = {
-      ...sanitized,
-      team_member_id: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
-      created_by: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
-      created_by_name: user?.name || user?.username,
-      created_by_username: user?.username,
-    } as any;
-
-    console.log('Form data being sent:', withMember);
-    console.log('Status field value:', withMember.status);
-    console.log('Effective date value:', withMember.effective_date);
-
-    // Check if user has incomplete entries from yesterday
-    if (onShowIncompleteEntriesModal && isCreateMode) {
-      const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
-      const userHasIncompleteEntries = incompleteEntries.some((incomplete: any) => 
-        incomplete.personId === user?.personId || 
-        incomplete.personName === user?.name ||
-        incomplete.personName === user?.username
-      );
-
-      if (userHasIncompleteEntries) {
-        // Show modal with entry details instead of saving directly
-        onShowIncompleteEntriesModal(withMember);
-        setIsSubmitting(false);
-        isSubmittingRef.current = false;
-        return;
-      }
-    }
-
-    // Progress tracking is now handled in useLocalStorage.js addEntry function
-    // based on the created_at timestamp set in handleSaveEntry
-
-    try {
-      await onSave(withMember);
-      // Note: Draft clearing is now handled in App.js handleSaveEntry function
-      // to ensure it happens at the right time and covers all draft types
-
-      // Dispatch event to refresh progress display
-      window.dispatchEvent(new Event('refresh-progress'));
-
-      // Navigation will be handled by the success modal in App.js
-    } catch (error) {
-      console.error('Error saving entry:', error);
-      // Reset submission state on error so user can try again
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      throw error; // Re-throw to let parent handle the error
-    }
-  };
 
   //
 
@@ -1238,6 +998,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   };
   const abortCancel = () => setShowCancelConfirm(false);
 
+  // Internal citation modal handlers
+  const handleInternalCitationModalGoBack = () => {
+    setShowInternalCitationModal(false);
+    // User wants to go back and potentially convert to internal citations
+  };
+
+  const handleInternalCitationModalConfirm = async () => {
+    setShowInternalCitationModal(false);
+    // User confirmed they want to create the entry as-is
+    // Re-trigger the submission
+    const formData = getValues();
+    await onSubmit(formData);
+  };
+
   // Enhanced autosave: save on form changes and every 5 seconds (CREATE MODE ONLY)
   useEffect(() => {
     // Only run auto-save in create mode
@@ -1281,6 +1055,24 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     };
   }, [watch, getValues, entry]);
 
+  // Check for internal citation suggestions in legal_bases and related_sections
+  const checkForInternalCitationSuggestions = (data: Entry): boolean => {
+    const dataAny = data as any;
+    const legalBases = dataAny.legal_bases || [];
+    const relatedSections = dataAny.related_sections || [];
+    
+    // Check if any external citations have internal suggestions
+    const hasLegalBasesSuggestions = legalBases.some((item: any) => 
+      item && item.type === 'external' && item._hasInternalSuggestion
+    );
+    
+    const hasRelatedSectionsSuggestions = relatedSections.some((item: any) => 
+      item && item.type === 'external' && item._hasInternalSuggestion
+    );
+    
+    return hasLegalBasesSuggestions || hasRelatedSectionsSuggestions;
+  };
+
   const onSubmit = async (data: Entry) => {
     // Prevent multiple submissions using both state and ref
     if (isSubmitting || isSubmittingRef.current) {
@@ -1288,14 +1080,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
 
-    // Check for internal suggestions before proceeding
-    if (checkForInternalSuggestions()) {
-      return; // Modal will handle the flow
-    }
+    console.log('🚀 FORM SUBMISSION STARTED');
+    console.log('📝 Form mode:', { isEditMode, isCreateMode, hasEntry: !!entry });
+    console.log('📊 Form data:', data);
 
-    // Proceed with save
-    await performSave(data);
-  };
+    setIsSubmitting(true);
+    isSubmittingRef.current = true;
 
 
 
@@ -1309,8 +1099,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
 
-    // First, validate all required fields (skip strict check in edit mode)
-    const validationErrors = isEditMode ? [] : validateAllRequiredFields(data);
+    // First, validate all required fields
+    const validationErrors = validateAllRequiredFields(data);
 
     if (validationErrors.length > 0) {
       // Create alert message
@@ -1377,14 +1167,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
     };
 
-    // Ensure we reliably capture arrays from RHF even if some fields were not part of the current step validation map
-    const rawLegalBases = Array.isArray((data as any).legal_bases)
-      ? (data as any).legal_bases
-      : (typeof getValues === 'function' ? (getValues('legal_bases') as any[]) : []);
-    const rawRelatedSections = Array.isArray((data as any).related_sections)
-      ? (data as any).related_sections
-      : (typeof getValues === 'function' ? (getValues('related_sections') as any[]) : []);
-
     const sanitized: Entry = {
       ...data,
       // Normalize common string fields to prevent null values
@@ -1398,8 +1180,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       source_urls: (data as any).source_urls?.filter((u: string) => !!u && u.trim().length > 0) || [],
       tags: (data as any).tags?.filter((t: string) => !!t && t.trim().length > 0) || [],
       // Normalize relations to fix entry_id: null issues
-      legal_bases: normalizeRelations(rawLegalBases),
-      related_sections: normalizeRelations(rawRelatedSections),
+      legal_bases: normalizeRelations((data as any).legal_bases),
+      related_sections: normalizeRelations((data as any).related_sections),
     } as any;
 
     // Only normalize type-specific string fields that are relevant for this entry type
@@ -1432,7 +1214,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     // Publish gating
-    if (!isEditMode && (!sanitized.source_urls || sanitized.source_urls.length < 1)) {
+    if (!sanitized.source_urls || sanitized.source_urls.length < 1) {
       alert('Please add at least one Source URL before publishing.');
       setIsSubmitting(false);
       isSubmittingRef.current = false;
@@ -1440,7 +1222,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
 
     // Rights advisory requires at least one legal basis
-    if (!isEditMode && (sanitized as any).type === 'rights_advisory') {
+    if ((sanitized as any).type === 'rights_advisory') {
       const lbs = (sanitized as any).legal_bases || [];
       if (!Array.isArray(lbs) || lbs.length < 1) {
         alert('Rights Advisory entries require at least one legal basis.');
@@ -1451,7 +1233,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
 
     console.log('Validating business rules...');
-    const errs = isEditMode ? [] : validateBusinessRules(sanitized);
+    const errs = validateBusinessRules(sanitized);
     if (errs.length) {
       console.log('Business rule validation errors:', errs);
       alert(errs.join('\n'));
@@ -1467,53 +1249,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     console.log('Legal bases:', sanitizedAny.legal_bases);
     console.log('Related sections:', sanitizedAny.related_sections);
 
-    // Check for invalid internal/external relation entries (robust requireds)
+    // Check for invalid external entries
     const invalidExternalEntries: string[] = [];
-    const coerceTrim = (v: any) => typeof v === 'string' ? v.trim() : v;
-    const requireFields = (obj: any, fields: string[]) => fields.every(f => {
-      const val = coerceTrim(obj?.[f]);
-      return typeof val === 'string' ? val.length > 0 : Boolean(val);
-    });
-    const isExternalBlank = (obj: any) => {
-      const c = coerceTrim(obj?.citation) || '';
-      const t = coerceTrim(obj?.title) || '';
-      const u = coerceTrim(obj?.url) || '';
-      const n = coerceTrim(obj?.note) || '';
-      return String(c).length === 0 && String(t).length === 0 && String(u).length === 0 && String(n).length === 0;
-    };
-    const isInternalBlank = (obj: any) => {
-      const id = coerceTrim(obj?.entry_id) || '';
-      const t = coerceTrim(obj?.title) || '';
-      const u = coerceTrim(obj?.url) || '';
-      const n = coerceTrim(obj?.note) || '';
-      return String(id).length === 0 && String(t).length === 0 && String(u).length === 0 && String(n).length === 0;
-    };
 
     // Check legal_bases
     if (sanitizedAny.legal_bases) {
       sanitizedAny.legal_bases.forEach((item: any, index: number) => {
-        if (!item) return;
-        // Normalize fields defensively before checks
-        if (item.citation != null) item.citation = coerceTrim(item.citation);
-        if (item.title != null) item.title = coerceTrim(item.title);
-        if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
-        if (item.url != null) item.url = coerceTrim(item.url);
-        // Accept description as alias for note if present (imported data)
-        if (item.note == null && item.description != null) item.note = coerceTrim(item.description);
-        if (item.note != null) item.note = coerceTrim(item.note);
-        const t = String(item.type || '').toLowerCase();
-        if (t === 'external') {
-          if (isExternalBlank(item)) return; // skip untouched blank rows
-          // Require citation and URL only for external citations
-          if (!requireFields(item, ['citation', 'url'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation and URL.`);
-          }
-        } else if (t === 'internal') {
-          if (isInternalBlank(item)) return; // skip untouched blank rows
-          // Require entry_id and URL only for internal citations
-          if (!requireFields(item, ['entry_id', 'url'])) {
-            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id and URL.`);
-          }
+        if (item && item.type === 'external' && (!item.citation || item.citation.trim() === '')) {
+          invalidExternalEntries.push(`Legal Basis ${index + 1}: External entries require a citation`);
+        }
+        if (item && item.type === 'internal' && (!item.entry_id || item.entry_id.trim() === '')) {
+          invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal entries require an entry_id`);
         }
       });
     }
@@ -1521,24 +1267,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Check related_sections
     if (sanitizedAny.related_sections) {
       sanitizedAny.related_sections.forEach((item: any, index: number) => {
-        if (!item) return;
-        if (item.citation != null) item.citation = coerceTrim(item.citation);
-        if (item.title != null) item.title = coerceTrim(item.title);
-        if (item.entry_id != null) item.entry_id = coerceTrim(item.entry_id);
-        if (item.url != null) item.url = coerceTrim(item.url);
-        if (item.note == null && item.description != null) item.note = coerceTrim(item.description);
-        if (item.note != null) item.note = coerceTrim(item.note);
-        const t = String(item.type || '').toLowerCase();
-        if (t === 'external') {
-          if (isExternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['citation', 'url'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation and URL.`);
-          }
-        } else if (t === 'internal') {
-          if (isInternalBlank(item)) return; // skip untouched blank rows
-          if (!requireFields(item, ['entry_id', 'url'])) {
-            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id and URL.`);
-          }
+        if (item && item.type === 'external' && (!item.citation || item.citation.trim() === '')) {
+          invalidExternalEntries.push(`Related Section ${index + 1}: External entries require a citation`);
+        }
+        if (item && item.type === 'internal' && (!item.entry_id || item.entry_id.trim() === '')) {
+          invalidExternalEntries.push(`Related Section ${index + 1}: Internal entries require an entry_id`);
         }
       });
     }
@@ -1570,6 +1303,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     console.log('Form data being sent:', withMember);
     console.log('Status field value:', withMember.status);
     console.log('Effective date value:', withMember.effective_date);
+
+    // Check for internal citation suggestions before submission (CREATE MODE ONLY)
+    if (isCreateMode) {
+      const hasInternalSuggestions = checkForInternalCitationSuggestions(withMember);
+      if (hasInternalSuggestions) {
+        setShowInternalCitationModal(true);
+        setIsSubmitting(false);
+        isSubmittingRef.current = false;
+        return;
+      }
+    }
 
     // Check if user has incomplete entries from yesterday
     if (onShowIncompleteEntriesModal && isCreateMode) {
@@ -1636,10 +1380,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     });
 
 
-    // Disable duplicate detection entirely in edit mode to avoid blocking updates
-    if (isEditMode) {
+    // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
+    // For ALL entries on create URLs, we should run duplicate detection
+    if (entry && (entry as any).id && !isOnCreateUrl) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Disabling duplicate detection in edit mode');
+        console.log('✅ Disabling duplicate detection for existing entry (has id field, not on create URL)');
       }
       setNearDuplicates([]);
       return;
@@ -2157,20 +1902,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           maxDisplay={5}
         />
 
-        {/* Internal Citation Modal */}
-        <InternalCitationModal
-          isOpen={showInternalCitationModal}
-          onClose={() => setShowInternalCitationModal(false)}
-          onGoBack={() => setShowInternalCitationModal(false)}
-          onConfirmCreate={async () => {
-            setShowInternalCitationModal(false);
-            const formData = getValues();
-            await performSave(formData);
-          }}
-          citationCount={internalSuggestions.legalBases + internalSuggestions.relatedSections}
-          citationType={internalSuggestions.legalBases > 0 ? 'Legal Bases' : 'Related Sections'}
-        />
-
         {/* Debug info for duplicate detection */}
         {process.env.NODE_ENV === 'development' && (
           <div className="fixed top-4 right-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs z-50 max-w-xs">
@@ -2376,57 +2107,22 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           </div>
         )}
         <div className="kb-form-container">
-<header className="kb-form-header mb-6" style={{ display: 'block' }}>
-  <div className="flex items-center justify-between gap-4 w-full">
-    <h1 className="kb-form-title whitespace-nowrap">
-      {isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}
-      {!isEditMode && (
-        <button
-          type="button"
-          className="kb-import-inline inline-flex md:hidden align-middle items-center justify-center rounded-full ml-2 border border-gray-300 text-gray-600 hover:bg-gray-50"
-          title="Import entry JSON"
-          aria-label="Import entry JSON"
-          onClick={() => {
-            try { window.dispatchEvent(new Event('open-import-json-modal')); } catch {}
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3v12"/>
-            <path d="m8 11 4 4 4-4"/>
-            <path d="M20 21H4a2 2 0 0 1-2-2V7"/>
-          </svg>
-        </button>
-      )}
-    </h1>
-    {!isEditMode && (
-      <button
-        type="button"
-        className="hidden md:inline-flex items-center justify-center rounded-full h-10 w-10 border border-gray-300 text-gray-600 hover:bg-gray-50"
-        title="Import entry JSON"
-        aria-label="Import entry JSON"
-        onClick={() => {
-          try { window.dispatchEvent(new Event('open-import-json-modal')); } catch {}
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3v12"/>
-          <path d="m8 11 4 4 4-4"/>
-          <path d="M20 21H4a2 2 0 0 1-2-2V7"/>
-        </svg>
-      </button>
-    )}
-  </div>
-  <div className="mt-2 w-full block">
-    <div className="w-full">
-      <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
-    </div>
-    {!isEditMode && (
-      <div className="w-full">
-        <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
-      </div>
-    )}
-  </div>
-</header>
+          <header className="kb-form-header mb-6">
+            <div>
+              <h1 className="kb-form-title">{isEditMode ? 'Editing Knowledge Base Entry' : 'Create Knowledge Base Entry'}</h1>
+              <p className="kb-form-subtitle">{isEditMode ? 'Update an existing entry in the legal knowledge base' : 'Add a new entry to the legal knowledge base for Villy AI'}</p>
+              {!isEditMode && (
+                <p className="text-sm text-gray-500 mt-1">💾 Your work is automatically saved as you type and navigate between steps</p>
+              )}
+            </div>
+            {/* Auto-saving indicator */}
+            {!isEditMode && isAutoSaving && (
+              <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
+                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span>Auto-saving...</span>
+              </div>
+            )}
+          </header>
 
           <div className="kb-form-layout grid grid-cols-12 gap-6 md:gap-8 items-stretch justify-center">
             {/* Top row: Progress (left) and Preview (right), reduced progress width */}
@@ -2589,7 +2285,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
                         {/* Pro Tip removed as requested */}
 
-      <div className="kb-action-bar">
+                        <div className="kb-action-bar">
                           <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12">
                             <X className="h-4 w-4" />
                             Cancel
@@ -2609,9 +2305,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             <Button 
                               type="button" 
                               onClick={goNext} 
-              disabled={!isEditMode && (nearDuplicates && nearDuplicates.length > 0)}
+                              disabled={nearDuplicates && nearDuplicates.length > 0}
                               className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                !isEditMode && (nearDuplicates && nearDuplicates.length > 0)
+                                nearDuplicates && nearDuplicates.length > 0
                                   ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                   : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                               }`}
@@ -2688,9 +2384,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button 
                                 type="button" 
                                 onClick={goNext} 
-                                disabled={!isEditMode && (nearDuplicates && nearDuplicates.length > 0)}
+                                disabled={nearDuplicates && nearDuplicates.length > 0}
                                 className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                  !isEditMode && (nearDuplicates && nearDuplicates.length > 0)
+                                  nearDuplicates && nearDuplicates.length > 0
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                                 }`}
@@ -2718,23 +2414,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                         <div className="kb-form-fields">
                           <div className="space-y-8">
                             <div className="kb-form-field">
-                              <div className="space-y-1">
                               <label className="kb-form-label">Summary</label>
-                                <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Keep it concise and neutral.</p>
-                              </div>
+                              <p className="kb-form-helper kb-helper-below">Keep it concise and neutral.</p>
                               <Textarea rows={4} placeholder="1–3 sentence neutral synopsis" {...register('summary')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="space-y-1 mt-10">
-                                <label className="kb-form-label">Legal Text</label>
-                                <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Substance-only, normalized.</p>
-                              </div>
+                              <label className="kb-form-label mt-4">Legal Text</label>
+                              <p className="kb-form-helper kb-helper-below">Substance-only, normalized.</p>
                               <Textarea rows={12} placeholder="Clean, normalized legal text" {...register('text')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="mt-10">
-                                <label className="kb-form-label">Tags</label>
-                              </div>
+                              <label className="kb-form-label mt-4">Tags</label>
                               <TagArray control={control} register={register} watch={watch} />
                             </div>
                           </div>
@@ -2751,9 +2441,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button 
                                 type="button" 
                                 onClick={goNext} 
-                                disabled={!isEditMode && (nearDuplicates && nearDuplicates.length > 0)}
+                                disabled={nearDuplicates && nearDuplicates.length > 0}
                                 className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                  !isEditMode && (nearDuplicates && nearDuplicates.length > 0)
+                                  nearDuplicates && nearDuplicates.length > 0
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
                                 }`}
@@ -2786,7 +2476,6 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             onSaveDraft={saveDraft}
                             isEditing={!!entry}
                             existingEntries={existingEntries as any}
-                            onInternalSuggestionsDetected={handleInternalSuggestionsDetected}
                           />
                         </div>
                       </div>
@@ -2821,9 +2510,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               )}
                               <Button 
                                 type="submit" 
-                                disabled={isSubmitting || isUpdatingEntry || (!isEditMode && (nearDuplicates && nearDuplicates.length > 0))}
+                                disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
-                                  isSubmitting || isUpdatingEntry || (!isEditMode && (nearDuplicates && nearDuplicates.length > 0))
+                                  isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'
                                     : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'
                                 }`}
@@ -2890,6 +2579,23 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             <button className="modal-button cancel" onClick={() => setShowCancelConfirm(false)}>No, stay here</button>
           </div>
         </Modal>
+
+        {/* Internal Citation Suggestion Modal */}
+        <Modal 
+          isOpen={showInternalCitationModal} 
+          onClose={() => setShowInternalCitationModal(false)} 
+          title="Detected Internal Citation" 
+          subtitle="Internal/External Citation #N (possible multiple) might exist in the KB. Are you sure you don't want to add it as internal?"
+        >
+          <div className="modal-buttons">
+            <button className="modal-button orange" onClick={handleInternalCitationModalConfirm}>
+              Yes, create entry
+            </button>
+            <button className="modal-button orange-outline" onClick={handleInternalCitationModalGoBack}>
+              Go Back
+            </button>
+          </div>
+        </Modal>
       </div>
     </div>
     </FormProvider>
@@ -2933,17 +2639,16 @@ function UrlArray({ control, register, watch, setValue }: any) {
           </div>
         ))}
 
-        <Button
+        <button
           type="button"
-          variant="success"
           onClick={() => {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-4 mt-6"
+          className="w-full px-4 py-4 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-white transition-colors mt-6"
         >
           + Add Item
-        </Button>
+        </button>
       </div>
     </div>
   );

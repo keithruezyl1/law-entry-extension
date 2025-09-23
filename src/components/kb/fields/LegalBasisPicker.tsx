@@ -14,10 +14,9 @@ interface LegalBasisPickerProps {
   control: Control<any>;
   register: UseFormRegister<any>;
   existingEntries?: EntryLite[];
-  onInternalSuggestionsDetected?: (hasSuggestions: boolean, count: number) => void;
 }
 
-export function LegalBasisPicker({ name, control, register, existingEntries = [], onInternalSuggestionsDetected, onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
+export function LegalBasisPicker({ name, control, register, existingEntries = [], onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove, update } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -451,14 +450,12 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     });
     setInlineMatches(prev => ({ ...prev, [idx]: matches }));
     
-    // Notify parent about internal suggestions
-    if (onInternalSuggestionsDetected) {
-      const totalSuggestions = Object.values({ ...inlineMatches, [idx]: matches })
-        .flat()
-        .length;
-      onInternalSuggestionsDetected(totalSuggestions > 0, totalSuggestions);
+    // Set flag to indicate this external citation has internal suggestions
+    if (matches.length > 0) {
+      update(idx, { ...ext, _hasInternalSuggestion: true });
+    } else {
+      update(idx, { ...ext, _hasInternalSuggestion: false });
     }
-    
     // keep toast optional off by default
   };
 
@@ -472,13 +469,6 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         if (!prev[idx]) return prev;
         const next = { ...prev } as Record<number, EntryLite[]>;
         delete next[idx];
-        
-        // Notify parent about updated suggestions
-        if (onInternalSuggestionsDetected) {
-          const totalSuggestions = Object.values(next).flat().length;
-          onInternalSuggestionsDetected(totalSuggestions > 0, totalSuggestions);
-        }
-        
         return next;
       });
     }

@@ -35,10 +35,9 @@ interface StepTypeSpecificProps {
   onSaveDraft?: () => void;
   isEditing?: boolean;
   existingEntries?: Array<{ id?: string; entry_id: string; title: string; canonical_citation?: string; type?: string }>;
-  onInternalSuggestionsDetected?: (type: 'legalBases' | 'relatedSections', hasSuggestions: boolean, count: number) => void;
 }
 
-export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, isEditing, existingEntries = [], onInternalSuggestionsDetected }: StepTypeSpecificProps) {
+export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, isEditing, existingEntries = [] }: StepTypeSpecificProps) {
   const form = useFormContext<Entry>();
   const { control, register, formState: { errors, isValid }, trigger } = form;
   const type = useWatch({ name: 'type', control });
@@ -158,7 +157,6 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   register={register}
                   existingEntries={existingEntries}
                   onActivate={() => setActiveSide('legal_bases')}
-                  onInternalSuggestionsDetected={(hasSuggestions, count) => onInternalSuggestionsDetected?.('legalBases', hasSuggestions, count)}
                 />
               </div>
 
@@ -170,7 +168,6 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   register={register}
                   existingEntries={existingEntries}
                   onActivate={() => setActiveSide('related_sections')}
-                  onInternalSuggestionsDetected={(hasSuggestions, count) => onInternalSuggestionsDetected?.('relatedSections', hasSuggestions, count)}
                 />
               </div>
               </div>
