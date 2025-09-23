@@ -1084,7 +1084,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       item && item.type === 'external' && item._hasInternalSuggestion
     );
     
-    const hasSuggestions = hasLegalBasesSuggestions || hasRelatedSectionsSuggestions;
+    // Also respect a global session flag set by match detection to avoid timing issues
+    let globalFlag = false;
+    try {
+      globalFlag = sessionStorage.getItem('hasInternalSuggestion') === 'true';
+    } catch {}
+
+    const hasSuggestions = hasLegalBasesSuggestions || hasRelatedSectionsSuggestions || globalFlag;
     console.log('🔍 Internal citation suggestions result:', {
       hasLegalBasesSuggestions,
       hasRelatedSectionsSuggestions,
@@ -2447,14 +2453,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Textarea rows={4} placeholder="1–3 sentence neutral synopsis" {...register('summary')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="space-y-1 mt-12">
+                              <div className="space-y-1 kb-step3-legal-text-spacing">
                                 <label className="kb-form-label">Legal Text</label>
                                 <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Substance-only, normalized.</p>
                               </div>
                               <Textarea rows={12} placeholder="Clean, normalized legal text" {...register('text')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="mt-12">
+                              <div className="kb-step3-tags-spacing">
                                 <label className="kb-form-label">Tags</label>
                               </div>
                               <TagArray control={control} register={register} watch={watch} />

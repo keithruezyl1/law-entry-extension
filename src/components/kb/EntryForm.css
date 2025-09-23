@@ -860,16 +860,29 @@
 	border: 1px solid #f59e0b !important; /* Yellow border */
 	color: #92400e !important; /* Dark yellow text */
 	padding: 0.75rem 1.5rem !important; /* More internal padding */
+	white-space: nowrap !important; /* keep text on single line */
+	max-width: 100% !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
 }
 .dark-mode .kb-internal-match-btn {
 	background: #fef3c7 !important; /* Light yellow background */
 	border: 1px solid #f59e0b !important; /* Yellow border */
 	color: #92400e !important; /* Dark yellow text */
 	padding: 0.75rem 1.5rem !important; /* More internal padding */
+	white-space: nowrap !important;
+	max-width: 100% !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
 }
 .kb-internal-match-btn:hover {
 	background: #fde68a !important; /* Slightly darker yellow on hover */
 	border-color: #d97706 !important; /* Darker yellow border on hover */
+}
+
+/* Responsive: shrink font on very small screens to keep single line */
+@media (max-width: 420px) {
+	.kb-internal-match-btn { font-size: 10px !important; padding: 0.5rem 0.75rem !important; }
 }
 
 /* Delete button variant - ensure red styling in both light and dark modes */
@@ -933,6 +946,28 @@
 /* Ensure Relations text spacing works */
 .kb-form-section-title.mt-6 {
 	margin-top: 1.5rem !important; /* 24px */
+}
+
+/* Force spacing above Legal Text and Tags in Step 3 */
+.kb-form-field .mt-12 {
+	margin-top: 3rem !important; /* 48px */
+}
+.dark-mode .kb-form-field .mt-12 {
+	margin-top: 3rem !important; /* 48px */
+}
+
+/* Specific spacing for Step 3 Legal Text and Tags */
+.kb-step3-legal-text-spacing {
+	margin-top: 3rem !important; /* 48px */
+}
+.kb-step3-tags-spacing {
+	margin-top: 3rem !important; /* 48px */
+}
+.dark-mode .kb-step3-legal-text-spacing {
+	margin-top: 3rem !important; /* 48px */
+}
+.dark-mode .kb-step3-tags-spacing {
+	margin-top: 3rem !important; /* 48px */
 }
 
 /* Progress text should be orange in dark mode - but not for Preview-style text */

@@ -88,6 +88,15 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       .replace(/\b(administrative order|ao)\s*(\d+)\b/g, 'administrative order $2')
       .replace(/\b(commonwealth act|ca)\s*(\d+)\b/g, 'commonwealth act $2')
       .replace(/\b(batas pambansa|bp)\s*(\d+)\b/g, 'batas pambansa $2')
+      // Handle common word variations for better title matching
+      .replace(/\b(physical\s+)?injuries?\b/g, 'injuries')
+      .replace(/\b(slight\s+)?injuries?\b/g, 'slight injuries')
+      .replace(/\b(serious\s+)?injuries?\b/g, 'serious injuries')
+      .replace(/\b(less\s+serious\s+)?injuries?\b/g, 'less serious injuries')
+      .replace(/\b(grave\s+)?injuries?\b/g, 'grave injuries')
+      .replace(/\b(homicide|murder)\b/g, 'homicide')
+      .replace(/\b(theft|robbery)\b/g, 'theft')
+      .replace(/\b(assault|battery)\b/g, 'assault')
       // Remove punctuation
       .replace(/[^a-z0-9\s]/g, ' ')
       // Normalize whitespace
@@ -337,16 +346,26 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
   // Build a search query from an external citation row
   const buildExternalQuery = (ext: any): string => {
-    const parts = [ext?.citation || '', ext?.title || '', ext?.url || ''];
-    return parts.filter(Boolean).join(' ').slice(0, 400);
+    // Prioritize citation and title over URL for better matching
+    const citation = ext?.citation || '';
+    const title = ext?.title || '';
+    const url = ext?.url || '';
+    
+    // Build query with priority: citation first, then title, then URL
+    const parts = [];
+    if (citation) parts.push(citation);
+    if (title) parts.push(title);
+    if (url) parts.push(url);
+    
+    return parts.join(' ').slice(0, 400);
   };
 
   const findSimilarEntriesForExternal = async (ext: any): Promise<EntryLite[]> => {
     const q = buildExternalQuery(ext).trim();
     if (!q) return [];
     
-    // Check cache first for instant results
-    const cacheKey = q.toLowerCase();
+    // Create a more specific cache key that includes the citation and title
+    const cacheKey = `${ext?.citation || ''}-${ext?.title || ''}-${ext?.url || ''}`.toLowerCase();
     if (searchCache.current.has(cacheKey)) {
       return searchCache.current.get(cacheKey)!;
     }
@@ -370,17 +389,60 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           const entryTitle = normalizeSearchText(entry.title || '');
           const entryCite = normalizeSearchText(entry.canonical_citation || '');
           let boost = 0;
-          if (exactCitation && (entryCite === exactCitation || entryTitle === exactCitation)) boost += 12;
-          if (exactTitle && (entryTitle === exactTitle || entryCite === exactTitle)) boost += 10;
-          // Starts-with/light contains bonuses
-          if (exactCitation && (entryCite.startsWith(exactCitation) || entryTitle.startsWith(exactCitation))) boost += 6;
-          if (exactTitle && (entryTitle.startsWith(exactTitle) || entryCite.startsWith(exactTitle))) boost += 5;
+          
+          // CITATION MATCHES (HIGHEST PRIORITY)
+          if (exactCitation) {
+            // Exact citation match gets highest priority
+            if (entryCite === exactCitation) boost += 25;
+            if (entryTitle === exactCitation) boost += 20;
+            
+            // Citation starts-with matches
+            if (entryCite.startsWith(exactCitation)) boost += 15;
+            if (entryTitle.startsWith(exactCitation)) boost += 12;
+            
+            // Citation contains matches
+            if (entryCite.includes(exactCitation)) boost += 10;
+            if (entryTitle.includes(exactCitation)) boost += 8;
+          }
+          
+          // TITLE MATCHES (SECOND PRIORITY)
+          if (exactTitle) {
+            // Exact title match gets high priority
+            if (entryTitle === exactTitle) boost += 18;
+            if (entryCite === exactTitle) boost += 15;
+            
+            // Title starts-with matches
+            if (entryTitle.startsWith(exactTitle)) boost += 12;
+            if (entryCite.startsWith(exactTitle)) boost += 10;
+            
+            // Title contains matches
+            if (entryTitle.includes(exactTitle)) boost += 8;
+            if (entryCite.includes(exactTitle)) boost += 6;
+            
+            // Fuzzy title matching for slight variations
+            if (exactTitle.length > 5) {
+              const titleWords = exactTitle.split(' ');
+              const entryTitleWords = entryTitle.split(' ');
+              let matchingWords = 0;
+              
+              for (const word of titleWords) {
+                if (entryTitleWords.some(ew => ew === word || ew.startsWith(word) || word.startsWith(ew))) {
+                  matchingWords++;
+                }
+              }
+              
+              // If most words match, give a boost
+              if (matchingWords >= Math.ceil(titleWords.length * 0.7)) {
+                boost += 5 + (matchingWords / titleWords.length) * 5;
+              }
+            }
+          }
           
           const finalScore = base + boost;
-          if (finalScore >= 8) {
+          if (finalScore >= 5) { // Lowered threshold to catch more matches
             results.push({ entry, score: finalScore });
-            // Early termination: if we have 3+ high-confidence matches (score >= 15), stop searching
-            if (finalScore >= 15) {
+            // Early termination: if we have 3+ high-confidence matches (score >= 25), stop searching
+            if (finalScore >= 25) {
               highConfidenceCount++;
               if (highConfidenceCount >= 3) break;
             }
@@ -392,9 +454,25 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       // Semantic scoring via API (asynchronous)
       (async () => {
         try {
-          const resp = await semanticSearch(q, 3);
+          // Prioritize citation for semantic search, fallback to title, then full query
+          const semanticQuery = exactCitation || exactTitle || q;
+          const resp = await semanticSearch(semanticQuery, 5); // Increased limit for better results
           if (resp?.success && Array.isArray(resp.results)) {
-            return resp.results.map((r: any) => ({ entry: r, score: Number(r.similarity || r.score || 0) * 100 }));
+            return resp.results.map((r: any) => {
+              let semanticScore = Number(r.similarity || r.score || 0) * 100;
+              
+              // Boost semantic score if it matches citation or title exactly
+              const rTitle = normalizeSearchText(r.title || '');
+              const rCite = normalizeSearchText(r.canonical_citation || '');
+              
+              if (exactCitation && (rCite === exactCitation || rTitle === exactCitation)) {
+                semanticScore += 20; // Boost for citation matches
+              } else if (exactTitle && (rTitle === exactTitle || rCite === exactTitle)) {
+                semanticScore += 15; // Boost for title matches
+              }
+              
+              return { entry: r, score: semanticScore };
+            });
           }
           return [];
         } catch {
@@ -419,11 +497,22 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     }
 
     // Optimized thresholds for better speed/accuracy balance
-    const SEM_THRESHOLD = 45; // slightly lowered for more results
-    const LOC_THRESHOLD = 5; // lowered for faster matching
+    const SEM_THRESHOLD = 35; // lowered for more results
+    const LOC_THRESHOLD = 5; // lowered to catch more citation matches
     const results = Object.values(merged)
       .filter(m => m.semantic >= SEM_THRESHOLD || m.local >= LOC_THRESHOLD)
-      .sort((a, b) => (b.semantic + b.local) - (a.semantic + a.local))
+      .sort((a, b) => {
+        // Prioritize exact matches and higher scores
+        const scoreA = a.semantic + a.local;
+        const scoreB = b.semantic + b.local;
+        
+        // If scores are close, prefer local matches (more precise)
+        if (Math.abs(scoreA - scoreB) < 5) {
+          return b.local - a.local;
+        }
+        
+        return scoreB - scoreA;
+      })
       .slice(0, 5)
       .map(m => m.entry as EntryLite);
     
@@ -435,6 +524,15 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       }
     }
     searchCache.current.set(cacheKey, results);
+    
+    // Debug logging to help understand search results
+    if (results.length > 0) {
+      console.log(`Search for "${q}" found ${results.length} matches:`, results.map(r => ({
+        title: r.title,
+        citation: r.canonical_citation,
+        score: merged[r.entry_id || r.id || r.title]?.local + merged[r.entry_id || r.id || r.title]?.semantic
+      })));
+    }
     
     return results;
   };
@@ -455,6 +553,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     if (matches.length > 0) {
       console.log(`🔍 Setting _hasInternalSuggestion=true for external citation at index ${idx}:`, ext.title || ext.citation);
       update(idx, { ...ext, _hasInternalSuggestion: true });
+      try {
+        // Surface a global hint so the create form can gate submission even if
+        // this specific row hasn't been re-rendered yet
+        sessionStorage.setItem('hasInternalSuggestion', 'true');
+      } catch {}
     } else {
       console.log(`🔍 Setting _hasInternalSuggestion=false for external citation at index ${idx}:`, ext.title || ext.citation);
       update(idx, { ...ext, _hasInternalSuggestion: false });
