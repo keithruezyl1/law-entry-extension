@@ -51,10 +51,10 @@ export function UrlList({ control, name, label, help }: UrlListProps) {
         
         <Button
           type="button"
-          variant="outline"
+          variant="success"
           size="sm"
           onClick={() => append('')}
-          className="w-full px-4 py-3 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-orange-50 transition-colors mt-4"
+          className="w-full px-4 py-3 rounded-lg mt-4"
         >
           <Plus className="h-4 w-4 mr-2" />
           + Add Item

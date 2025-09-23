@@ -132,7 +132,7 @@ export function StringArray({ control, name, label, help, placeholder = "Enter i
         
         <Button
           type="button"
-          variant="outline"
+          variant="success"
           onClick={() => append('')}
           className="w-full h-11 px-5 rounded-xl"
         >

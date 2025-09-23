@@ -2471,17 +2471,23 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                         <div className="kb-form-fields">
                           <div className="space-y-8">
                             <div className="kb-form-field">
-                              <label className="kb-form-label">Summary</label>
-                              <p className="kb-form-helper kb-helper-below">Keep it concise and neutral.</p>
+                              <div className="space-y-1">
+                                <label className="kb-form-label">Summary</label>
+                                <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Keep it concise and neutral.</p>
+                              </div>
                               <Textarea rows={4} placeholder="1–3 sentence neutral synopsis" {...register('summary')} />
                             </div>
                             <div className="kb-form-field">
-                              <label className="kb-form-label mt-4">Legal Text</label>
-                              <p className="kb-form-helper kb-helper-below">Substance-only, normalized.</p>
+                              <div className="space-y-1 mt-6">
+                                <label className="kb-form-label">Legal Text</label>
+                                <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Substance-only, normalized.</p>
+                              </div>
                               <Textarea rows={12} placeholder="Clean, normalized legal text" {...register('text')} />
                             </div>
                             <div className="kb-form-field">
-                              <label className="kb-form-label mt-4">Tags</label>
+                              <div className="mt-6">
+                                <label className="kb-form-label">Tags</label>
+                              </div>
                               <TagArray control={control} register={register} watch={watch} />
                             </div>
                           </div>
@@ -2679,16 +2685,17 @@ function UrlArray({ control, register, watch, setValue }: any) {
           </div>
         ))}
 
-        <button
+        <Button
           type="button"
+          variant="success"
           onClick={() => {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-4 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-white transition-colors mt-6"
+          className="w-full px-4 py-4 mt-6"
         >
           + Add Item
-        </button>
+        </Button>
       </div>
     </div>
   );

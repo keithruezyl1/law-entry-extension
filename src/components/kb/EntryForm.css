@@ -345,6 +345,16 @@
 	margin-bottom: 12px;
 }
 
+/* Light grey helper text for Step 2 */
+.kb-helper-light-grey {
+	color: #9ca3af !important; /* Light grey color */
+	margin-bottom: 6px !important; /* Reduced from 12px to 6px */
+}
+.dark-mode .kb-helper-light-grey {
+	color: #9ca3af !important; /* Light grey color in dark mode too */
+	margin-bottom: 6px !important; /* Reduced from 12px to 6px */
+}
+
 /* Action bar at bottom of step */
 .kb-action-bar {
 	position: sticky;
@@ -896,6 +906,19 @@
 	border-color: #15803d !important; /* Darker green border on hover */
 }
 
+/* Specific override for Add Item buttons in UrlArray (Step 2) */
+.kb-form button[class*="bg-green-600"],
+.dark-mode .kb-form button[class*="bg-green-600"] {
+	background: #16a34a !important; /* Green background */
+	color: #ffffff !important; /* White text */
+	border-color: #16a34a !important; /* Green border */
+}
+.kb-form button[class*="bg-green-600"]:hover,
+.dark-mode .kb-form button[class*="bg-green-600"]:hover {
+	background: #15803d !important; /* Darker green on hover */
+	border-color: #15803d !important; /* Darker green border on hover */
+}
+
 /* Progress and Preview cards styling */
 .dark-mode .ds-card {
 	background: #374151 !important; /* Light grey background */
@@ -904,7 +927,7 @@
 
 /* Ensure Progress text spacing works */
 .ds-card .mb-8 {
-	margin-bottom: 1.5rem !important; /* 24px - reduced from 32px */
+	margin-bottom: 1rem !important; /* 16px - reduced from 24px */
 }
 
 /* Ensure Relations text spacing works */
