@@ -557,19 +557,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       // Set amendment state for edit mode
       setHasAmendment(!!entry.amendment_date);
 
-      // Force trigger duplicate detection for entries on create URLs
+      // Avoid mutating field values to trigger duplicate detection; rely on natural watch
+      // Only encourage a detection by dispatching a lightweight event if title is pristine
       if (isOnCreateUrl) {
-        setTimeout(() => {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Force triggering duplicate detection after form reset');
-          }
-          // Force trigger by updating the title field
+        try {
+          const titleState = methods.getFieldState('title');
           const currentTitle = resetData.title;
-          if (currentTitle && currentTitle.length >= 3) {
-            setValue('title', currentTitle + ' ');
-            setTimeout(() => setValue('title', currentTitle), 10);
+          if (!titleState.isDirty && currentTitle && currentTitle.length >= 3) {
+            setTimeout(() => window.dispatchEvent(new Event('refresh-progress')), 150);
           }
-        }, 100);
+        } catch {}
       }
     } else if (isCreateMode) {
       // Try to load draft data for new entries (CREATE MODE ONLY)
@@ -746,21 +743,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             }
           } catch {}
 
-          // Trigger duplicate detection for imported entries by updating form values
-          // This will cause the main useEffect to run
+          // Do not mutate title to trigger detection; instead emit a custom passive event
           setTimeout(() => {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('🔍 Manually triggering duplicate detection for imported entry');
-            }
-            const currentValues = methods.getValues() as any;
-            const { title } = currentValues;
-
-            if (title && title.length >= 3) {
-              // Trigger the duplicate detection by updating the form values
-              // This will cause the main useEffect to run
-              setValue('title', title + ' '); // Add a space to trigger change
-              setTimeout(() => setValue('title', title), 10); // Remove the space
-            }
+            try {
+              const titleState = methods.getFieldState('title');
+              const currentTitle = (methods.getValues() as any).title;
+              if (!titleState.isDirty && currentTitle && currentTitle.length >= 3) {
+                window.dispatchEvent(new Event('refresh-progress'));
+              }
+            } catch {}
           }, 200);
 
           return;
