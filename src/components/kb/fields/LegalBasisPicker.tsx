@@ -72,11 +72,27 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
   // Enhanced search function that handles pluralization, word variations, and minor typos
   const normalizeSearchText = (text: string): string => {
-    return String(text || '')
+    let normalized = String(text || '')
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ') // Remove punctuation
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      // Normalize legal abbreviations before removing punctuation
+      .replace(/\b(rule|roc)\s*(\d+)\b/g, 'rule $2')
+      .replace(/\b(section|sec\.?)\s*(\d+)\b/g, 'section $2')
+      .replace(/\b(article|art\.?)\s*(\d+)\b/g, 'article $2')
+      .replace(/\b(republic act|ra)\s*(\d+)\b/g, 'republic act $2')
+      .replace(/\b(presidential decree|pd)\s*(\d+)\b/g, 'presidential decree $2')
+      .replace(/\b(executive order|eo)\s*(\d+)\b/g, 'executive order $2')
+      .replace(/\b(memorandum circular|mc)\s*(\d+)\b/g, 'memorandum circular $2')
+      .replace(/\b(department order|do)\s*(\d+)\b/g, 'department order $2')
+      .replace(/\b(administrative order|ao)\s*(\d+)\b/g, 'administrative order $2')
+      .replace(/\b(commonwealth act|ca)\s*(\d+)\b/g, 'commonwealth act $2')
+      .replace(/\b(batas pambansa|bp)\s*(\d+)\b/g, 'batas pambansa $2')
+      // Remove punctuation
+      .replace(/[^a-z0-9\s]/g, ' ')
+      // Normalize whitespace
+      .replace(/\s+/g, ' ')
       .trim();
+    
+    return normalized;
   };
 
   const getSearchTerms = (query: string): string[] => {
@@ -219,7 +235,12 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       { text: entry.entry_id, weight: 8 },
       { text: lawFamily, weight: 6 },
       { text: citation, weight: 6 },
-      { text: tagsJoined, weight: 5 }
+      { text: tagsJoined, weight: 5 },
+      // Add more fields to increase match chances
+      { text: anyEntry.summary, weight: 4 },
+      { text: anyEntry.text, weight: 2 },
+      { text: anyEntry.section_id, weight: 3 },
+      { text: anyEntry.type, weight: 2 }
     ];
     
     let totalScore = 0;
@@ -351,7 +372,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       if (resp?.success && Array.isArray(resp.results)) {
         semanticScored = resp.results.map((r: any) => ({ entry: r, score: Number(r.similarity || r.score || 0) * 100 }));
       }
-    } catch {}
+    } catch {
+      // If semantic search fails, give all local matches a semantic score of 50 to ensure they pass the threshold
+      semanticScored = localScored.map(item => ({ entry: item.entry, score: 50 }));
+    }
 
     // Merge and rank by score, prefer entries with exact boosts
     // Merge while tracking both local and semantic scores
@@ -367,11 +391,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
     }
 
-    // Require both signals: semantic >= 0.6 and local >= 8
-    const SEM_THRESHOLD = 60; // scaled by 100 above
-    const LOC_THRESHOLD = 8;
+    // More permissive thresholds: require either high semantic OR high local score
+    const SEM_THRESHOLD = 50; // lowered from 60
+    const LOC_THRESHOLD = 6; // lowered from 8
     return Object.values(merged)
-      .filter(m => m.semantic >= SEM_THRESHOLD && m.local >= LOC_THRESHOLD)
+      .filter(m => m.semantic >= SEM_THRESHOLD || m.local >= LOC_THRESHOLD)
       .sort((a, b) => (b.semantic + b.local) - (a.semantic + a.local))
       .slice(0, 5)
       .map(m => m.entry as EntryLite);
@@ -382,6 +406,11 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     if (!ext || ext.type !== 'external') return;
     if (suppressDetectForExternal.current.has(idx)) return;
     const matches = await findSimilarEntriesForExternal(ext);
+    console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
+      external: ext,
+      matches: matches.length,
+      matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
+    });
     setInlineMatches(prev => ({ ...prev, [idx]: matches }));
     // keep toast optional off by default
   };

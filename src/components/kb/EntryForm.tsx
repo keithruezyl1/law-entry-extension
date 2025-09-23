@@ -310,11 +310,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const effectiveDate = watch('effective_date');
   const entry_id = watch('entry_id');
 
-  // Clear type-specific fields when entry type changes
+  // Clear type-specific fields when entry type changes (but not when importing)
   const [previousType, setPreviousType] = useState<string | undefined>(type);
 
   useEffect(() => {
     if (previousType && type && previousType !== type) {
+      // Don't clear type-specific fields if this is an imported entry
+      // The form reset will handle populating all fields including type-specific ones
+      if (isImportedEntry) {
+        console.log(`Entry type changed from ${previousType} to ${type}, but skipping field clearing for imported entry`);
+        setPreviousType(type);
+        return;
+      }
+
       console.log(`Entry type changed from ${previousType} to ${type}, clearing type-specific fields`);
 
       // Clear all type-specific fields when type changes with correct default values
@@ -363,7 +371,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       });
     }
     setPreviousType(type);
-  }, [type, previousType, methods]);
+  }, [type, previousType, methods, isImportedEntry]);
 
   // Auto-generate entry ID and set last_reviewed for new entries (CREATE MODE ONLY)
   useEffect(() => {
