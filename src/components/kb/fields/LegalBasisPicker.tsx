@@ -41,7 +41,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       const tombstones = Array.isArray(raw ? JSON.parse(raw) : []) ? JSON.parse(raw || '[]') : [];
       tombstones.push({ scope: name, key });
       localStorage.setItem('kb_deleted_relations', JSON.stringify(tombstones.slice(-200)));
-      console.log('🗑️ Tombstoned deletion:', { scope: name, key, item: { citation: item?.citation, title: item?.title } });
+      // Only log in development mode to reduce console spam
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🗑️ Tombstoned deletion:', { scope: name, key, item: { citation: item?.citation, title: item?.title } });
+      }
     } catch (e) {
       console.error('Failed to persist removal:', e);
     }
@@ -657,28 +660,29 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   }, [handleDetectExternalMatches]);
 
   // Auto-detect internal citations when external citations are loaded (e.g., after import)
-  useEffect(() => {
-    if (!allEntries || allEntries.length === 0) return;
-    
-    // Check if we have external citations that haven't been processed yet
-    const externalCitations = items.filter((item: any, index: number) => 
-      item && item.type === 'external' && 
-      (item.citation || item.title || item.url) &&
-      !inlineMatches[index] // Only process if not already processed
-    );
-    
-    if (externalCitations.length > 0) {
-      console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
-      
-      // Trigger detection for each external citation
-      externalCitations.forEach((item: any, index: number) => {
-        const actualIndex = items.findIndex((i: any) => i === item);
-        if (actualIndex !== -1) {
-          handleDetectExternalMatchesDebounced(actualIndex);
-        }
-      });
-    }
-  }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
+  // Disabled to prevent flickering - detection will only happen on blur
+  // useEffect(() => {
+  //   if (!allEntries || allEntries.length === 0) return;
+  //   
+  //   // Check if we have external citations that haven't been processed yet
+  //   const externalCitations = items.filter((item: any, index: number) => 
+  //     item && item.type === 'external' && 
+  //     (item.citation || item.title || item.url) &&
+  //     !inlineMatches[index] // Only process if not already processed
+  //   );
+  //   
+  //   if (externalCitations.length > 0) {
+  //     console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
+  //     
+  //     // Trigger detection for each external citation
+  //     externalCitations.forEach((item: any, index: number) => {
+  //       const actualIndex = items.findIndex((i: any) => i === item);
+  //       if (actualIndex !== -1) {
+  //         handleDetectExternalMatchesDebounced(actualIndex);
+  //       }
+  //     });
+  //   }
+  // }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
 
   const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
     try {
@@ -912,14 +916,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       placeholder="e.g., People v. Doria, G.R. No. …"
                       {...register(`${name}.${i}.citation` as const, { 
                         required: 'Citation is required', 
-                        onBlur: () => void handleDetectExternalMatches(i),
-                        onChange: () => {
-                          // Trigger detection asynchronously to prevent flickering
-                          setTimeout(() => {
-                            handleDetectExternalMatchesDebounced(i);
-                            setTimeout(() => clearInlineIfEmpty(i), 0);
-                          }, 0);
-                        }
+                        onBlur: () => void handleDetectExternalMatches(i)
                       })}
                     />
                   </div>
@@ -930,14 +927,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       placeholder="https://…"
                       {...register(`${name}.${i}.url` as const, { 
                         required: 'URL is required', 
-                        onBlur: () => void handleDetectExternalMatches(i),
-                        onChange: () => {
-                          // Trigger detection asynchronously to prevent flickering
-                          setTimeout(() => {
-                            handleDetectExternalMatchesDebounced(i);
-                            setTimeout(() => clearInlineIfEmpty(i), 0);
-                          }, 0);
-                        }
+                        onBlur: () => void handleDetectExternalMatches(i)
                       })}
                     />
                   </div>
@@ -947,14 +937,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
                       {...register(`${name}.${i}.title` as const, { 
-                        onBlur: () => void handleDetectExternalMatches(i),
-                        onChange: () => {
-                          // Trigger detection asynchronously to prevent flickering
-                          setTimeout(() => {
-                            handleDetectExternalMatchesDebounced(i);
-                            setTimeout(() => clearInlineIfEmpty(i), 0);
-                          }, 0);
-                        }
+                        onBlur: () => void handleDetectExternalMatches(i)
                       })}
                     />
                   </div>

@@ -462,11 +462,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       const filteredRS = result.related_sections.length;
       
       if (originalLB !== filteredLB || originalRS !== filteredRS) {
-        console.log('🗑️ Tombstoning applied:', {
-          original: { legal_bases: originalLB, related_sections: originalRS },
-          filtered: { legal_bases: filteredLB, related_sections: filteredRS },
-          tombstones: tombstones.length
-        });
+        // Only log in development mode to reduce console spam
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🗑️ Tombstoning applied:', {
+            original: { legal_bases: originalLB, related_sections: originalRS },
+            filtered: { legal_bases: filteredLB, related_sections: filteredRS },
+            tombstones: tombstones.length
+          });
+        }
       }
       
       return result;
