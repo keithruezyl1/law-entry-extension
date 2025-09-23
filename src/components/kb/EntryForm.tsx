@@ -343,8 +343,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         'handoff': [],
         'rights_callouts': [],
         'advice_points': [],
-        'legal_bases': [],
-        'related_sections': [],
+        // 'legal_bases': [], // Preserved across type changes to maintain user citations
+        // 'related_sections': [], // Preserved across type changes to maintain user citations
         'topics': [],
         'jurisprudence': [],
         // String fields
@@ -449,11 +449,27 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
       const relationKey = (it: any) => String(it?.entry_id || it?.citation || it?.title || it?.url || JSON.stringify(it)).toLowerCase();
       
-      return {
+      const originalLB = (data.legal_bases || []).length;
+      const originalRS = (data.related_sections || []).length;
+      
+      const result = {
         ...data,
         legal_bases: (data.legal_bases || []).filter((it: any) => !deletedLB.has(relationKey(it))),
         related_sections: (data.related_sections || []).filter((it: any) => !deletedRS.has(relationKey(it)))
       };
+      
+      const filteredLB = result.legal_bases.length;
+      const filteredRS = result.related_sections.length;
+      
+      if (originalLB !== filteredLB || originalRS !== filteredRS) {
+        console.log('🗑️ Tombstoning applied:', {
+          original: { legal_bases: originalLB, related_sections: originalRS },
+          filtered: { legal_bases: filteredLB, related_sections: filteredRS },
+          tombstones: tombstones.length
+        });
+      }
+      
+      return result;
     } catch {
       return data;
     }
@@ -1136,7 +1152,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       debounceId = window.setTimeout(() => {
         try {
           const draft = getValues();
-          const serialized = JSON.stringify(draft);
+          // Apply tombstoning to the draft before saving to prevent deleted citations from being restored
+          const tombstonedDraft = applyTombstoning(draft);
+          const serialized = JSON.stringify(tombstonedDraft);
           if (serialized !== lastSaved) {
             setIsAutoSaving(true);
             localStorage.setItem('kb_entry_draft', serialized);
