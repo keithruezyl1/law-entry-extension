@@ -14,9 +14,10 @@ interface LegalBasisPickerProps {
   control: Control<any>;
   register: UseFormRegister<any>;
   existingEntries?: EntryLite[];
+  onInternalSuggestionsDetected?: (hasSuggestions: boolean, count: number) => void;
 }
 
-export function LegalBasisPicker({ name, control, register, existingEntries = [], onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
+export function LegalBasisPicker({ name, control, register, existingEntries = [], onInternalSuggestionsDetected, onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove, update } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -33,6 +34,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const [inlineMatches, setInlineMatches] = useState<Record<number, EntryLite[]>>({});
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
+  const searchCache = useRef<Map<string, EntryLite[]>>(new Map());
   
   // Internal citation states
   const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0);
@@ -342,40 +344,65 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const findSimilarEntriesForExternal = async (ext: any): Promise<EntryLite[]> => {
     const q = buildExternalQuery(ext).trim();
     if (!q) return [];
+    
+    // Check cache first for instant results
+    const cacheKey = q.toLowerCase();
+    if (searchCache.current.has(cacheKey)) {
+      return searchCache.current.get(cacheKey)!;
+    }
+    
     const searchTerms = getSearchTerms(q);
     if (searchTerms.length === 0) return [];
     const pool = (allEntries && allEntries.length ? allEntries : existingEntries);
     const exactCitation = normalizeSearchText(String(ext?.citation || ''));
     const exactTitle = normalizeSearchText(String(ext?.title || ''));
 
-    // Local scoring
-    const localScored = pool
-      .map(entry => {
-        const base = calculateMatchScore(entry, searchTerms);
-        // Strong exact/near-exact boosts
-        const entryTitle = normalizeSearchText(entry.title || '');
-        const entryCite = normalizeSearchText(entry.canonical_citation || '');
-        let boost = 0;
-        if (exactCitation && (entryCite === exactCitation || entryTitle === exactCitation)) boost += 12;
-        if (exactTitle && (entryTitle === exactTitle || entryCite === exactTitle)) boost += 10;
-        // Starts-with/light contains bonuses
-        if (exactCitation && (entryCite.startsWith(exactCitation) || entryTitle.startsWith(exactCitation))) boost += 6;
-        if (exactTitle && (entryTitle.startsWith(exactTitle) || entryCite.startsWith(exactTitle))) boost += 5;
-        return { entry, score: base + boost };
-      })
-      .filter(item => item.score >= 8);
-
-    // Semantic scoring via API (best-effort)
-    let semanticScored: { entry: any; score: number }[] = [];
-    try {
-      const resp = await semanticSearch(q, 5);
-      if (resp?.success && Array.isArray(resp.results)) {
-        semanticScored = resp.results.map((r: any) => ({ entry: r, score: Number(r.similarity || r.score || 0) * 100 }));
-      }
-    } catch {
-      // If semantic search fails, give all local matches a semantic score of 50 to ensure they pass the threshold
-      semanticScored = localScored.map(item => ({ entry: item.entry, score: 50 }));
-    }
+    // Run local and semantic search in parallel for better performance
+    const [localScored, semanticScored] = await Promise.all([
+      // Local scoring (synchronous) with early termination for high-confidence matches
+      Promise.resolve((() => {
+        const results: { entry: any; score: number }[] = [];
+        let highConfidenceCount = 0;
+        
+        for (const entry of pool) {
+          const base = calculateMatchScore(entry, searchTerms);
+          // Strong exact/near-exact boosts
+          const entryTitle = normalizeSearchText(entry.title || '');
+          const entryCite = normalizeSearchText(entry.canonical_citation || '');
+          let boost = 0;
+          if (exactCitation && (entryCite === exactCitation || entryTitle === exactCitation)) boost += 12;
+          if (exactTitle && (entryTitle === exactTitle || entryCite === exactTitle)) boost += 10;
+          // Starts-with/light contains bonuses
+          if (exactCitation && (entryCite.startsWith(exactCitation) || entryTitle.startsWith(exactCitation))) boost += 6;
+          if (exactTitle && (entryTitle.startsWith(exactTitle) || entryCite.startsWith(exactTitle))) boost += 5;
+          
+          const finalScore = base + boost;
+          if (finalScore >= 8) {
+            results.push({ entry, score: finalScore });
+            // Early termination: if we have 3+ high-confidence matches (score >= 15), stop searching
+            if (finalScore >= 15) {
+              highConfidenceCount++;
+              if (highConfidenceCount >= 3) break;
+            }
+          }
+        }
+        return results;
+      })()),
+      
+      // Semantic scoring via API (asynchronous)
+      (async () => {
+        try {
+          const resp = await semanticSearch(q, 3);
+          if (resp?.success && Array.isArray(resp.results)) {
+            return resp.results.map((r: any) => ({ entry: r, score: Number(r.similarity || r.score || 0) * 100 }));
+          }
+          return [];
+        } catch {
+          // If semantic search fails, return empty array - local search will handle it
+          return [];
+        }
+      })()
+    ]);
 
     // Merge and rank by score, prefer entries with exact boosts
     // Merge while tracking both local and semantic scores
@@ -391,14 +418,25 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
     }
 
-    // More permissive thresholds: require either high semantic OR high local score
-    const SEM_THRESHOLD = 50; // lowered from 60
-    const LOC_THRESHOLD = 6; // lowered from 8
-    return Object.values(merged)
+    // Optimized thresholds for better speed/accuracy balance
+    const SEM_THRESHOLD = 45; // slightly lowered for more results
+    const LOC_THRESHOLD = 5; // lowered for faster matching
+    const results = Object.values(merged)
       .filter(m => m.semantic >= SEM_THRESHOLD || m.local >= LOC_THRESHOLD)
       .sort((a, b) => (b.semantic + b.local) - (a.semantic + a.local))
       .slice(0, 5)
       .map(m => m.entry as EntryLite);
+    
+    // Cache results for future use (limit cache size to prevent memory issues)
+    if (searchCache.current.size > 50) {
+      const firstKey = searchCache.current.keys().next().value;
+      if (firstKey) {
+        searchCache.current.delete(firstKey);
+      }
+    }
+    searchCache.current.set(cacheKey, results);
+    
+    return results;
   };
 
   const handleDetectExternalMatches = async (idx: number) => {
@@ -412,6 +450,15 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
     });
     setInlineMatches(prev => ({ ...prev, [idx]: matches }));
+    
+    // Notify parent about internal suggestions
+    if (onInternalSuggestionsDetected) {
+      const totalSuggestions = Object.values({ ...inlineMatches, [idx]: matches })
+        .flat()
+        .length;
+      onInternalSuggestionsDetected(totalSuggestions > 0, totalSuggestions);
+    }
+    
     // keep toast optional off by default
   };
 
@@ -425,6 +472,13 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         if (!prev[idx]) return prev;
         const next = { ...prev } as Record<number, EntryLite[]>;
         delete next[idx];
+        
+        // Notify parent about updated suggestions
+        if (onInternalSuggestionsDetected) {
+          const totalSuggestions = Object.values(next).flat().length;
+          onInternalSuggestionsDetected(totalSuggestions > 0, totalSuggestions);
+        }
+        
         return next;
       });
     }
@@ -435,7 +489,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     if (existing) {
       window.clearTimeout(existing);
     }
-    const timer = window.setTimeout(() => handleDetectExternalMatches(idx), 600);
+    const timer = window.setTimeout(() => handleDetectExternalMatches(idx), 300);
     detectTimersRef.current[idx] = timer as unknown as number;
   };
 

@@ -13,6 +13,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { DuplicateMatchesToast } from '../ui/Toast';
+import { InternalCitationModal } from '../ui/InternalCitationModal';
 import Modal from '../Modal/Modal';
 import { FileText, ArrowRight, X, CalendarDays, BookText, Layers, FileCheck } from 'lucide-react';
 import { generateEntryId, generateUniqueEntryId } from 'lib/kb/entryId';
@@ -429,7 +430,237 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [hasAmendment, setHasAmendment] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const isSubmittingRef = React.useRef<boolean>(false);
+  const [showInternalCitationModal, setShowInternalCitationModal] = useState<boolean>(false);
+  const [internalSuggestions, setInternalSuggestions] = useState<{legalBases: number, relatedSections: number}>({legalBases: 0, relatedSections: 0});
 
+  // Handle internal suggestions detection
+  const handleInternalSuggestionsDetected = (type: 'legalBases' | 'relatedSections', hasSuggestions: boolean, count: number) => {
+    setInternalSuggestions(prev => ({
+      ...prev,
+      [type]: hasSuggestions ? count : 0
+    }));
+  };
+
+  // Check if we should show the internal citation modal before saving
+  const checkForInternalSuggestions = () => {
+    const totalSuggestions = internalSuggestions.legalBases + internalSuggestions.relatedSections;
+    if (totalSuggestions > 0 && isCreateMode) {
+      setShowInternalCitationModal(true);
+      return true; // Indicate that we should not proceed with save
+    }
+    return false; // Proceed with save
+  };
+
+  // Actual save function that can be called from modal
+  const performSave = async (data: Entry) => {
+    console.log('🚀 FORM SUBMISSION STARTED');
+    console.log('📝 Form mode:', { isEditMode, isCreateMode, hasEntry: !!entry });
+    console.log('📊 Form data:', data);
+
+    setIsSubmitting(true);
+    isSubmittingRef.current = true;
+
+    console.log('Form data being submitted:', data);
+    console.log('Form data type:', typeof data);
+    console.log('Form data keys:', Object.keys(data));
+
+    // First, validate all required fields (skip strict check in edit mode)
+    const validationErrors = isEditMode ? [] : validateAllRequiredFields(data);
+
+    if (validationErrors.length > 0) {
+      // Create alert message
+      const errorMessage = validationErrors.map((error: any) => 
+        `${error.field} (Step ${error.step}: ${error.stepName})`
+      ).join('\n');
+
+      alert(`Missing required fields:\n${errorMessage}`);
+      setIsSubmitting(false);
+      isSubmittingRef.current = false;
+      return;
+    }
+
+    // Normalize string fields to prevent null values
+    const normalizeStringField = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      return String(value);
+    };
+
+    // Normalize relations to fix entry_id: null issues
+    const normalizeRelations = (arr: any[] | undefined) => {
+      if (!Array.isArray(arr)) return [] as any[];
+      return arr.map((it) => {
+        if (!it) return it;
+        // Strings -> assume internal relation id
+        if (typeof it === 'string') {
+          return { type: 'internal', entry_id: it };
+        }
+        // Default missing type to internal when entry_id is present
+        if (!it.type && it.entry_id) {
+          return { ...it, type: 'internal' };
+        }
+        // Legacy external stored under entry_id
+        if (it.type === 'external' && it.entry_id && !it.citation) {
+          return { ...it, citation: it.entry_id, entry_id: undefined };
+        }
+        // Handle external entries with title but no citation (for related_sections)
+        if (it.type === 'external' && it.title && !it.citation) {
+          return { ...it, citation: it.title };
+        }
+        // Clean up external entries - remove entry_id field if it's null or empty
+        if (it.type === 'external') {
+          const { entry_id, ...cleanEntry } = it;
+          return cleanEntry;
+        }
+        // Legacy 'topic' -> new 'title'
+        if (it.topic && !it.title) {
+          const { topic, ...rest } = it;
+          return { ...rest, title: topic };
+        }
+        return it;
+      });
+    };
+
+    // Type-specific field mapping
+    const typeSpecificFields: Record<string, string[]> = {
+      constitution_provision: ['topics', 'related_sections', 'jurisprudence'],
+      statute_section: ['elements', 'penalties', 'defenses', 'prescriptive_period', 'standard_of_proof', 'related_sections', 'legal_bases'],
+      city_ordinance_section: ['elements', 'penalties', 'defenses', 'related_sections', 'legal_bases'],
+      rule_of_court: ['rule_no', 'section_no', 'triggers', 'time_limits', 'required_forms', 'related_sections'],
+      agency_circular: ['circular_no', 'section_no', 'applicability', 'legal_bases', 'supersedes'],
+      doj_issuance: ['issuance_no', 'applicability', 'legal_bases', 'supersedes'],
+      executive_issuance: ['instrument_no', 'applicability', 'legal_bases', 'supersedes'],
+      rights_advisory: ['rights_scope', 'advice_points', 'legal_bases', 'related_sections'],
+    };
+
+    // Ensure we reliably capture arrays from RHF even if some fields were not part of the current step validation map
+    const rawLegalBases = Array.isArray((data as any).legal_bases)
+      ? (data as any).legal_bases
+      : (typeof getValues === 'function' ? (getValues('legal_bases') as any[]) : []);
+    const rawRelatedSections = Array.isArray((data as any).related_sections)
+      ? (data as any).related_sections
+      : (typeof getValues === 'function' ? (getValues('related_sections') as any[]) : []);
+
+    const sanitized: Entry = {
+      ...data,
+      // Normalize common string fields to prevent null values
+      title: normalizeStringField(data.title),
+      canonical_citation: normalizeStringField(data.canonical_citation),
+      summary: normalizeStringField(data.summary),
+      text: normalizeStringField(data.text),
+      law_family: normalizeStringField(data.law_family),
+      section_id: normalizeStringField(data.section_id),
+      jurisdiction: normalizeStringField(data.jurisdiction),
+      // Normalize relations
+      legal_bases: normalizeRelations(rawLegalBases),
+      related_sections: normalizeRelations(rawRelatedSections),
+      // Normalize other arrays
+      tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
+      source_urls: Array.isArray(data.source_urls) ? data.source_urls.filter(Boolean) : [],
+    };
+
+    // Validate external citations for imported entries
+    if (isImportedEntry) {
+      const invalidExternalEntries: string[] = [];
+      
+      // Check legal bases
+      sanitized.legal_bases?.forEach((item: any, index: number) => {
+        const t = item?.type;
+        if (t === 'external') {
+          if (isExternalBlank(item)) return; // skip untouched blank rows
+          if (!requireFields(item, ['citation', 'url'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: External citations require citation and URL.`);
+          }
+        } else if (t === 'internal') {
+          if (isInternalBlank(item)) return; // skip untouched blank rows
+          if (!requireFields(item, ['entry_id', 'url'])) {
+            invalidExternalEntries.push(`Legal Basis ${index + 1}: Internal citations require entry_id and URL.`);
+          }
+        }
+      });
+
+      // Check related sections
+      sanitized.related_sections?.forEach((item: any, index: number) => {
+        const t = item?.type;
+        if (t === 'external') {
+          if (isExternalBlank(item)) return; // skip untouched blank rows
+          if (!requireFields(item, ['citation', 'url'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: External citations require citation and URL.`);
+          }
+        } else if (t === 'internal') {
+          if (isInternalBlank(item)) return; // skip untouched blank rows
+          if (!requireFields(item, ['entry_id', 'url'])) {
+            invalidExternalEntries.push(`Related Section ${index + 1}: Internal citations require entry_id and URL.`);
+          }
+        }
+      });
+
+      if (invalidExternalEntries.length > 0) {
+        console.log('Invalid external entries found:', invalidExternalEntries);
+        alert('Validation errors found:\n' + invalidExternalEntries.join('\n'));
+        setIsSubmitting(false);
+        isSubmittingRef.current = false;
+        return;
+      }
+      console.log('Imported entry validation passed');
+    }
+
+    // Clear draft
+    try {
+      localStorage.removeItem('kb_entry_draft');
+    } catch (e) {
+      console.error('Failed to clear draft', e);
+    }
+
+    const withMember = {
+      ...sanitized,
+      team_member_id: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
+      created_by: user?.personId ? Number(String(user.personId).replace('P','')) : undefined,
+      created_by_name: user?.name || user?.username,
+      created_by_username: user?.username,
+    } as any;
+
+    console.log('Form data being sent:', withMember);
+    console.log('Status field value:', withMember.status);
+    console.log('Effective date value:', withMember.effective_date);
+
+    // Check if user has incomplete entries from yesterday
+    if (onShowIncompleteEntriesModal && isCreateMode) {
+      const incompleteEntries = JSON.parse(sessionStorage.getItem('incompleteEntries') || '[]');
+      const userHasIncompleteEntries = incompleteEntries.some((incomplete: any) => 
+        incomplete.personId === user?.personId || 
+        incomplete.personName === user?.name ||
+        incomplete.personName === user?.username
+      );
+
+      if (userHasIncompleteEntries) {
+        // Show modal with entry details instead of saving directly
+        onShowIncompleteEntriesModal(withMember);
+        setIsSubmitting(false);
+        isSubmittingRef.current = false;
+        return;
+      }
+    }
+
+    // Progress tracking is now handled in useLocalStorage.js addEntry function
+    // based on the created_at timestamp set in handleSaveEntry
+
+    try {
+      await onSave(withMember);
+      // Note: Draft clearing is now handled in App.js handleSaveEntry function
+      // to ensure it happens at the right time and covers all draft types
+
+      // Dispatch event to refresh progress display
+      window.dispatchEvent(new Event('refresh-progress'));
+
+      // Navigation will be handled by the success modal in App.js
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      // Reset submission state on error so user can try again
+      setIsSubmitting(false);
+      isSubmittingRef.current = false;
+      throw error; // Re-throw to let parent handle the error
+    }
+  };
 
   //
 
@@ -1057,12 +1288,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
 
-    console.log('🚀 FORM SUBMISSION STARTED');
-    console.log('📝 Form mode:', { isEditMode, isCreateMode, hasEntry: !!entry });
-    console.log('📊 Form data:', data);
+    // Check for internal suggestions before proceeding
+    if (checkForInternalSuggestions()) {
+      return; // Modal will handle the flow
+    }
 
-    setIsSubmitting(true);
-    isSubmittingRef.current = true;
+    // Proceed with save
+    await performSave(data);
+  };
 
 
 
@@ -1924,6 +2157,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           maxDisplay={5}
         />
 
+        {/* Internal Citation Modal */}
+        <InternalCitationModal
+          isOpen={showInternalCitationModal}
+          onClose={() => setShowInternalCitationModal(false)}
+          onGoBack={() => setShowInternalCitationModal(false)}
+          onConfirmCreate={async () => {
+            setShowInternalCitationModal(false);
+            const formData = getValues();
+            await performSave(formData);
+          }}
+          citationCount={internalSuggestions.legalBases + internalSuggestions.relatedSections}
+          citationType={internalSuggestions.legalBases > 0 ? 'Legal Bases' : 'Related Sections'}
+        />
+
         {/* Debug info for duplicate detection */}
         {process.env.NODE_ENV === 'development' && (
           <div className="fixed top-4 right-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs z-50 max-w-xs">
@@ -2472,20 +2719,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                           <div className="space-y-8">
                             <div className="kb-form-field">
                               <div className="space-y-1">
-                                <label className="kb-form-label">Summary</label>
+                              <label className="kb-form-label">Summary</label>
                                 <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Keep it concise and neutral.</p>
                               </div>
                               <Textarea rows={4} placeholder="1–3 sentence neutral synopsis" {...register('summary')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="space-y-1 mt-6">
+                              <div className="space-y-1 mt-10">
                                 <label className="kb-form-label">Legal Text</label>
                                 <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Substance-only, normalized.</p>
                               </div>
                               <Textarea rows={12} placeholder="Clean, normalized legal text" {...register('text')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="mt-6">
+                              <div className="mt-10">
                                 <label className="kb-form-label">Tags</label>
                               </div>
                               <TagArray control={control} register={register} watch={watch} />
@@ -2539,6 +2786,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             onSaveDraft={saveDraft}
                             isEditing={!!entry}
                             existingEntries={existingEntries as any}
+                            onInternalSuggestionsDetected={handleInternalSuggestionsDetected}
                           />
                         </div>
                       </div>
