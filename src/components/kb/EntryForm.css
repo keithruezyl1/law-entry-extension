@@ -846,21 +846,17 @@
 
 /* Force transparent previous button with orange outline across themes */
 .kb-form .kb-prev-btn {
-	background: transparent !important;
+	background: inherit !important; /* keep existing background */
 	border: 2px solid #f97316 !important; /* orange outline */
-	color: #111827 !important; /* black text in light mode */
+	color: #f97316 !important; /* orange text in light mode */
 }
-.kb-form .kb-prev-btn:hover {
-	background: transparent !important;
-}
+.kb-form .kb-prev-btn:hover { background: inherit !important; }
 .dark-mode .kb-form .kb-prev-btn {
-	background: transparent !important;
-	color: #ffffff !important; /* white text in dark mode */
-	border-color: #f97316 !important;
+	background: inherit !important; /* keep dark mode background */
+	color: inherit !important; /* keep existing text color (usually white) */
+	border-color: #f97316 !important; /* orange outline only */
 }
-.dark-mode .kb-form .kb-prev-btn:hover {
-	background: transparent !important;
-}
+.dark-mode .kb-form .kb-prev-btn:hover { background: inherit !important; }
 
 /* Labels white in dark mode */
 .dark-mode .kb-form-label,
