@@ -36,10 +36,10 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
     <aside className="h-full">
       <div>
         <div className="ds-card rounded-2xl shadow-sm border p-5 h-full min-h-[360px] w-full">
-          <div className="flex items-center gap-3 mb-4 -mt-1">
-            <h3 className="font-semibold text-primary text-lg">Progress</h3>
+          <div className="flex items-center gap-3 mb-6 -mt-1">
+            <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Progress</h3>
           </div>
-          <ul className="space-y-8">
+          <ul className="space-y-6">
             {steps.map((step) => {
               const active = currentStep === step.id;
               const complete = currentStep > step.id;
@@ -48,7 +48,7 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
                 <li
                   key={step.id}
                   className={cn(
-                    "flex items-center gap-5 rounded-token px-4 py-3 my-3 cursor-pointer transition-all duration-200 ring-0",
+                    "flex items-center gap-5 rounded-token px-4 py-3 my-2 cursor-pointer transition-all duration-200 ring-0",
                     active && "bg-primary/10 outline-none",
                     complete && "opacity-90",
                     !active && !complete && "hover:bg-muted/60"
@@ -57,7 +57,7 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
                   tabIndex={0}
                 >
                   <div className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200",
+                    "flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 mb-1",
                     active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                   )}>
                     {icon}

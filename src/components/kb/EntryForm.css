@@ -868,8 +868,8 @@
 	border-color: #4b5563 !important;
 }
 
-/* Progress text should be orange in dark mode */
-.dark-mode .ds-card h3 {
+/* Progress text should be orange in dark mode - but not for Preview-style text */
+.dark-mode .ds-card h3:not(.text-xs) {
 	color: #f97316 !important; /* Orange color for Progress text */
 }
 
