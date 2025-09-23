@@ -1123,9 +1123,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         parts.push(`Related Section External Citation ${citationNumbers}`);
       }
       
-      // Fallback if we only have global flag
+      // Fallback if we only have global flag - try to be more specific
       if (parts.length === 0 && globalFlag) {
-        message = 'Internal/External Citation #N (possible multiple)';
+        // Count total external citations to give a better message
+        const totalExternal = legalBases.filter((item: any) => item && item.type === 'external').length + 
+                             relatedSections.filter((item: any) => item && item.type === 'external').length;
+        if (totalExternal === 1) {
+          message = 'External Citation might exist in the KB';
+        } else {
+          message = `External Citations (${totalExternal} found) might exist in the KB`;
+        }
       } else {
         message = parts.join(', ');
       }
@@ -1137,7 +1144,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       legalBasesWithSuggestions,
       relatedSectionsWithSuggestions,
       hasSuggestions,
-      message
+      message,
+      globalFlag,
+      legalBasesCount: legalBases.length,
+      relatedSectionsCount: relatedSections.length,
+      legalBasesExternal: legalBases.filter((item: any) => item && item.type === 'external').length,
+      relatedSectionsExternal: relatedSections.filter((item: any) => item && item.type === 'external').length
     });
     
     return { hasSuggestions, message };

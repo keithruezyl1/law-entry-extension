@@ -439,10 +439,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           }
           
           const finalScore = base + boost;
-          if (finalScore >= 15) { // Raised threshold to require strong matches
+          if (finalScore >= 10) { // Balanced threshold to catch relevant matches
             results.push({ entry, score: finalScore });
-            // Early termination: if we have 2+ high-confidence matches (score >= 30), stop searching
-            if (finalScore >= 30) {
+            // Early termination: if we have 2+ high-confidence matches (score >= 25), stop searching
+            if (finalScore >= 25) {
               highConfidenceCount++;
               if (highConfidenceCount >= 2) break;
             }
@@ -501,9 +501,9 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
     }
 
-    // Much stricter thresholds to avoid irrelevant suggestions
-    const SEM_THRESHOLD = 60; // raised significantly to avoid poor semantic matches
-    const LOC_THRESHOLD = 15; // raised to require strong local matches
+    // Balanced thresholds to avoid irrelevant suggestions but still find relevant ones
+    const SEM_THRESHOLD = 50; // balanced to avoid poor semantic matches
+    const LOC_THRESHOLD = 10; // balanced to require decent local matches
     const results = Object.values(merged)
       .filter(m => {
         // Only include results with strong local matches OR very high semantic scores
