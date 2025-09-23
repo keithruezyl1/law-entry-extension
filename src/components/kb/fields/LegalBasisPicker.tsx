@@ -501,27 +501,60 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
     }
 
+    // Helper token/overlap utilities for high-confidence gating
+    const tokenize = (s: string) => String(s || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+    const overlap = (a: string, b: string) => {
+      const A = new Set(tokenize(a));
+      const B = new Set(tokenize(b));
+      if (A.size === 0 || B.size === 0) return 0;
+      let inter = 0;
+      A.forEach(w => { if (B.has(w)) inter++; });
+      return inter / Math.min(A.size, B.size);
+    };
+
     // Balanced thresholds to avoid irrelevant suggestions but still find relevant ones
-    const SEM_THRESHOLD = 50; // balanced to avoid poor semantic matches
-    const LOC_THRESHOLD = 10; // balanced to require decent local matches
-    const results = Object.values(merged)
+    const SEM_THRESHOLD = 50; // semantic must be high to matter
+    const LOC_THRESHOLD = 10; // require decent local evidence
+    const prelim = Object.values(merged)
       .filter(m => {
-        // Only include results with strong local matches OR very high semantic scores
         const hasStrongLocal = m.local >= LOC_THRESHOLD;
         const hasHighSemantic = m.semantic >= SEM_THRESHOLD;
-        
-        // Prioritize local matches heavily - semantic search often returns irrelevant results
         return hasStrongLocal || (hasHighSemantic && m.local >= 8);
       })
-      .sort((a, b) => {
-        // Heavily prioritize local matches over semantic
-        const scoreA = a.local * 2 + a.semantic; // Local matches get 2x weight
-        const scoreB = b.local * 2 + b.semantic;
-        
-        return scoreB - scoreA;
-      })
-      .slice(0, 3) // Reduce to top 3 to avoid clutter
       .map(m => m.entry as EntryLite);
+
+    // FINAL high-confidence filter: only keep items with exact/near-exact title/citation
+    const results = prelim.filter((r) => {
+      const rTitle = normalizeSearchText(r.title || '');
+      const rCite = normalizeSearchText(r.canonical_citation || '');
+
+      // Exact equality on citation or title
+      const exact = (exactCitation && (rCite === exactCitation || rTitle === exactCitation)) ||
+                    (exactTitle && (rTitle === exactTitle || rCite === exactTitle));
+
+      if (exact) return true;
+
+      // Otherwise require strong corroboration: high title overlap + some citation token agreement
+      if (!exactTitle) return false; // without a title, don't allow fuzzy
+
+      const titleOverlap = overlap(rTitle, exactTitle);
+      if (titleOverlap < 0.7) return false;
+
+      // Citation corroboration: any shared numeric token or starts-with/contains match
+      const numericTokens = (exactCitation || '')
+        .split(/[^0-9]+/)
+        .filter(t => t.length > 0);
+      const hasNumericCorroboration = numericTokens.some(t => rCite.includes(t) || rTitle.includes(t));
+
+      const citeWeakMatch = !!exactCitation && (rCite.startsWith(exactCitation) || rCite.includes(exactCitation));
+
+      return hasNumericCorroboration || citeWeakMatch;
+    })
+    .slice(0, 3);
     
     // Cache results for future use (limit cache size to prevent memory issues)
     if (searchCache.current.size > 50) {
@@ -559,16 +592,19 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     if (!ext || ext.type !== 'external') return;
     if (suppressDetectForExternal.current.has(idx)) return;
     const matches = await findSimilarEntriesForExternal(ext);
-    console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
-      external: ext,
-      matches: matches.length,
-      matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
-    });
+    // quiet by default; enable by kb_debug=1 in storage
+    try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') {
+      console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
+        external: ext,
+        matches: matches.length,
+        matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
+      });
+    } } catch {}
     setInlineMatches(prev => ({ ...prev, [idx]: matches }));
     
     // Set flag to indicate this external citation has internal suggestions
     if (matches.length > 0) {
-      console.log(`🔍 Setting _hasInternalSuggestion=true for external citation at index ${idx}:`, ext.title || ext.citation);
+      try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') console.log(`🔍 Setting _hasInternalSuggestion=true for external citation at index ${idx}:`, ext.title || ext.citation); } catch {}
       update(idx, { ...ext, _hasInternalSuggestion: true });
       try {
         // Surface a global hint so the create form can gate submission even if
@@ -576,7 +612,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         sessionStorage.setItem('hasInternalSuggestion', 'true');
       } catch {}
     } else {
-      console.log(`🔍 Setting _hasInternalSuggestion=false for external citation at index ${idx}:`, ext.title || ext.citation);
+      try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') console.log(`🔍 Setting _hasInternalSuggestion=false for external citation at index ${idx}:`, ext.title || ext.citation); } catch {}
       update(idx, { ...ext, _hasInternalSuggestion: false });
     }
     // keep toast optional off by default

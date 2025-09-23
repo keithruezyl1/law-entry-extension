@@ -179,6 +179,13 @@ const stepListBase: Step[] = [
 ];
 
 export default function EntryFormTS({ entry, existingEntries = [], onSave, onCancel, onShowIncompleteEntriesModal, isUpdatingEntry = false }: EntryFormProps) {
+  // Runtime-debug helper: enable by setting localStorage/sessionStorage kb_debug = '1'
+  const debugLog = (...args: any[]) => {
+    try {
+      const on = (typeof window !== 'undefined') && (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1');
+      if (on) console.log(...args);
+    } catch {}
+  };
   const { user } = useAuth();
 
   // Explicit mode detection
@@ -1010,7 +1017,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // User confirmed they want to create the entry as-is
     // Re-trigger the submission
     const formData = getValues();
-    console.log('🔍 Re-triggering submission after internal citation modal confirmation');
+    debugLog('🔍 Re-triggering submission after internal citation modal confirmation');
     await onSubmit(formData);
   };
 
@@ -1025,9 +1032,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         setIsAutoSaving(true);
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        if (process.env.NODE_ENV === 'development') {
-        console.log('Auto-saved draft on form change');
-        }
+        // noisy dev log removed to avoid jank
         setTimeout(() => setIsAutoSaving(false), 1000);
       } catch (e) {
         console.error('Failed to auto-save draft on form change:', e);
@@ -1041,9 +1046,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         setIsAutoSaving(true);
         const draft = getValues();
         localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        if (process.env.NODE_ENV === 'development') {
-        console.log('Auto-saved draft on interval');
-        }
+        // noisy dev log removed to avoid jank
         setTimeout(() => setIsAutoSaving(false), 1000);
       } catch (e) {
         console.error('Failed to auto-save draft on interval:', e);
@@ -1063,7 +1066,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const legalBases = dataAny.legal_bases || [];
     const relatedSections = dataAny.related_sections || [];
     
-    console.log('🔍 Checking for internal citation suggestions:', {
+    debugLog('🔍 Checking for internal citation suggestions:', {
       legalBases: legalBases.map((item: any) => ({ 
         type: item?.type, 
         hasSuggestion: item?._hasInternalSuggestion,
@@ -1140,7 +1143,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       message += ' might exist in the KB. Are you sure you don\'t want to add it as internal?';
     }
     
-    console.log('🔍 Internal citation suggestions result:', {
+    debugLog('🔍 Internal citation suggestions result:', {
       legalBasesWithSuggestions,
       relatedSectionsWithSuggestions,
       hasSuggestions,
@@ -1162,9 +1165,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       return;
     }
 
-    console.log('🚀 FORM SUBMISSION STARTED');
-    console.log('📝 Form mode:', { isEditMode, isCreateMode, hasEntry: !!entry });
-    console.log('📊 Form data:', data);
+    debugLog('🚀 FORM SUBMISSION STARTED');
+    debugLog('📝 Form mode:', { isEditMode, isCreateMode, hasEntry: !!entry });
+    debugLog('📊 Form data:', data);
 
     setIsSubmitting(true);
     isSubmittingRef.current = true;
@@ -1174,9 +1177,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
 
-    console.log('Form data being submitted:', data);
-    console.log('Form data type:', typeof data);
-    console.log('Form data keys:', Object.keys(data));
+    debugLog('Form data being submitted:', data);
+    debugLog('Form data type:', typeof data);
+    debugLog('Form data keys:', Object.keys(data));
 
 
 
@@ -1277,18 +1280,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     });
 
     // Debug logging for source_urls and relations
-    console.log('Raw form data source_urls:', (data as any).source_urls);
-    console.log('Sanitized source_urls:', sanitized.source_urls);
-    console.log('Sanitized source_urls type:', typeof sanitized.source_urls);
-    console.log('🔧 Entry type:', data.type);
-    console.log('🔧 Relevant fields for this type:', relevantFields);
-    console.log('🔧 Type-specific string fields being normalized:', typeSpecificStringFields.filter(field => relevantFields.includes(field)));
-    console.log('🔧 Normalized standard_of_proof:', (sanitized as any).standard_of_proof, 'Type:', typeof (sanitized as any).standard_of_proof);
-    console.log('Sanitized source_urls length:', sanitized.source_urls?.length);
-    console.log('Raw form data legal_bases:', (data as any).legal_bases);
-    console.log('Sanitized legal_bases:', (sanitized as any).legal_bases);
-    console.log('Raw form data related_sections:', (data as any).related_sections);
-    console.log('Sanitized related_sections:', (sanitized as any).related_sections);
+    debugLog('Raw form data source_urls:', (data as any).source_urls);
+    debugLog('Sanitized source_urls:', sanitized.source_urls);
+    debugLog('Sanitized source_urls type:', typeof sanitized.source_urls);
+    debugLog('🔧 Entry type:', data.type);
+    debugLog('🔧 Relevant fields for this type:', relevantFields);
+    debugLog('🔧 Type-specific string fields being normalized:', typeSpecificStringFields.filter(field => relevantFields.includes(field)));
+    debugLog('🔧 Normalized standard_of_proof:', (sanitized as any).standard_of_proof, 'Type:', typeof (sanitized as any).standard_of_proof);
+    debugLog('Sanitized source_urls length:', sanitized.source_urls?.length);
+    debugLog('Raw form data legal_bases:', (data as any).legal_bases);
+    debugLog('Sanitized legal_bases:', (sanitized as any).legal_bases);
+    debugLog('Raw form data related_sections:', (data as any).related_sections);
+    debugLog('Sanitized related_sections:', (sanitized as any).related_sections);
 
     // Remove deprecated keys
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1314,7 +1317,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }
 
-    console.log('Validating business rules...');
+    debugLog('Validating business rules...');
     const errs = validateBusinessRules(sanitized);
     if (errs.length) {
       console.log('Business rule validation errors:', errs);
@@ -1323,13 +1326,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       isSubmittingRef.current = false;
       return;
     }
-    console.log('Business rules validation passed');
+    debugLog('Business rules validation passed');
 
     // Additional validation for imported entries
-    console.log('Validating imported entry data...');
+    debugLog('Validating imported entry data...');
     const sanitizedAny = sanitized as any;
-    console.log('Legal bases:', sanitizedAny.legal_bases);
-    console.log('Related sections:', sanitizedAny.related_sections);
+    debugLog('Legal bases:', sanitizedAny.legal_bases);
+    debugLog('Related sections:', sanitizedAny.related_sections);
 
     // Check for invalid external entries
     const invalidExternalEntries: string[] = [];
@@ -1359,13 +1362,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
 
     if (invalidExternalEntries.length > 0) {
-      console.log('Invalid external entries found:', invalidExternalEntries);
+      debugLog('Invalid external entries found:', invalidExternalEntries);
       alert('Validation errors found:\n' + invalidExternalEntries.join('\n'));
       setIsSubmitting(false);
       isSubmittingRef.current = false;
       return;
     }
-    console.log('Imported entry validation passed');
+    debugLog('Imported entry validation passed');
 
     // Clear draft
     try {
@@ -1382,17 +1385,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       created_by_username: user?.username,
     } as any;
 
-    console.log('Form data being sent:', withMember);
-    console.log('Status field value:', withMember.status);
-    console.log('Effective date value:', withMember.effective_date);
+    debugLog('Form data being sent:', withMember);
+    debugLog('Status field value:', withMember.status);
+    debugLog('Effective date value:', withMember.effective_date);
 
     // Check for internal citation suggestions before submission (CREATE MODE ONLY)
     if (isCreateMode) {
-      console.log('🔍 Checking for internal suggestions in CREATE MODE');
+      debugLog('🔍 Checking for internal suggestions in CREATE MODE');
       const suggestionResult = checkForInternalCitationSuggestions(withMember);
-      console.log('🔍 Has internal suggestions:', suggestionResult.hasSuggestions);
+      debugLog('🔍 Has internal suggestions:', suggestionResult.hasSuggestions);
       if (suggestionResult.hasSuggestions) {
-        console.log('🔍 Showing internal citation modal with message:', suggestionResult.message);
+        debugLog('🔍 Showing internal citation modal with message:', suggestionResult.message);
         setInternalCitationModalMessage(suggestionResult.message);
         setShowInternalCitationModal(true);
         setIsSubmitting(false);
@@ -1400,7 +1403,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         return;
       }
     } else {
-      console.log('🔍 Skipping internal suggestions check - not in CREATE MODE');
+      debugLog('🔍 Skipping internal suggestions check - not in CREATE MODE');
     }
 
     // Check if user has incomplete entries from yesterday
@@ -1451,9 +1454,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
   // Disabled when editing existing entries to avoid confusion
   useEffect(() => {
-    console.log('🚨 DUPLICATE DETECTION useEffect RUNNING! 🚨');
+    debugLog('🚨 DUPLICATE DETECTION useEffect RUNNING! 🚨');
     // Don't run duplicate detection when editing existing entries
-    console.log('🔍 DUPLICATE DETECTION useEffect TRIGGERED!', { 
+    debugLog('🔍 DUPLICATE DETECTION useEffect TRIGGERED!', { 
       hasEntry: !!entry, 
       entryId: entry?.entry_id || (entry as any)?.id,
       isEditMode,
@@ -1480,12 +1483,12 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
     // ALWAYS run duplicate detection for entries on create URLs (imported or new)
     if (isOnCreateUrl) {
-      console.log('🔍 On create URL - enabling duplicate detection for all entries');
+      debugLog('🔍 On create URL - enabling duplicate detection for all entries');
     }
 
     // If we don't have an entry at all, this is a new entry
     if (!entry) {
-      console.log('🔍 No entry prop - treating as new entry, enabling duplicate detection');
+      debugLog('🔍 No entry prop - treating as new entry, enabling duplicate detection');
     }
 
     const idTokens = [title, lawFamily, sectionId, citation, effectiveDate]
@@ -1494,7 +1497,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       .filter(token => token.length > 0);
     const q = idTokens.join(' ').trim();
 
-    console.log('🔍 Duplicate detection query generation:', {
+    debugLog('🔍 Duplicate detection query generation:', {
       title: title || 'no title',
       lawFamily: lawFamily || 'no law family',
       sectionId: sectionId || 'no section id',
@@ -1507,7 +1510,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
     if (!q) {
-      console.log('🔍 No query generated, clearing duplicates');
+      debugLog('🔍 No query generated, clearing duplicates');
 
 
       setNearDuplicates([]);
@@ -1516,7 +1519,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
     // Clear duplicates if title is too short (less than 3 characters)
     if (title && title.length < 3) {
-      console.log('🔍 Title too short, clearing duplicates');
+      debugLog('🔍 Title too short, clearing duplicates');
 
 
       setNearDuplicates([]);
@@ -1524,7 +1527,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     }
 
     // Force duplicate detection to run for entries on create URLs
-    console.log('🔍 Proceeding with duplicate detection for create URL entry');
+    debugLog('🔍 Proceeding with duplicate detection for create URL entry');
 
 
 
@@ -1534,20 +1537,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
       try {
-        console.log('🔍 Setting searchingDupes to TRUE');
+        debugLog('🔍 Setting searchingDupes to TRUE');
 
 
         setSearchingDupes(true);
-        console.log('🔍 Starting semantic search with query:', q);
-        console.log('🔍 Existing entries count:', existingEntries.length);
+        debugLog('🔍 Starting semantic search with query:', q);
+        debugLog('🔍 Existing entries count:', existingEntries.length);
 
 
 
         // ask for more results, then filter client-side by a threshold
         const resp = await semanticSearch(q, 10);
-        console.log('🔍 Semantic search response:', resp);
-        console.log('🔍 Semantic search success:', resp.success);
-        console.log('🔍 Semantic search results count:', resp.results?.length || 0);
+        debugLog('🔍 Semantic search response:', resp);
+        debugLog('🔍 Semantic search success:', resp.success);
+        debugLog('🔍 Semantic search results count:', resp.results?.length || 0);
 
 
 
@@ -1558,9 +1561,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           let resultsRaw = [];
           if (resp.success && resp.results && Array.isArray(resp.results) && resp.results.length > 0) {
             resultsRaw = resp.results;
-            console.log('🔍 Using semantic search results:', resultsRaw.length);
+            debugLog('🔍 Using semantic search results:', resultsRaw.length);
           } else {
-            console.log('🔍 Semantic search failed or returned no results, trying fallback text search');
+            debugLog('🔍 Semantic search failed or returned no results, trying fallback text search');
 
 
             // Fallback: simple text search through existing entries
@@ -1581,7 +1584,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 similarity: 0.35 // Lower default similarity for naive text matches
               }))
               .slice(0, 10);
-            console.log('🔍 Fallback text search results:', resultsRaw.length);
+            debugLog('🔍 Fallback text search results:', resultsRaw.length);
 
 
           }
@@ -1636,7 +1639,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           // resultsRaw is now set above with fallback logic
 
           // Debug logging
-          console.log('🔍 Duplicate detection processing:', {
+          debugLog('🔍 Duplicate detection processing:', {
 
             query: q,
             resultsCount: resultsRaw.length,
