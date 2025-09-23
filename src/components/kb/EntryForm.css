@@ -396,7 +396,7 @@
 	box-shadow: 0 8px 25px rgba(0,0,0,0.08);
 }
 
-/* Relations highlight block */
+/* Relations highlight block - removed orange background */
 .relations-wrapper { position: relative; }
 .relations-cols { position: relative; z-index: 1; }
 .relations-highlight-layer {
@@ -406,11 +406,11 @@
 	width: calc(100% + 20px);
 	height: calc(100% + 28px);
 	border-radius: 24px;
-	background: rgba(255, 107, 53, 0.14); /* light orange */
+	background: transparent; /* removed orange background */
 	transition: transform 280ms ease;
 	z-index: 0;
 }
-.dark-mode .relations-highlight-layer { background: rgba(255, 107, 53, 0.22); }
+.dark-mode .relations-highlight-layer { background: transparent; }
 .relations-highlight-layer.to-left  { transform: translateX(0); }
 .relations-highlight-layer.to-right { transform: translateX(0); }
 @media (min-width: 768px) {
@@ -810,12 +810,12 @@
 }
 
 /* Generic dark mode buttons inside form (e.g., Add Item) */
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]) {
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn) {
 	background: #374151 !important; /* Light grey background */
 	border: 1px solid #4b5563 !important; /* Grey border */
 	color: #e5e7eb !important; /* Light grey text */
 }
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):hover {
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):hover {
 	background: #4b5563 !important; /* Slightly lighter grey on hover */
 	border-color: #6b7280 !important;
 }
