@@ -428,6 +428,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [hasAmendment, setHasAmendment] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const isSubmittingRef = React.useRef<boolean>(false);
+  const [didImportAutosave, setDidImportAutosave] = useState<boolean>(false);
 
 
   //
@@ -628,7 +629,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             });
           };
 
-          const resetData = {
+          let resetData = {
             type: parsed.type || 'statute_section',
             entry_id: parsed.entry_id || '',
             title: parsed.title || '',
@@ -685,8 +686,65 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           if (process.env.NODE_ENV === 'development') {
           console.log('Resetting form with imported data:', resetData);
           }
+          // If a local draft exists for this entry, merge user changes on top of imported
+          try {
+            const rawDraft = localStorage.getItem('kb_entry_draft');
+            if (rawDraft) {
+              const draft = JSON.parse(rawDraft);
+              const sameEntry = (
+                (draft?.entry_id && resetData.entry_id && String(draft.entry_id) === String(resetData.entry_id)) ||
+                (draft?.title && resetData.title && String(draft.title).trim().toLowerCase() === String(resetData.title).trim().toLowerCase())
+              );
+              if (sameEntry) {
+                const prefer = (a: any, b: any) => {
+                  // Prefer draft 'a' when it is non-empty/non-null; else keep imported 'b'
+                  if (Array.isArray(a)) return a.length ? a : b;
+                  if (a === 0) return a;
+                  return a != null && a !== '' ? a : b;
+                };
+                // Merge relations by union while keeping order (imported first, then new from draft)
+                const mergeRelations = (base: any[], add: any[]) => {
+                  const out: any[] = Array.isArray(base) ? [...base] : [];
+                  const seen = new Set(out.map((it: any) => (it?.entry_id || it?.citation || it?.title || JSON.stringify(it)).toLowerCase?.() || String(it)));
+                  (Array.isArray(add) ? add : []).forEach((it: any) => {
+                    const key = (it?.entry_id || it?.citation || it?.title || JSON.stringify(it)).toLowerCase?.() || String(it);
+                    if (!seen.has(key)) {
+                      out.push(it);
+                      seen.add(key);
+                    }
+                  });
+                  return out;
+                };
+                resetData = {
+                  ...resetData,
+                  title: prefer(draft.title, resetData.title),
+                  canonical_citation: prefer(draft.canonical_citation, resetData.canonical_citation),
+                  law_family: prefer(draft.law_family, resetData.law_family),
+                  section_id: prefer(draft.section_id, resetData.section_id),
+                  status: prefer(draft.status, resetData.status),
+                  effective_date: prefer(draft.effective_date, resetData.effective_date),
+                  amendment_date: prefer(draft.amendment_date, resetData.amendment_date),
+                  summary: prefer(draft.summary, resetData.summary),
+                  text: prefer(draft.text, resetData.text),
+                  source_urls: prefer(draft.source_urls, resetData.source_urls),
+                  tags: prefer(draft.tags, resetData.tags),
+                  legal_bases: mergeRelations(resetData.legal_bases, draft.legal_bases),
+                  related_sections: mergeRelations(resetData.related_sections, draft.related_sections),
+                } as any;
+              }
+            }
+          } catch {}
+
           methods.reset(resetData as any);
           setFormPopulated(true);
+
+          // One-time autosave after successful import so user won't lose imported form on refresh
+          try {
+            if (!didImportAutosave) {
+              localStorage.setItem('kb_entry_draft', JSON.stringify(resetData));
+              setDidImportAutosave(true);
+            }
+          } catch {}
 
           // Trigger duplicate detection for imported entries by updating form values
           // This will cause the main useEffect to run
@@ -1021,44 +1079,45 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     await onSubmit(formData);
   };
 
-  // Enhanced autosave: save on form changes and every 5 seconds (CREATE MODE ONLY)
+  // Autosave: only after user input (keyup/change), debounced; CREATE MODE ONLY
   useEffect(() => {
-    // Only run auto-save in create mode
-    if (isEditMode) return; // Don't auto-save when editing existing entries
+    if (isEditMode) return;
 
-    // Save immediately when form values change
-    const subscription = watch((value) => {
-      try {
-        setIsAutoSaving(true);
-        const draft = getValues();
-        localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        // noisy dev log removed to avoid jank
-        setTimeout(() => setIsAutoSaving(false), 1000);
-      } catch (e) {
-        console.error('Failed to auto-save draft on form change:', e);
-        setIsAutoSaving(false);
-      }
+    let hasUserInput = false;
+    let debounceId: number | undefined;
+    let lastSaved = '';
+
+    const onAnyInput = () => { hasUserInput = true; };
+    try { document.addEventListener('input', onAnyInput, { passive: true }); } catch {}
+
+    const subscription = watch(() => {
+      // Defer autosave until user has actually typed/changed something manually
+      if (!hasUserInput) return;
+      if (!methods.formState.isDirty) return;
+      if (debounceId) window.clearTimeout(debounceId);
+      debounceId = window.setTimeout(() => {
+        try {
+          const draft = getValues();
+          const serialized = JSON.stringify(draft);
+          if (serialized !== lastSaved) {
+            setIsAutoSaving(true);
+            localStorage.setItem('kb_entry_draft', serialized);
+            lastSaved = serialized;
+            setTimeout(() => setIsAutoSaving(false), 400);
+          }
+        } catch (e) {
+          console.error('Failed to auto-save draft on change:', e);
+          setIsAutoSaving(false);
+        }
+      }, 600) as unknown as number;
     });
-
-    // Also save every 5 seconds as backup
-    const interval = setInterval(() => {
-      try {
-        setIsAutoSaving(true);
-        const draft = getValues();
-        localStorage.setItem('kb_entry_draft', JSON.stringify(draft));
-        // noisy dev log removed to avoid jank
-        setTimeout(() => setIsAutoSaving(false), 1000);
-      } catch (e) {
-        console.error('Failed to auto-save draft on interval:', e);
-        setIsAutoSaving(false);
-      }
-    }, 5000);
 
     return () => {
       subscription.unsubscribe();
-      clearInterval(interval);
+      if (debounceId) window.clearTimeout(debounceId);
+      try { document.removeEventListener('input', onAnyInput as any); } catch {}
     };
-  }, [watch, getValues, entry]);
+  }, [watch, getValues, entry, isEditMode, methods]);
 
   // Check for internal citation suggestions in legal_bases and related_sections
   const checkForInternalCitationSuggestions = (data: Entry): { hasSuggestions: boolean; message: string } => {

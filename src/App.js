@@ -1739,10 +1739,6 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
 
         {currentView === 'form' && (
           <>
-            {console.log('Rendering EntryForm with editingEntry:', editingEntry)}
-            {console.log('Rendering EntryForm with importedEntryData:', importedEntryData)}
-            {console.log('Rendering EntryForm with final entry prop:', editingEntry || importedEntryData)}
-            {console.log('Current URL:', window.location.href)}
             <EntryForm
               entry={editingEntry || importedEntryData}
               existingEntries={entries}
