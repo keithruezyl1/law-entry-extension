@@ -760,6 +760,20 @@
 	color: #f97316 !important;
 }
 
+/* Tab buttons - INTERNAL should be orange by default, both stay orange when active */
+.kb-form .kb-toggle-row button[class*="bg-orange-500"],
+.kb-form .kb-toggle-row .bg-orange-500 {
+	background: #f97316 !important; /* Orange background */
+	color: #ffffff !important; /* White text */
+	border-color: #f97316 !important; /* Orange border */
+}
+.dark-mode .kb-form .kb-toggle-row button[class*="bg-orange-500"],
+.dark-mode .kb-form .kb-toggle-row .bg-orange-500 {
+	background: #f97316 !important; /* Orange background */
+	color: #ffffff !important; /* White text */
+	border-color: #f97316 !important; /* Orange border */
+}
+
 /* Primary buttons - Next button (orange) */
 .dark-mode .kb-form .kb-btn-primary {
 	background: #f97316 !important; /* Orange background */
@@ -810,12 +824,12 @@
 }
 
 /* Generic dark mode buttons inside form (e.g., Add Item) - exclude all our custom buttons */
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500) {
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):not(.bg-green-600) {
 	background: #374151 !important; /* Light grey background */
 	border: 1px solid #4b5563 !important; /* Grey border */
 	color: #e5e7eb !important; /* Light grey text */
 }
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):hover {
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):not(.bg-green-600):hover {
 	background: #4b5563 !important; /* Slightly lighter grey on hover */
 	border-color: #6b7280 !important;
 }
@@ -865,6 +879,23 @@
 	border-color: #b91c1c !important; /* Darker red border on hover */
 }
 
+/* Success button variant - ensure green styling in both light and dark modes */
+.bg-green-600,
+.kb-form .bg-green-600,
+.dark-mode .bg-green-600,
+.dark-mode .kb-form .bg-green-600 {
+	background: #16a34a !important; /* Green background */
+	color: #ffffff !important; /* White text */
+	border-color: #16a34a !important; /* Green border */
+}
+.bg-green-600:hover,
+.kb-form .bg-green-600:hover,
+.dark-mode .bg-green-600:hover,
+.dark-mode .kb-form .bg-green-600:hover {
+	background: #15803d !important; /* Darker green on hover */
+	border-color: #15803d !important; /* Darker green border on hover */
+}
+
 /* Progress and Preview cards styling */
 .dark-mode .ds-card {
 	background: #374151 !important; /* Light grey background */
@@ -873,7 +904,7 @@
 
 /* Ensure Progress text spacing works */
 .ds-card .mb-8 {
-	margin-bottom: 2rem !important; /* 32px */
+	margin-bottom: 1.5rem !important; /* 24px - reduced from 32px */
 }
 
 /* Ensure Relations text spacing works */

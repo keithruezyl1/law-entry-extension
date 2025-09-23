@@ -536,7 +536,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   {isLastInternal && showAddInternalButton && (
                     <Button
                       type="button"
-                      variant="default"
+                      variant="success"
                       onClick={() => { 
                         setShowAddInternalButton(false);
                         setShowInternalSearch(true);
@@ -703,7 +703,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   {isLastExternal && (
                     <Button
                       type="button"
-                      variant="default"
+                      variant="success"
                       onClick={() => { 
                         append({ type: 'external', citation: '', url: '', title: '', note: '' });
                       }}
@@ -731,7 +731,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           {externalCount === 0 && (
             <Button
               type="button"
-              variant="default"
+              variant="success"
               onClick={() => { 
                 append({ type: 'external', citation: '', url: '', title: '', note: '' });
               }}
