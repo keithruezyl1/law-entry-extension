@@ -34,6 +34,15 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
   const searchCache = useRef<Map<string, EntryLite[]>>(new Map());
+  const persistRemoval = (item: any) => {
+    try {
+      const key = String(item?.entry_id || item?.citation || item?.title || item?.url || JSON.stringify(item)).toLowerCase();
+      const raw = localStorage.getItem('kb_deleted_relations');
+      const tombstones = Array.isArray(raw ? JSON.parse(raw) : []) ? JSON.parse(raw || '[]') : [];
+      tombstones.push({ scope: name, key });
+      localStorage.setItem('kb_deleted_relations', JSON.stringify(tombstones.slice(-200)));
+    } catch {}
+  };
   
   // Internal citation states
   const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0);
@@ -777,7 +786,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   <Button
                     type="button"
                     variant="delete"
-                    onClick={() => remove(i)}
+                    onClick={() => { try { persistRemoval(items?.[i]); } catch {}; remove(i); }}
                     className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1 mb-2' : 'flex-1 mb-2'}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -943,7 +952,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   <Button
                     type="button"
                     variant="delete"
-                    onClick={() => { setInlineMatches(prev => { const next = { ...prev }; delete next[i]; return next; }); remove(i); }}
+                    onClick={() => { setInlineMatches(prev => { const next = { ...prev }; delete next[i]; return next; }); try { persistRemoval(items?.[i]); } catch {}; remove(i); }}
                     className={`h-11 rounded-xl ${externalCount > 1 ? 'flex-1 mb-2' : 'w-11 mb-2'}`}
                   >
                     <Trash2 className="h-4 w-4" />
