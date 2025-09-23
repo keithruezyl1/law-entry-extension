@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -70,6 +70,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     })();
     return () => { cancelled = true; };
   }, []);
+
 
   // Enhanced search function that handles pluralization, word variations, and minor typos
   const normalizeSearchText = (text: string): string => {
@@ -438,7 +439,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     return results;
   };
 
-  const handleDetectExternalMatches = async (idx: number) => {
+  const handleDetectExternalMatches = useCallback(async (idx: number) => {
     const ext = items?.[idx];
     if (!ext || ext.type !== 'external') return;
     if (suppressDetectForExternal.current.has(idx)) return;
@@ -459,7 +460,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       update(idx, { ...ext, _hasInternalSuggestion: false });
     }
     // keep toast optional off by default
-  };
+  }, [items, update]);
 
   const clearInlineIfEmpty = (idx: number) => {
     const ext = items?.[idx];
@@ -476,14 +477,38 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     }
   };
 
-  const handleDetectExternalMatchesDebounced = (idx: number) => {
+  const handleDetectExternalMatchesDebounced = useCallback((idx: number) => {
     const existing = detectTimersRef.current[idx];
     if (existing) {
       window.clearTimeout(existing);
     }
     const timer = window.setTimeout(() => handleDetectExternalMatches(idx), 300);
     detectTimersRef.current[idx] = timer as unknown as number;
-  };
+  }, [handleDetectExternalMatches]);
+
+  // Auto-detect internal citations when external citations are loaded (e.g., after import)
+  useEffect(() => {
+    if (!allEntries || allEntries.length === 0) return;
+    
+    // Check if we have external citations that haven't been processed yet
+    const externalCitations = items.filter((item: any, index: number) => 
+      item && item.type === 'external' && 
+      (item.citation || item.title || item.url) &&
+      !inlineMatches[index] // Only process if not already processed
+    );
+    
+    if (externalCitations.length > 0) {
+      console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
+      
+      // Trigger detection for each external citation
+      externalCitations.forEach((item: any, index: number) => {
+        const actualIndex = items.findIndex((i: any) => i === item);
+        if (actualIndex !== -1) {
+          handleDetectExternalMatchesDebounced(actualIndex);
+        }
+      });
+    }
+  }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
 
   const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
     try {
