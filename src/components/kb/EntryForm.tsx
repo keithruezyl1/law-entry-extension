@@ -412,6 +412,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   const [showDraftSaved, setShowDraftSaved] = useState<boolean>(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const [showInternalCitationModal, setShowInternalCitationModal] = useState<boolean>(false);
+  const [internalCitationModalMessage, setInternalCitationModalMessage] = useState<string>('');
   const [nearDuplicates, setNearDuplicates] = useState<any[]>([]);
   const [searchingDupes, setSearchingDupes] = useState<boolean>(false);
   const [formPopulated, setFormPopulated] = useState(false);
@@ -1057,7 +1058,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   }, [watch, getValues, entry]);
 
   // Check for internal citation suggestions in legal_bases and related_sections
-  const checkForInternalCitationSuggestions = (data: Entry): boolean => {
+  const checkForInternalCitationSuggestions = (data: Entry): { hasSuggestions: boolean; message: string } => {
     const dataAny = data as any;
     const legalBases = dataAny.legal_bases || [];
     const relatedSections = dataAny.related_sections || [];
@@ -1075,14 +1076,21 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }))
     });
     
-    // Check if any external citations have internal suggestions
-    const hasLegalBasesSuggestions = legalBases.some((item: any) => 
-      item && item.type === 'external' && item._hasInternalSuggestion
-    );
+    // Find external citations with internal suggestions and their indices
+    const legalBasesWithSuggestions: number[] = [];
+    const relatedSectionsWithSuggestions: number[] = [];
     
-    const hasRelatedSectionsSuggestions = relatedSections.some((item: any) => 
-      item && item.type === 'external' && item._hasInternalSuggestion
-    );
+    legalBases.forEach((item: any, index: number) => {
+      if (item && item.type === 'external' && item._hasInternalSuggestion) {
+        legalBasesWithSuggestions.push(index + 1); // 1-based numbering
+      }
+    });
+    
+    relatedSections.forEach((item: any, index: number) => {
+      if (item && item.type === 'external' && item._hasInternalSuggestion) {
+        relatedSectionsWithSuggestions.push(index + 1); // 1-based numbering
+      }
+    });
     
     // Also respect a global session flag set by match detection to avoid timing issues
     let globalFlag = false;
@@ -1090,14 +1098,49 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       globalFlag = sessionStorage.getItem('hasInternalSuggestion') === 'true';
     } catch {}
 
-    const hasSuggestions = hasLegalBasesSuggestions || hasRelatedSectionsSuggestions || globalFlag;
+    const hasSuggestions = legalBasesWithSuggestions.length > 0 || relatedSectionsWithSuggestions.length > 0 || globalFlag;
+    
+    // Build the message
+    let message = '';
+    if (hasSuggestions) {
+      const parts: string[] = [];
+      
+      if (legalBasesWithSuggestions.length > 0) {
+        const citationNumbers = legalBasesWithSuggestions.length === 1 
+          ? `#${legalBasesWithSuggestions[0]}`
+          : legalBasesWithSuggestions.length === 2
+          ? `#${legalBasesWithSuggestions[0]}, #${legalBasesWithSuggestions[1]}`
+          : `#${legalBasesWithSuggestions[0]}-${legalBasesWithSuggestions[legalBasesWithSuggestions.length - 1]}`;
+        parts.push(`Legal Bases External Citation ${citationNumbers}`);
+      }
+      
+      if (relatedSectionsWithSuggestions.length > 0) {
+        const citationNumbers = relatedSectionsWithSuggestions.length === 1 
+          ? `#${relatedSectionsWithSuggestions[0]}`
+          : relatedSectionsWithSuggestions.length === 2
+          ? `#${relatedSectionsWithSuggestions[0]}, #${relatedSectionsWithSuggestions[1]}`
+          : `#${relatedSectionsWithSuggestions[0]}-${relatedSectionsWithSuggestions[relatedSectionsWithSuggestions.length - 1]}`;
+        parts.push(`Related Section External Citation ${citationNumbers}`);
+      }
+      
+      // Fallback if we only have global flag
+      if (parts.length === 0 && globalFlag) {
+        message = 'Internal/External Citation #N (possible multiple)';
+      } else {
+        message = parts.join(', ');
+      }
+      
+      message += ' might exist in the KB. Are you sure you don\'t want to add it as internal?';
+    }
+    
     console.log('🔍 Internal citation suggestions result:', {
-      hasLegalBasesSuggestions,
-      hasRelatedSectionsSuggestions,
-      hasSuggestions
+      legalBasesWithSuggestions,
+      relatedSectionsWithSuggestions,
+      hasSuggestions,
+      message
     });
     
-    return hasSuggestions;
+    return { hasSuggestions, message };
   };
 
   const onSubmit = async (data: Entry) => {
@@ -1334,10 +1377,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Check for internal citation suggestions before submission (CREATE MODE ONLY)
     if (isCreateMode) {
       console.log('🔍 Checking for internal suggestions in CREATE MODE');
-      const hasInternalSuggestions = checkForInternalCitationSuggestions(withMember);
-      console.log('🔍 Has internal suggestions:', hasInternalSuggestions);
-      if (hasInternalSuggestions) {
-        console.log('🔍 Showing internal citation modal');
+      const suggestionResult = checkForInternalCitationSuggestions(withMember);
+      console.log('🔍 Has internal suggestions:', suggestionResult.hasSuggestions);
+      if (suggestionResult.hasSuggestions) {
+        console.log('🔍 Showing internal citation modal with message:', suggestionResult.message);
+        setInternalCitationModalMessage(suggestionResult.message);
         setShowInternalCitationModal(true);
         setIsSubmitting(false);
         isSubmittingRef.current = false;
@@ -2623,7 +2667,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           isOpen={showInternalCitationModal} 
           onClose={() => setShowInternalCitationModal(false)} 
           title="Detected Internal Citation" 
-          subtitle="Internal/External Citation #N (possible multiple) might exist in the KB. Are you sure you don't want to add it as internal?"
+          subtitle={internalCitationModalMessage}
         >
           <div className="modal-buttons">
             <button className="modal-button orange" onClick={handleInternalCitationModalConfirm}>

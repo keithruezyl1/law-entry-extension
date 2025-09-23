@@ -439,36 +439,41 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           }
           
           const finalScore = base + boost;
-          if (finalScore >= 5) { // Lowered threshold to catch more matches
+          if (finalScore >= 15) { // Raised threshold to require strong matches
             results.push({ entry, score: finalScore });
-            // Early termination: if we have 3+ high-confidence matches (score >= 25), stop searching
-            if (finalScore >= 25) {
+            // Early termination: if we have 2+ high-confidence matches (score >= 30), stop searching
+            if (finalScore >= 30) {
               highConfidenceCount++;
-              if (highConfidenceCount >= 3) break;
+              if (highConfidenceCount >= 2) break;
             }
           }
         }
         return results;
       })()),
       
-      // Semantic scoring via API (asynchronous)
+      // Semantic scoring via API (asynchronous) - reduced influence
       (async () => {
         try {
-          // Prioritize citation for semantic search, fallback to title, then full query
-          const semanticQuery = exactCitation || exactTitle || q;
-          const resp = await semanticSearch(semanticQuery, 5); // Increased limit for better results
+          // Only use semantic search for exact citation/title matches to avoid irrelevant results
+          const semanticQuery = exactCitation || exactTitle;
+          if (!semanticQuery) return []; // Skip semantic search if no exact citation/title
+          
+          const resp = await semanticSearch(semanticQuery, 2); // Reduced limit to avoid noise
           if (resp?.success && Array.isArray(resp.results)) {
             return resp.results.map((r: any) => {
               let semanticScore = Number(r.similarity || r.score || 0) * 100;
               
-              // Boost semantic score if it matches citation or title exactly
+              // Only boost if it's an exact match - semantic search is unreliable for variations
               const rTitle = normalizeSearchText(r.title || '');
               const rCite = normalizeSearchText(r.canonical_citation || '');
               
               if (exactCitation && (rCite === exactCitation || rTitle === exactCitation)) {
-                semanticScore += 20; // Boost for citation matches
+                semanticScore += 25; // Higher boost for exact citation matches
               } else if (exactTitle && (rTitle === exactTitle || rCite === exactTitle)) {
-                semanticScore += 15; // Boost for title matches
+                semanticScore += 20; // Higher boost for exact title matches
+              } else {
+                // Reduce semantic score for non-exact matches to avoid irrelevant suggestions
+                semanticScore *= 0.5;
               }
               
               return { entry: r, score: semanticScore };
@@ -496,24 +501,26 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
     }
 
-    // Optimized thresholds for better speed/accuracy balance
-    const SEM_THRESHOLD = 35; // lowered for more results
-    const LOC_THRESHOLD = 5; // lowered to catch more citation matches
+    // Much stricter thresholds to avoid irrelevant suggestions
+    const SEM_THRESHOLD = 60; // raised significantly to avoid poor semantic matches
+    const LOC_THRESHOLD = 15; // raised to require strong local matches
     const results = Object.values(merged)
-      .filter(m => m.semantic >= SEM_THRESHOLD || m.local >= LOC_THRESHOLD)
-      .sort((a, b) => {
-        // Prioritize exact matches and higher scores
-        const scoreA = a.semantic + a.local;
-        const scoreB = b.semantic + b.local;
+      .filter(m => {
+        // Only include results with strong local matches OR very high semantic scores
+        const hasStrongLocal = m.local >= LOC_THRESHOLD;
+        const hasHighSemantic = m.semantic >= SEM_THRESHOLD;
         
-        // If scores are close, prefer local matches (more precise)
-        if (Math.abs(scoreA - scoreB) < 5) {
-          return b.local - a.local;
-        }
+        // Prioritize local matches heavily - semantic search often returns irrelevant results
+        return hasStrongLocal || (hasHighSemantic && m.local >= 8);
+      })
+      .sort((a, b) => {
+        // Heavily prioritize local matches over semantic
+        const scoreA = a.local * 2 + a.semantic; // Local matches get 2x weight
+        const scoreB = b.local * 2 + b.semantic;
         
         return scoreB - scoreA;
       })
-      .slice(0, 5)
+      .slice(0, 3) // Reduce to top 3 to avoid clutter
       .map(m => m.entry as EntryLite);
     
     // Cache results for future use (limit cache size to prevent memory issues)
@@ -527,11 +534,21 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     
     // Debug logging to help understand search results
     if (results.length > 0) {
-      console.log(`Search for "${q}" found ${results.length} matches:`, results.map(r => ({
-        title: r.title,
-        citation: r.canonical_citation,
-        score: merged[r.entry_id || r.id || r.title]?.local + merged[r.entry_id || r.id || r.title]?.semantic
-      })));
+      console.log(`🔍 Search for "${q}" found ${results.length} matches:`, results.map(r => {
+        const entryId = r.entry_id || r.id || r.title;
+        const localScore = merged[entryId]?.local || 0;
+        const semanticScore = merged[entryId]?.semantic || 0;
+        return {
+          title: r.title,
+          citation: r.canonical_citation,
+          localScore,
+          semanticScore,
+          totalScore: localScore + semanticScore,
+          entryId
+        };
+      }));
+    } else {
+      console.log(`🔍 No matches found for "${q}" - exactCitation: "${exactCitation}", exactTitle: "${exactTitle}"`);
     }
     
     return results;
