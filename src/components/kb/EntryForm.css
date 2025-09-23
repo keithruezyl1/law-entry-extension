@@ -830,6 +830,22 @@
 	color: #ffffff !important; /* White text for amendment text */
 }
 
+/* Internal match button - override dark mode styling */
+.kb-internal-match-btn {
+	background: #fef3c7 !important; /* Light yellow background */
+	border: 1px solid #f59e0b !important; /* Yellow border */
+	color: #92400e !important; /* Dark yellow text */
+}
+.dark-mode .kb-internal-match-btn {
+	background: #fef3c7 !important; /* Light yellow background */
+	border: 1px solid #f59e0b !important; /* Yellow border */
+	color: #92400e !important; /* Dark yellow text */
+}
+.kb-internal-match-btn:hover {
+	background: #fde68a !important; /* Slightly darker yellow on hover */
+	border-color: #d97706 !important; /* Darker yellow border on hover */
+}
+
 /* Progress and Preview cards styling */
 .dark-mode .ds-card {
 	background: #374151 !important; /* Light grey background */

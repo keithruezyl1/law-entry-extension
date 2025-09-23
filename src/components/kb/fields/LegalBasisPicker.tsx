@@ -652,7 +652,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                   {!!inlineMatches[i]?.length && (
                     <button
                       type="button"
-                      className="text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-3 py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300"
+                      className="kb-internal-match-btn text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-3 py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300"
                       onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
                       title={`Internal match:\n${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}\n${inlineMatches[i][0]?.canonical_citation || ''}`}
                       aria-label={`Convert to internal: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}`}
