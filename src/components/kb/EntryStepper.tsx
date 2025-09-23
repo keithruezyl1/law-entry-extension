@@ -36,7 +36,7 @@ export function EntryStepper({ steps, currentStep, onStepClick }: EntryStepperPr
     <aside className="h-full">
       <div>
         <div className="ds-card rounded-2xl shadow-sm border p-5 h-full min-h-[360px] w-full">
-          <div className="flex items-center gap-3 mb-6 -mt-1">
+          <div className="flex items-center gap-3 mb-8 -mt-1">
             <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Progress</h3>
           </div>
           <ul className="space-y-6">
