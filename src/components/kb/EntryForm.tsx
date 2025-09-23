@@ -2447,14 +2447,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Textarea rows={4} placeholder="1–3 sentence neutral synopsis" {...register('summary')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="space-y-1 mt-10">
+                              <div className="space-y-1 mt-12">
                                 <label className="kb-form-label">Legal Text</label>
                                 <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Substance-only, normalized.</p>
                               </div>
                               <Textarea rows={12} placeholder="Clean, normalized legal text" {...register('text')} />
                             </div>
                             <div className="kb-form-field">
-                              <div className="mt-10">
+                              <div className="mt-12">
                                 <label className="kb-form-label">Tags</label>
                               </div>
                               <TagArray control={control} register={register} watch={watch} />
