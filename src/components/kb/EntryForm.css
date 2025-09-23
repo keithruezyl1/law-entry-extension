@@ -809,13 +809,13 @@
 	background: #4b5563 !important; /* Slightly lighter grey on hover */
 }
 
-/* Generic dark mode buttons inside form (e.g., Add Item) */
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn) {
+/* Generic dark mode buttons inside form (e.g., Add Item) - exclude all our custom buttons */
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500) {
 	background: #374151 !important; /* Light grey background */
 	border: 1px solid #4b5563 !important; /* Grey border */
 	color: #e5e7eb !important; /* Light grey text */
 }
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):hover {
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):hover {
 	background: #4b5563 !important; /* Slightly lighter grey on hover */
 	border-color: #6b7280 !important;
 }
@@ -835,11 +835,13 @@
 	background: #fef3c7 !important; /* Light yellow background */
 	border: 1px solid #f59e0b !important; /* Yellow border */
 	color: #92400e !important; /* Dark yellow text */
+	padding: 0.75rem 1.5rem !important; /* More internal padding */
 }
 .dark-mode .kb-internal-match-btn {
 	background: #fef3c7 !important; /* Light yellow background */
 	border: 1px solid #f59e0b !important; /* Yellow border */
 	color: #92400e !important; /* Dark yellow text */
+	padding: 0.75rem 1.5rem !important; /* More internal padding */
 }
 .kb-internal-match-btn:hover {
 	background: #fde68a !important; /* Slightly darker yellow on hover */
@@ -847,25 +849,36 @@
 }
 
 /* Delete button variant - ensure red styling in both light and dark modes */
-.bg-red-600 {
+.bg-red-600,
+.kb-form .bg-red-600,
+.dark-mode .bg-red-600,
+.dark-mode .kb-form .bg-red-600 {
 	background: #dc2626 !important; /* Red background */
 	color: #ffffff !important; /* White text */
+	border-color: #dc2626 !important; /* Red border */
 }
-.dark-mode .bg-red-600 {
-	background: #dc2626 !important; /* Red background */
-	color: #ffffff !important; /* White text */
-}
-.bg-red-600:hover {
+.bg-red-600:hover,
+.kb-form .bg-red-600:hover,
+.dark-mode .bg-red-600:hover,
+.dark-mode .kb-form .bg-red-600:hover {
 	background: #b91c1c !important; /* Darker red on hover */
-}
-.dark-mode .bg-red-600:hover {
-	background: #b91c1c !important; /* Darker red on hover */
+	border-color: #b91c1c !important; /* Darker red border on hover */
 }
 
 /* Progress and Preview cards styling */
 .dark-mode .ds-card {
 	background: #374151 !important; /* Light grey background */
 	border-color: #4b5563 !important;
+}
+
+/* Ensure Progress text spacing works */
+.ds-card .mb-8 {
+	margin-bottom: 2rem !important; /* 32px */
+}
+
+/* Ensure Relations text spacing works */
+.kb-form-section-title.mt-6 {
+	margin-top: 1.5rem !important; /* 24px */
 }
 
 /* Progress text should be orange in dark mode - but not for Preview-style text */
