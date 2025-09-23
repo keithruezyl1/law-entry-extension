@@ -1009,6 +1009,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // User confirmed they want to create the entry as-is
     // Re-trigger the submission
     const formData = getValues();
+    console.log('🔍 Re-triggering submission after internal citation modal confirmation');
     await onSubmit(formData);
   };
 
@@ -1061,6 +1062,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const legalBases = dataAny.legal_bases || [];
     const relatedSections = dataAny.related_sections || [];
     
+    console.log('🔍 Checking for internal citation suggestions:', {
+      legalBases: legalBases.map((item: any) => ({ 
+        type: item?.type, 
+        hasSuggestion: item?._hasInternalSuggestion,
+        title: item?.title || item?.citation 
+      })),
+      relatedSections: relatedSections.map((item: any) => ({ 
+        type: item?.type, 
+        hasSuggestion: item?._hasInternalSuggestion,
+        title: item?.title || item?.citation 
+      }))
+    });
+    
     // Check if any external citations have internal suggestions
     const hasLegalBasesSuggestions = legalBases.some((item: any) => 
       item && item.type === 'external' && item._hasInternalSuggestion
@@ -1070,7 +1084,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       item && item.type === 'external' && item._hasInternalSuggestion
     );
     
-    return hasLegalBasesSuggestions || hasRelatedSectionsSuggestions;
+    const hasSuggestions = hasLegalBasesSuggestions || hasRelatedSectionsSuggestions;
+    console.log('🔍 Internal citation suggestions result:', {
+      hasLegalBasesSuggestions,
+      hasRelatedSectionsSuggestions,
+      hasSuggestions
+    });
+    
+    return hasSuggestions;
   };
 
   const onSubmit = async (data: Entry) => {
@@ -1306,13 +1327,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
     // Check for internal citation suggestions before submission (CREATE MODE ONLY)
     if (isCreateMode) {
+      console.log('🔍 Checking for internal suggestions in CREATE MODE');
       const hasInternalSuggestions = checkForInternalCitationSuggestions(withMember);
+      console.log('🔍 Has internal suggestions:', hasInternalSuggestions);
       if (hasInternalSuggestions) {
+        console.log('🔍 Showing internal citation modal');
         setShowInternalCitationModal(true);
         setIsSubmitting(false);
         isSubmittingRef.current = false;
         return;
       }
+    } else {
+      console.log('🔍 Skipping internal suggestions check - not in CREATE MODE');
     }
 
     // Check if user has incomplete entries from yesterday
@@ -2414,17 +2440,23 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                         <div className="kb-form-fields">
                           <div className="space-y-8">
                             <div className="kb-form-field">
-                              <label className="kb-form-label">Summary</label>
-                              <p className="kb-form-helper kb-helper-below">Keep it concise and neutral.</p>
+                              <div className="space-y-1">
+                                <label className="kb-form-label">Summary</label>
+                                <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Keep it concise and neutral.</p>
+                              </div>
                               <Textarea rows={4} placeholder="1–3 sentence neutral synopsis" {...register('summary')} />
                             </div>
                             <div className="kb-form-field">
-                              <label className="kb-form-label mt-4">Legal Text</label>
-                              <p className="kb-form-helper kb-helper-below">Substance-only, normalized.</p>
+                              <div className="space-y-1 mt-10">
+                                <label className="kb-form-label">Legal Text</label>
+                                <p className="kb-form-helper kb-helper-below kb-helper-light-grey">Substance-only, normalized.</p>
+                              </div>
                               <Textarea rows={12} placeholder="Clean, normalized legal text" {...register('text')} />
                             </div>
                             <div className="kb-form-field">
-                              <label className="kb-form-label mt-4">Tags</label>
+                              <div className="mt-10">
+                                <label className="kb-form-label">Tags</label>
+                              </div>
                               <TagArray control={control} register={register} watch={watch} />
                             </div>
                           </div>
@@ -2639,16 +2671,17 @@ function UrlArray({ control, register, watch, setValue }: any) {
           </div>
         ))}
 
-        <button
+        <Button
           type="button"
+          variant="success"
           onClick={() => {
             console.log('Adding new URL field');
             append('');
           }}
-          className="w-full px-4 py-4 bg-white text-orange-600 rounded-lg border-2 border-orange-500 hover:bg-white transition-colors mt-6"
+          className="w-full px-4 py-4 mt-6"
         >
           + Add Item
-        </button>
+        </Button>
       </div>
     </div>
   );

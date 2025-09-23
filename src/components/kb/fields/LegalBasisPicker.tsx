@@ -452,8 +452,10 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     
     // Set flag to indicate this external citation has internal suggestions
     if (matches.length > 0) {
+      console.log(`🔍 Setting _hasInternalSuggestion=true for external citation at index ${idx}:`, ext.title || ext.citation);
       update(idx, { ...ext, _hasInternalSuggestion: true });
     } else {
+      console.log(`🔍 Setting _hasInternalSuggestion=false for external citation at index ${idx}:`, ext.title || ext.citation);
       update(idx, { ...ext, _hasInternalSuggestion: false });
     }
     // keep toast optional off by default
