@@ -454,13 +454,35 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
           }
           
           const finalScore = base + boost;
-          if (finalScore >= 10) { // Balanced threshold to catch relevant matches
+          
+          // Special case: exact title matches should always be included
+          const isExactTitleMatch = exactTitle && entryTitle && entryTitle === exactTitle;
+          
+          if (finalScore >= 8 || isExactTitleMatch) { // Lowered threshold and added exact match override
             results.push({ entry, score: finalScore });
             // Early termination: if we have 2+ high-confidence matches (score >= 25), stop searching
             if (finalScore >= 25) {
               highConfidenceCount++;
               if (highConfidenceCount >= 2) break;
             }
+          }
+          
+          // Debug logging for "Intervention" matches
+          if (process.env.NODE_ENV === 'development' && 
+              (exactTitle?.toLowerCase().includes('intervention') || 
+               entryTitle?.toLowerCase().includes('intervention'))) {
+            console.log('🔍 Intervention match debug:', {
+              externalTitle: exactTitle,
+              externalCitation: exactCitation,
+              entryTitle: entryTitle,
+              entryCitation: entryCite,
+              baseScore: base,
+              boost: boost,
+              finalScore: finalScore,
+              isExactTitleMatch: isExactTitleMatch,
+              threshold: 8,
+              passed: finalScore >= 8 || isExactTitleMatch
+            });
           }
         }
         return results;
@@ -607,6 +629,16 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     if (!ext || ext.type !== 'external') return;
     if (suppressDetectForExternal.current.has(idx)) return;
     const matches = await findSimilarEntriesForExternal(ext);
+    
+    // Always log for debugging the Intervention issue
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
+        external: ext,
+        matches: matches.length,
+        matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
+      });
+    }
+    
     // quiet by default; enable by kb_debug=1 in storage
     try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') {
       console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
@@ -660,29 +692,33 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   }, [handleDetectExternalMatches]);
 
   // Auto-detect internal citations when external citations are loaded (e.g., after import)
-  // Disabled to prevent flickering - detection will only happen on blur
-  // useEffect(() => {
-  //   if (!allEntries || allEntries.length === 0) return;
-  //   
-  //   // Check if we have external citations that haven't been processed yet
-  //   const externalCitations = items.filter((item: any, index: number) => 
-  //     item && item.type === 'external' && 
-  //     (item.citation || item.title || item.url) &&
-  //     !inlineMatches[index] // Only process if not already processed
-  //   );
-  //   
-  //   if (externalCitations.length > 0) {
-  //     console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
-  //     
-  //     // Trigger detection for each external citation
-  //     externalCitations.forEach((item: any, index: number) => {
-  //       const actualIndex = items.findIndex((i: any) => i === item);
-  //       if (actualIndex !== -1) {
-  //         handleDetectExternalMatchesDebounced(actualIndex);
-  //       }
-  //     });
-  //   }
-  // }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
+  useEffect(() => {
+    if (!allEntries || allEntries.length === 0) return;
+    
+    // Check if we have external citations that haven't been processed yet
+    const externalCitations = items.filter((item: any, index: number) => 
+      item && item.type === 'external' && 
+      (item.citation || item.title || item.url) &&
+      !inlineMatches[index] // Only process if not already processed
+    );
+    
+    if (externalCitations.length > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
+      }
+      
+      // Trigger detection for each external citation with a delay to prevent flickering
+      externalCitations.forEach((item: any, index: number) => {
+        const actualIndex = items.findIndex((i: any) => i === item);
+        if (actualIndex !== -1) {
+          // Use a longer delay to ensure form is stable
+          setTimeout(() => {
+            handleDetectExternalMatchesDebounced(actualIndex);
+          }, 1000);
+        }
+      });
+    }
+  }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
 
   const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
     try {
