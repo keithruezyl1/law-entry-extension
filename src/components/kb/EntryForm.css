@@ -844,6 +844,24 @@
 	border-color: #6b7280 !important;
 }
 
+/* Force transparent previous button with orange outline across themes */
+.kb-form .kb-prev-btn {
+	background: transparent !important;
+	border: 2px solid #f97316 !important; /* orange outline */
+	color: #111827 !important; /* black text in light mode */
+}
+.kb-form .kb-prev-btn:hover {
+	background: transparent !important;
+}
+.dark-mode .kb-form .kb-prev-btn {
+	background: transparent !important;
+	color: #ffffff !important; /* white text in dark mode */
+	border-color: #f97316 !important;
+}
+.dark-mode .kb-form .kb-prev-btn:hover {
+	background: transparent !important;
+}
+
 /* Labels white in dark mode */
 .dark-mode .kb-form-label,
 .dark-mode .kb-form .kb-label,

@@ -2373,31 +2373,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
                         {/* Pro Tip removed as requested */}
 
-                        <div className="kb-action-bar">
+                          <div className="kb-action-bar">
                           <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="flex items-center gap-3 px-12 min-w-[140px] py-3 h-12">
                             <X className="h-4 w-4" />
                             Cancel
                           </Button>
                           <div className="flex gap-3">
-                            {!entry && (
-                              <div className="flex items-center gap-2">
-                                <Button type="button" variant="outline" onClick={saveDraft} className="h-12 px-10 min-w-[130px]">Save draft</Button>
-                                {isAutoSaving && (
-                                  <div className="flex items-center gap-1 text-xs text-blue-600">
-                                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                    <span>Auto-saving</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                            
                             <Button 
                               type="button" 
                               onClick={goNext} 
                               disabled={nearDuplicates && nearDuplicates.length > 0}
-                              className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 transition-all duration-200 ${
-                                nearDuplicates && nearDuplicates.length > 0
-                                  ? 'bg-gray-400 cursor-not-allowed shadow-none'
-                                  : 'bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl'
+                              variant="default"
+                              className={`flex items-center gap-3 px-12 min-w-[140px] py-3 h-12 text-white ${
+                                nearDuplicates && nearDuplicates.length > 0 ? 'bg-gray-400 cursor-not-allowed shadow-none' : ''
                               }`}
                             >
                               Next
@@ -2465,7 +2454,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-12 px-10 min-w-[130px]">Cancel</Button>
                             </div>
                             <div className="flex gap-3">
-                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px] !text-black dark:!text-white border-2 border-orange-500">Previous</Button>
+                              <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px] kb-prev-btn">Previous</Button>
                               <Button 
                                 type="button" 
                                 onClick={goNext} 
