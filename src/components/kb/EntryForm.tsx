@@ -1237,14 +1237,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const relatedSectionsWithSuggestions: number[] = [];
     
     legalBases.forEach((item: any, index: number) => {
-      if (item && item.type === 'external' && item._hasInternalSuggestion) {
+      if (item && item.type === 'external' && (item._hasInternalSuggestion || (item.citation && item.title))) {
         legalBasesWithSuggestions.push(index + 1); // 1-based numbering
         console.log(`🔍 Found Legal Bases External Citation #${index + 1} with suggestions:`, item.title || item.citation);
       }
     });
     
     relatedSections.forEach((item: any, index: number) => {
-      if (item && item.type === 'external' && item._hasInternalSuggestion) {
+      if (item && item.type === 'external' && (item._hasInternalSuggestion || (item.citation && item.title))) {
         relatedSectionsWithSuggestions.push(index + 1); // 1-based numbering
         console.log(`🔍 Found Related Section External Citation #${index + 1} with suggestions:`, item.title || item.citation);
       }
@@ -1281,18 +1281,22 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         parts.push(`Related Section External Citation ${citationNumbers}`);
       }
       
-      // Fallback if we only have global flag - try to be more specific
-      if (parts.length === 0 && globalFlag) {
-        // Count total external citations to give a better message
-        const totalExternal = legalBases.filter((item: any) => item && item.type === 'external').length + 
-                             relatedSections.filter((item: any) => item && item.type === 'external').length;
+      // Build the final message
+      if (parts.length > 0) {
+        message = parts.join(', ');
+      } else if (globalFlag) {
+        // Fallback: count all external citations with content
+        const totalExternal = legalBases.filter((item: any) => 
+          item && item.type === 'external' && item.citation && item.title
+        ).length + relatedSections.filter((item: any) => 
+          item && item.type === 'external' && item.citation && item.title
+        ).length;
+        
         if (totalExternal === 1) {
           message = 'External Citation detected';
         } else {
           message = `External Citations (${totalExternal} found)`;
         }
-      } else {
-        message = parts.join(', ');
       }
       
       message += ' might exist in the KB. Are you sure you don\'t want to add it as internal?';

@@ -470,27 +470,57 @@ body {
 
 .nav-right button,
 .nav-right label {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-  min-width: 130px;
-  text-align: center;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  box-sizing: border-box;
+  padding: 0.75rem 1.5rem !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  font-size: 0.9rem !important;
+  min-width: 130px !important;
+  text-align: center !important;
+  height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 1 !important;
+  box-sizing: border-box !important;
+  background: #6c757d !important;
+  color: white !important;
 }
 
 /* Ensure Import Entries label has exact same height as buttons */
 .nav-right label {
   height: 44px !important;
   line-height: 1;
+}
+
+/* Ensure consistent hover state for all nav-right buttons */
+.nav-right button:hover {
+  background: #5a6268 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Override for Import Entries button to be green */
+.nav-right .btn-import {
+  background: #28a745 !important;
+  color: white !important;
+}
+
+.nav-right .btn-import:hover {
+  background: #218838 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Dark mode support for nav-right Import Entries button */
+.dark-mode .nav-right .btn-import {
+  background: #28a745 !important;
+  color: white !important;
+}
+
+.dark-mode .nav-right .btn-import:hover {
+  background: #218838 !important;
+  transform: translateY(-1px) !important;
 }
 
 .nav-btn {
@@ -577,6 +607,35 @@ body {
 .btn-secondary:hover {
   background: #5a6268;
   transform: translateY(-1px);
+}
+
+.btn-import {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-import:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+/* Dark mode support for Import Entries button */
+.dark-mode .btn-import {
+  background: #28a745 !important;
+  color: white !important;
+}
+
+.dark-mode .btn-import:hover {
+  background: #218838 !important;
+  transform: translateY(-1px) !important;
 }
 
 .btn-danger {
@@ -1214,7 +1273,7 @@ body {
            justify-content: center !important;
            text-align: center !important;
            font-size: 0.9rem !important;
-           background: #6c757d !important;
+           background: #28a745 !important;
            color: white !important;
            border: none !important;
            border-radius: 6px !important;
@@ -1224,7 +1283,18 @@ body {
          }
          
          .btn-import-expanded:hover {
-           background: #5a6268 !important;
+           background: #218838 !important;
+           transform: translateY(-1px) !important;
+         }
+         
+         /* Dark mode support for mobile Import Entries button */
+         .dark-mode .btn-import-expanded {
+           background: #28a745 !important;
+           color: white !important;
+         }
+         
+         .dark-mode .btn-import-expanded:hover {
+           background: #218838 !important;
            transform: translateY(-1px) !important;
          }
   .App-header {

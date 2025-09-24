@@ -1693,7 +1693,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
            {/* For P5: Import Entries and Clear All Entries in nav-right (Row 2) */}
            {isTagarao(user) && (
              <>
-               <button onClick={handleImportClick} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+               <button onClick={handleImportClick} className="btn-import" style={{ whiteSpace: 'nowrap' }}>
                  Import Entries
                </button>
                <button onClick={handleClearAll} className="btn-danger" style={{ whiteSpace: 'nowrap' }}>
@@ -1706,7 +1706,7 @@ function AppContent({ currentView: initialView = 'list', isEditing = false, form
          {/* P1-P4 users: Expanded Import Entries button in mobile (Row 3) */}
          {!isTagarao(user) && (
            <div className="nav-import-expanded">
-             <button onClick={handleImportClick} className="btn-secondary btn-import-expanded">
+             <button onClick={handleImportClick} className="btn-import btn-import-expanded">
                Import Entries
              </button>
            </div>
