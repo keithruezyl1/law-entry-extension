@@ -305,7 +305,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
 
-  const { control, register, handleSubmit, watch, setValue, getValues } = methods;
+  const { control, register, handleSubmit, watch, setValue, getValues, trigger } = methods;
   const type = watch('type');
   const status = watch('status');
   const lawFamily = watch('law_family');
@@ -2391,10 +2391,17 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
             {/* Below: Law input card (form) spanning full width */}
             <section className="kb-form-section col-span-12">
-              <form onSubmit={handleSubmit(onSubmit, (errors) => {
-                console.log('🚨 FORM VALIDATION ERRORS:', errors);
-                console.log('🚨 Form validation failed, preventing submission');
-              })}>
+              <form onSubmit={handleSubmit(
+                (data) => {
+                  console.log('✅ FORM SUBMISSION SUCCESS - onSubmit called with data:', data);
+                  onSubmit(data);
+                },
+                (errors) => {
+                  console.log('🚨 FORM VALIDATION ERRORS:', errors);
+                  console.log('🚨 Form validation failed, preventing submission');
+                  console.log('🚨 Error count:', Object.keys(errors).length);
+                }
+              )}>
                 {(() => {
                   if (currentStep === 1) {
                     return (
@@ -2740,6 +2747,19 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                                   console.log('🔘 isSubmitting:', isSubmitting);
                                   console.log('🔘 isUpdatingEntry:', isUpdatingEntry);
                                   console.log('🔘 nearDuplicates:', nearDuplicates);
+                                  
+                                  // Check form validation state
+                                  const formState = getValues();
+                                  console.log('🔘 Form values:', formState);
+                                  console.log('🔘 Form errors:', formState);
+                                  
+                                  // Check if form is valid
+                                  trigger().then((isValid) => {
+                                    console.log('🔘 Form validation result:', isValid);
+                                    if (!isValid) {
+                                      console.log('🔘 Form validation failed - check console for errors');
+                                    }
+                                  });
                                   
                                   // Don't prevent default - let the form submit naturally
                                   // The form's onSubmit will be called automatically
