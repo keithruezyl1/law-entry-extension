@@ -169,9 +169,9 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   }}
                   className="scan-button"
                   style={{ 
-                    backgroundColor: '#3b82f6',
-                    border: '2px solid #3b82f6',
-                    color: '#1e40af',
+                    backgroundColor: '#f97316',
+                    border: '2px solid #f97316',
+                    color: 'white',
                     padding: '8px 16px',
                     borderRadius: '8px',
                     fontSize: '14px',
@@ -182,24 +182,24 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                     outline: 'none'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1d4ed8';
+                    e.currentTarget.style.backgroundColor = '#ea580c';
                     e.currentTarget.style.color = 'white';
-                    e.currentTarget.style.borderColor = '#1d4ed8';
+                    e.currentTarget.style.borderColor = '#ea580c';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#3b82f6';
-                    e.currentTarget.style.color = '#1e40af';
-                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.backgroundColor = '#f97316';
+                    e.currentTarget.style.color = 'white';
+                    e.currentTarget.style.borderColor = '#f97316';
                   }}
                   onMouseDown={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1e40af';
+                    e.currentTarget.style.backgroundColor = '#c2410c';
                     e.currentTarget.style.color = 'white';
-                    e.currentTarget.style.borderColor = '#1e40af';
+                    e.currentTarget.style.borderColor = '#c2410c';
                   }}
                   onMouseUp={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1d4ed8';
+                    e.currentTarget.style.backgroundColor = '#ea580c';
                     e.currentTarget.style.color = 'white';
-                    e.currentTarget.style.borderColor = '#1d4ed8';
+                    e.currentTarget.style.borderColor = '#ea580c';
                   }}
                 >
                   Scan for Internal Citations
@@ -208,13 +208,13 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   {/* Loading indicator */}
                   <div className="flex items-center gap-2">
                     <div 
-                      className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
+                      className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"
                       style={{ 
                         display: isScanning ? 'block' : 'none'
                       }}
                     />
                     <span 
-                      className="text-sm text-blue-600"
+                      className="text-sm text-orange-500"
                       style={{ 
                         display: isScanning ? 'block' : 'none'
                       }}

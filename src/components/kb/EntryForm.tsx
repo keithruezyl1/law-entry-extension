@@ -492,9 +492,26 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       const normalizeDate = (d: any): any => {
         if (!d) return null;
         if (typeof d === 'string') {
+          // If it's already in YYYY-MM-DD format, return as-is
           if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+          
+          // If it contains time information, extract only the date part
+          if (d.includes('T') || d.includes(' ')) {
+            // Try to extract just the date part (YYYY-MM-DD)
+            const dateMatch = d.match(/^(\d{4}-\d{2}-\d{2})/);
+            if (dateMatch) {
+              return dateMatch[1];
+            }
+          }
+          
+          // Try to parse as date, but ignore time
           const dt = new Date(d);
-          return isNaN(dt.getTime()) ? null : dt.toISOString().slice(0, 10);
+          if (!isNaN(dt.getTime())) {
+            return dt.toISOString().slice(0, 10);
+          }
+          
+          // If all else fails, return null (will use default)
+          return null;
         }
         if (d instanceof Date) return d.toISOString().slice(0, 10);
         return null;
