@@ -182,7 +182,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                     outline: 'none !important',
                     margin: '0 !important',
                     display: 'inline-block !important',
-                    textAlign: 'center !important',
+                    textAlign: 'center',
                     textDecoration: 'none !important',
                     verticalAlign: 'middle !important',
                     userSelect: 'none !important',
