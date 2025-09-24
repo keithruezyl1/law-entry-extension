@@ -30,15 +30,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     index: number | null;
     matches: EntryLite[];
   }>({ open: false, index: null, matches: [] });
-  const [inlineMatches, setInlineMatches] = useState<Record<number, EntryLite[]>>(() => {
-    // Load persistent matches from localStorage
-    try {
-      const saved = localStorage.getItem(`kb_inline_matches_${name}`);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [inlineMatches, setInlineMatches] = useState<Record<number, EntryLite[]>>({});
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
   const searchCache = useRef<Map<string, EntryLite[]>>(new Map());
@@ -638,6 +630,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     
     if (externalCitations.length > 0) {
       console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
+      console.log(`🔍 Current inlineMatches keys:`, Object.keys(inlineMatches));
       
       // Trigger detection for each external citation
       externalCitations.forEach((item: any, index: number) => {
@@ -648,6 +641,22 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       });
     }
   }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
+
+  // Load persistent matches from localStorage only after allEntries is loaded
+  useEffect(() => {
+    if (allEntries && allEntries.length > 0) {
+      try {
+        const saved = localStorage.getItem(`kb_inline_matches_${name}`);
+        if (saved) {
+          const savedMatches = JSON.parse(saved);
+          console.log('🔍 Loading saved matches from localStorage:', Object.keys(savedMatches).length);
+          setInlineMatches(savedMatches);
+        }
+      } catch (error) {
+        console.warn('Failed to load inline matches from localStorage:', error);
+      }
+    }
+  }, [allEntries, name]);
 
   // Save matches to localStorage for persistence
   useEffect(() => {
@@ -1028,7 +1037,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                       <span className="hidden sm:inline">This law might be in the KB. Add as Internal instead?</span>
                       <span className="sm:hidden">Add as Internal instead?</span>
                       <X 
-                        className="w-3 h-3 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+                        className="w-3 h-3 text-yellow-600 dark:text-yellow-600 hover:text-yellow-800 dark:hover:text-yellow-800 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent button click
                           // Persist dismissal in localStorage
