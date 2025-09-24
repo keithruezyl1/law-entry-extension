@@ -109,6 +109,10 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       .replace(/\b(ao\s+no\.?\s*|a\.o\.\s*|administrative\s+order\s+no\.?\s*|administrative\s+order\s*)\s*(\d+)\b/g, 'administrative order $2')
       .replace(/\b(ca\s+no\.?\s*|c\.a\.\s*|commonwealth\s+act\s+no\.?\s*|commonwealth\s+act\s*)\s*(\d+)\b/g, 'commonwealth act $2')
       .replace(/\b(bp\s+no\.?\s*|b\.p\.\s*|batas\s+pambansa\s+no\.?\s*|batas\s+pambansa\s*)\s*(\d+)\b/g, 'batas pambansa $2')
+      // Fix redundant "Rule of Court Rule X" patterns
+      .replace(/\b(rule\s+of\s+court\s+rule\s+)(\d+)\b/g, 'rule $2')
+      .replace(/\b(rules\s+of\s+court\s+rule\s+)(\d+)\b/g, 'rule $2')
+      .replace(/\b(roc\s+rule\s+)(\d+)\b/g, 'rule $2')
       // Normalize legal abbreviations (strip periods)
       .replace(/\b(rule|roc)\s*(\d+)\b/g, 'rule $2')
       .replace(/\b(section|sec\.?|§)\s*(\d+)\b/g, 'section $2')
@@ -501,7 +505,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       // Special case: exact title matches should always be included
       const isExactTitleMatch = exactTitle && entryTitle && entryTitle === exactTitle;
       
-      if (finalScore >= 30 || isExactTitleMatch) { // Updated threshold for new scoring system
+      if (finalScore >= 10 || isExactTitleMatch) { // Lowered threshold for better matching
         localScored.push({ entry, score: finalScore });
         // Early termination: if we have 2+ high-confidence matches (score >= 70), stop searching
         if (finalScore >= 70) {
@@ -510,11 +514,9 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         }
       }
       
-      // Debug logging for "Intervention" matches
-      if (process.env.NODE_ENV === 'development' && 
-          (exactTitle?.toLowerCase().includes('intervention') || 
-           entryTitle?.toLowerCase().includes('intervention'))) {
-        console.log('🔍 Intervention match debug:', {
+      // Debug logging for all matches (development only)
+      if (process.env.NODE_ENV === 'development' && finalScore >= 5) {
+        console.log('🔍 Match debug:', {
           externalTitle: exactTitle,
           externalCitation: exactCitation,
           entryTitle: entryTitle,
@@ -523,8 +525,8 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
           boost: boost,
           finalScore: finalScore,
           isExactTitleMatch: isExactTitleMatch,
-          threshold: 30,
-          passed: finalScore >= 30 || isExactTitleMatch
+          threshold: 10,
+          passed: finalScore >= 10 || isExactTitleMatch
         });
       }
     }
@@ -597,9 +599,9 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       return inter / Math.min(A.size, B.size);
     };
 
-    // Updated thresholds for new scoring system
-    const SEM_THRESHOLD = 30; // semantic must be high to matter
-    const LOC_THRESHOLD = 30; // require decent local evidence
+    // Updated thresholds for new scoring system - lowered for better matching
+    const SEM_THRESHOLD = 20; // semantic must be high to matter
+    const LOC_THRESHOLD = 10; // require minimal local evidence
     const prelim = Object.values(merged)
       .filter(m => {
         const hasStrongLocal = m.local >= LOC_THRESHOLD;
@@ -608,34 +610,9 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       })
       .map(m => m.entry as EntryLite);
 
-    // FINAL high-confidence filter: only keep items with exact/near-exact title/citation
-    const results = prelim.filter((r) => {
-      const rTitle = normalizeSearchText(r.title || '');
-      const rCite = normalizeSearchText(r.canonical_citation || '');
-
-      // Exact equality on citation or title
-      const exact = (exactCitation && (rCite === exactCitation || rTitle === exactCitation)) ||
-                    (exactTitle && (rTitle === exactTitle || rCite === exactTitle));
-
-      if (exact) return true;
-
-      // Otherwise require strong corroboration: high title overlap + some citation token agreement
-      if (!exactTitle) return false; // without a title, don't allow fuzzy
-
-      const titleOverlap = overlap(rTitle, exactTitle);
-      if (titleOverlap < 0.7) return false;
-
-      // Citation corroboration: any shared numeric token or starts-with/contains match
-      const numericTokens = (exactCitation || '')
-        .split(/[^0-9]+/)
-        .filter(t => t.length > 0);
-      const hasNumericCorroboration = numericTokens.some(t => rCite.includes(t) || rTitle.includes(t));
-
-      const citeWeakMatch = !!exactCitation && (rCite.startsWith(exactCitation) || rCite.includes(exactCitation));
-
-      return hasNumericCorroboration || citeWeakMatch;
-    })
-    .slice(0, 5); // Show maximum 5 suggestions per external citation
+    // SIMPLIFIED FILTERING: Keep all matches that passed the initial threshold
+    // The initial scoring already handles the matching logic properly
+    const results = prelim.slice(0, 5); // Show maximum 5 suggestions per external citation
     
     // Cache results for future use (limit cache size to prevent memory issues)
     if (searchCache.current.size > 50) {
@@ -665,41 +642,31 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       timestamp: Date.now()
     };
     
-    // Special debugging for "Interventions" case (always enabled for testing)
-    if (exactTitle?.toLowerCase().includes('intervention') || exactCitation?.toLowerCase().includes('intervention')) {
-      console.log(`🔍 INTERVENTION MATCHING DEBUG:`, {
+    // General debugging for all searches (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 Citation Detection Debug:`, {
         query: q,
         exactCitation,
         exactTitle,
         poolSize: pool.length,
         localScoredCount: localScored.length,
-        semanticScoredCount: semanticScored.length,
         resultsCount: results.length,
         results: results.map(r => ({
           title: r.title,
           citation: r.canonical_citation,
           entry_id: r.entry_id,
           score: merged[r.entry_id || r.id || r.title]?.local || 0
-        })),
-        allEntriesCount: allEntries?.length || 0,
-        existingEntriesCount: existingEntries?.length || 0
+        }))
       });
-    }
-    
-    // Log telemetry for specific debugging cases (always enabled for testing)
-    if (exactTitle?.toLowerCase().includes('intervention') || exactCitation?.toLowerCase().includes('intervention')) {
-      console.log(`🔍 Citation Detection Telemetry:`, telemetry);
+      
       if (results.length > 0) {
         console.log(`🔍 Search for "${q}" found ${results.length} matches:`, results.map(r => {
           const entryId = r.entry_id || r.id || r.title;
           const localScore = merged[entryId]?.local || 0;
-          const semanticScore = merged[entryId]?.semantic || 0;
           return {
             title: r.title,
             citation: r.canonical_citation,
             localScore,
-            semanticScore,
-            totalScore: localScore + semanticScore,
             entryId
           };
         }));
@@ -832,27 +799,48 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     }
 
     setIsScanning(true);
-    console.log('🔍 Starting manual scan of all external citations...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Starting manual scan of all external citations...');
+    }
 
     try {
       const externalCitations = items.filter((item: any, index: number) => 
         item && item.type === 'external' && shouldTriggerDetection(item)
       );
 
-      console.log(`🔍 Found ${externalCitations.length} external citations to scan`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔍 Found ${externalCitations.length} external citations to scan:`, 
+          externalCitations.map((item: any) => ({
+            citation: item.citation,
+            title: item.title,
+            url: item.url
+          }))
+        );
+      }
 
       for (let i = 0; i < externalCitations.length; i++) {
         const item = externalCitations[i];
         const actualIndex = items.findIndex((i: any) => i === item);
         
         if (actualIndex !== -1) {
-          console.log(`🔍 Scanning citation ${i + 1}/${externalCitations.length}: "${item.title || item.citation}"`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🔍 Scanning citation ${i + 1}/${externalCitations.length}: "${item.title || item.citation}"`);
+          }
           
           try {
             const matches = await findSimilarEntriesForExternal(item);
-            console.log(`🔍 Found ${matches.length} matches for "${item.title || item.citation}"`);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`🔍 Found ${matches.length} matches for "${item.title || item.citation}"`);
+            }
             
             setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
+            
+            // Debug: Show when yellow buttons should appear
+            if (process.env.NODE_ENV === 'development' && matches.length > 0) {
+              console.log(`🔍 Yellow buttons should appear for "${item.title || item.citation}" - found ${matches.length} matches:`, 
+                matches.map(m => ({ title: m.title, citation: m.canonical_citation, entry_id: m.entry_id }))
+              );
+            }
             
             // Small delay between scans to prevent overwhelming the system
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -862,7 +850,9 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         }
       }
 
-      console.log('🔍 Manual scan completed');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Manual scan completed');
+      }
     } catch (error) {
       console.error('🔍 Error during manual scan:', error);
     } finally {

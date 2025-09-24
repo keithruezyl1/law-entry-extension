@@ -148,8 +148,8 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                 )}
               </div>
               
-              {/* Scan External > Internal Button */}
-              <div className="mt-3">
+              {/* Scan for Internal Citations Button */}
+              <div className="mt-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -161,7 +161,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                       relatedSectionsRef.current.scanAllExternalCitations();
                     }
                   }}
-                  className="px-4 py-2 text-sm font-medium text-blue-800 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                  className="px-4 py-2 text-sm font-medium rounded-lg transition-colors border"
                   style={{ 
                     backgroundColor: '#eff6ff',
                     borderColor: '#3b82f6',
@@ -169,7 +169,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                     padding: '8px 16px'
                   }}
                 >
-                  Scan External → Internal
+                  Scan for Internal Citations
                 </button>
               </div>
             </div>
