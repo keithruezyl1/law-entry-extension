@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -16,7 +16,7 @@ interface LegalBasisPickerProps {
   existingEntries?: EntryLite[];
 }
 
-export function LegalBasisPicker({ name, control, register, existingEntries = [], onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
+export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActivate?: () => void }>(({ name, control, register, existingEntries = [], onActivate }, ref) => {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove, update } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -34,6 +34,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
   const searchCache = useRef<Map<string, EntryLite[]>>(new Map());
+  const [isScanning, setIsScanning] = useState(false);
+
   const persistRemoval = (item: any) => {
     try {
       const key = String(item?.entry_id || item?.citation || item?.title || item?.url || JSON.stringify(item)).toLowerCase();
@@ -663,9 +665,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       timestamp: Date.now()
     };
     
-    // Special debugging for "Interventions" case (only in development)
-    if (process.env.NODE_ENV === 'development' && 
-        (exactTitle?.toLowerCase().includes('intervention') || exactCitation?.toLowerCase().includes('intervention'))) {
+    // Special debugging for "Interventions" case (always enabled for testing)
+    if (exactTitle?.toLowerCase().includes('intervention') || exactCitation?.toLowerCase().includes('intervention')) {
       console.log(`🔍 INTERVENTION MATCHING DEBUG:`, {
         query: q,
         exactCitation,
@@ -685,9 +686,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       });
     }
     
-    // Only log telemetry for specific debugging cases
-    if (process.env.NODE_ENV === 'development' && 
-        (exactTitle?.toLowerCase().includes('intervention') || exactCitation?.toLowerCase().includes('intervention'))) {
+    // Log telemetry for specific debugging cases (always enabled for testing)
+    if (exactTitle?.toLowerCase().includes('intervention') || exactCitation?.toLowerCase().includes('intervention')) {
       console.log(`🔍 Citation Detection Telemetry:`, telemetry);
       if (results.length > 0) {
         console.log(`🔍 Search for "${q}" found ${results.length} matches:`, results.map(r => {
@@ -745,9 +745,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       return;
     }
     
-    // Special debugging for "Interventions" case (only in development)
-    if (process.env.NODE_ENV === 'development' && 
-        (ext.title?.toLowerCase().includes('intervention') || ext.citation?.toLowerCase().includes('intervention'))) {
+    // Special debugging for "Interventions" case (always enabled for testing)
+    if (ext.title?.toLowerCase().includes('intervention') || ext.citation?.toLowerCase().includes('intervention')) {
       console.log(`🔍 INTERVENTION DEBUG - Starting detection for:`, {
         citation: ext.citation,
         title: ext.title,
@@ -760,9 +759,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
     
     const matches = await findSimilarEntriesForExternal(ext);
     
-    // Only log for debugging the Intervention issue in development
-    if (process.env.NODE_ENV === 'development' && 
-        (ext.title?.toLowerCase().includes('intervention') || ext.citation?.toLowerCase().includes('intervention'))) {
+    // Log for debugging the Intervention issue (always enabled for testing)
+    if (ext.title?.toLowerCase().includes('intervention') || ext.citation?.toLowerCase().includes('intervention')) {
       console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
         external: ext,
         matches: matches.length,
@@ -826,56 +824,58 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
   const handleDetectExternalMatchesDebounced = adaptiveDebounce;
 
-  // Auto-detect internal citations when external citations are loaded (e.g., after import)
-  useEffect(() => {
-    if (!allEntries || allEntries.length === 0) return;
-    
-    // Check if we have external citations that haven't been processed yet
-    const externalCitations = items.filter((item: any, index: number) => 
-      item && item.type === 'external' && 
-      shouldTriggerDetection(item) && // Only process if BOTH citation AND title are filled
-      !inlineMatches[index] // Only process if not already processed
-    );
-    
-    if (externalCitations.length > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
-      }
-      
-      // Trigger detection for each external citation with a delay to prevent flickering
-      externalCitations.forEach((item: any, index: number) => {
-        const actualIndex = items.findIndex((i: any) => i === item);
-        if (actualIndex !== -1) {
-          // Use a longer delay to ensure form is stable
-          setTimeout(() => {
-            handleDetectExternalMatchesDebounced(actualIndex);
-          }, 1000);
-        }
-      });
+  // Manual scan function for all external citations
+  const scanAllExternalCitations = async () => {
+    if (!allEntries || allEntries.length === 0) {
+      console.log('🔍 No entries loaded yet, cannot scan');
+      return;
     }
-  }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
 
-  // Additional effect to detect when both citation and title are filled
-  useEffect(() => {
-    if (!allEntries || allEntries.length === 0) return;
-    
-    items?.forEach((item, idx) => {
-      if (item && item.type === 'external') {
-        const citation = String(item.citation || '').trim();
-        const title = String(item.title || '').trim();
+    setIsScanning(true);
+    console.log('🔍 Starting manual scan of all external citations...');
+
+    try {
+      const externalCitations = items.filter((item: any, index: number) => 
+        item && item.type === 'external' && shouldTriggerDetection(item)
+      );
+
+      console.log(`🔍 Found ${externalCitations.length} external citations to scan`);
+
+      for (let i = 0; i < externalCitations.length; i++) {
+        const item = externalCitations[i];
+        const actualIndex = items.findIndex((i: any) => i === item);
         
-        // If both fields are filled and we haven't detected yet, trigger detection
-        if (citation.length > 0 && title.length > 0 && (!inlineMatches[idx] || inlineMatches[idx].length === 0)) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`🔍 Triggering detection for index ${idx}: citation="${citation}", title="${title}"`);
+        if (actualIndex !== -1) {
+          console.log(`🔍 Scanning citation ${i + 1}/${externalCitations.length}: "${item.title || item.citation}"`);
+          
+          try {
+            const matches = await findSimilarEntriesForExternal(item);
+            console.log(`🔍 Found ${matches.length} matches for "${item.title || item.citation}"`);
+            
+            setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
+            
+            // Small delay between scans to prevent overwhelming the system
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            console.error(`🔍 Error scanning citation "${item.title || item.citation}":`, error);
           }
-          setTimeout(() => {
-            handleDetectExternalMatchesDebounced(idx);
-          }, 300);
         }
       }
-    });
-  }, [items, allEntries, handleDetectExternalMatchesDebounced, inlineMatches]);
+
+      console.log('🔍 Manual scan completed');
+    } catch (error) {
+      console.error('🔍 Error during manual scan:', error);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // Expose scan function to parent component
+  useImperativeHandle(ref, () => ({
+    scanAllExternalCitations
+  }), [scanAllExternalCitations]);
+
+  // Removed automatic detection - now using manual scan button
 
   const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
     try {
@@ -896,7 +896,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-4" data-picker={name}>
       {/* Picker tabs on top */}
       <div className="flex gap-3 kb-toggle-row">
         <Button
@@ -1088,21 +1088,6 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                 <div className="flex items-center justify-between">
                   <div className="kb-form-subtitle text-sm font-medium">External Citation #{externalIndex}</div>
                   <div className="flex items-center gap-2">
-                    {process.env.NODE_ENV === 'development' && (
-                      <button
-                        type="button"
-                        className="text-xs rounded-md border border-blue-400 bg-blue-100 text-gray-800 dark:bg-blue-200 dark:text-white px-2 py-1 hover:bg-blue-200 hover:border-blue-500 dark:hover:bg-blue-300"
-                        onClick={() => {
-                          console.log(`🔍 Manual trigger for index ${i}:`, items[i]);
-                          console.log(`🔍 All entries count:`, allEntries?.length || 0);
-                          console.log(`🔍 Existing entries count:`, existingEntries?.length || 0);
-                          handleDetectExternalMatchesDebounced(i);
-                        }}
-                        title="Debug: Trigger detection manually"
-                      >
-                        🔍 Debug
-                      </button>
-                    )}
                     {!!inlineMatches[i]?.length && (
                       <button
                         type="button"
@@ -1125,8 +1110,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
                       {...register(`${name}.${i}.citation` as const, { 
-                        required: 'Citation is required', 
-                        onBlur: () => void handleDetectExternalMatchesDebounced(i)
+                        required: 'Citation is required'
                       })}
                     />
                   </div>
@@ -1136,8 +1120,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       className="kb-form-input"
                       placeholder="https://…"
                       {...register(`${name}.${i}.url` as const, { 
-                        required: 'URL is required', 
-                        onBlur: () => void handleDetectExternalMatchesDebounced(i)
+                        required: 'URL is required'
                       })}
                     />
                   </div>
@@ -1146,9 +1129,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { 
-                        onBlur: () => void handleDetectExternalMatchesDebounced(i)
-                      })}
+                      {...register(`${name}.${i}.title` as const)}
                     />
                   </div>
                   <div>
@@ -1283,7 +1264,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       </Toast>
     </>
   );
-}
+});
 
 
 

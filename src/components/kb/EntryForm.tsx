@@ -2391,7 +2391,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
             {/* Below: Law input card (form) spanning full width */}
             <section className="kb-form-section col-span-12">
-              <form onSubmit={handleSubmit(onSubmit)}>
+              <form onSubmit={handleSubmit(onSubmit, (errors) => {
+                console.log('🚨 FORM VALIDATION ERRORS:', errors);
+                console.log('🚨 Form validation failed, preventing submission');
+              })}>
                 {(() => {
                   if (currentStep === 1) {
                     return (
@@ -2731,6 +2734,13 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                               <Button 
                                 type="submit" 
                                 disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
+                                onClick={() => {
+                                  console.log('🔘 CREATE ENTRY BUTTON CLICKED');
+                                  console.log('🔘 Button disabled state:', isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0));
+                                  console.log('🔘 isSubmitting:', isSubmitting);
+                                  console.log('🔘 isUpdatingEntry:', isUpdatingEntry);
+                                  console.log('🔘 nearDuplicates:', nearDuplicates);
+                                }}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
                                   isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)
                                     ? 'bg-gray-400 cursor-not-allowed shadow-none'

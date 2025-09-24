@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { ChevronRight } from 'lucide-react';
@@ -43,6 +43,9 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
   const type = useWatch({ name: 'type', control });
   const legalBases = (useWatch({ name: 'legal_bases', control }) as any[]) || [];
   const [activeSide, setActiveSide] = React.useState<'legal_bases' | 'related_sections' | null>('legal_bases');
+  
+  const legalBasesRef = useRef<any>(null);
+  const relatedSectionsRef = useRef<any>(null);
 
   const isRelationsRequired = (entryType: string | undefined) => entryType === 'rights_advisory';
   const relationsRequired = isRelationsRequired(type as any);
@@ -144,6 +147,31 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   <span className="text-xs text-muted-foreground mt-1">Optional (helps citations & navigation)</span>
                 )}
               </div>
+              
+              {/* Scan External > Internal Button */}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Trigger scan for both legal_bases and related_sections
+                    if (legalBasesRef.current?.scanAllExternalCitations) {
+                      legalBasesRef.current.scanAllExternalCitations();
+                    }
+                    if (relatedSectionsRef.current?.scanAllExternalCitations) {
+                      relatedSectionsRef.current.scanAllExternalCitations();
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-blue-800 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                  style={{ 
+                    backgroundColor: '#eff6ff',
+                    borderColor: '#3b82f6',
+                    color: '#1e40af',
+                    padding: '8px 16px'
+                  }}
+                >
+                  Scan External → Internal
+                </button>
+              </div>
             </div>
 
             <div className="relations-wrapper">
@@ -152,6 +180,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
               <div className={`space-y-3`}>
                 <label className="kb-form-label">Legal Bases</label>
                 <LegalBasisPicker
+                  ref={legalBasesRef}
                   name="legal_bases"
                   control={control}
                   register={register}
@@ -163,6 +192,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
               <div className={`space-y-3`}>
                 <label className="kb-form-label">Related Sections</label>
                 <LegalBasisPicker
+                  ref={relatedSectionsRef}
                   name="related_sections"
                   control={control}
                   register={register}
