@@ -468,10 +468,10 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
           }
           
           const finalScore = base + boost;
-          if (finalScore >= 50) { // STRICTER threshold for quality - only show high-confidence matches
+          if (finalScore >= 10) { // Balanced threshold to catch relevant matches
             results.push({ entry, score: finalScore });
-            // Early termination: if we have 2+ high-confidence matches (score >= 1000), stop searching
-            if (finalScore >= 1000) {
+            // Early termination: if we have 2+ high-confidence matches (score >= 25), stop searching
+            if (finalScore >= 25) {
               highConfidenceCount++;
               if (highConfidenceCount >= 2) break;
             }
@@ -530,9 +530,9 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
     }
 
-    // STRICTER thresholds for quality - only show highly relevant matches
-    const SEM_THRESHOLD = 80; // much higher threshold for semantic matches
-    const LOC_THRESHOLD = 50; // much higher threshold for local matches
+    // Balanced thresholds to avoid irrelevant suggestions but still find relevant ones
+    const SEM_THRESHOLD = 50; // balanced to avoid poor semantic matches
+    const LOC_THRESHOLD = 10; // balanced to require decent local matches
     const results = Object.values(merged)
       .filter(m => {
         // Only include results with strong local matches OR very high semantic scores
@@ -1029,7 +1029,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                       <span className="sm:hidden">Add as Internal instead?</span>
                       <button
                         type="button"
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-4 h-4 hover:bg-yellow-200 dark:hover:bg-yellow-300 rounded transition-colors"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-4 h-4 rounded transition-colors"
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent triggering the main button
                           // Add this citation to dismissed suggestions
