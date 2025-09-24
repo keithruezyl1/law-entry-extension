@@ -481,6 +481,19 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       const entryCite = normalizeSearchText(entry.canonical_citation || '');
       let boost = 0;
       
+      // DEBUG: Log scoring for entries that might match
+      if (base > 0 || entryTitle.includes(exactTitle.toLowerCase()) || entryCite.includes(exactCitation.toLowerCase())) {
+        console.log(`🔍 SCORING DEBUG for entry "${entry.title}":`, {
+          entryTitle: entryTitle,
+          entryCitation: entryCite,
+          searchTitle: exactTitle,
+          searchCitation: exactCitation,
+          baseScore: base,
+          titleMatch: entryTitle.includes(exactTitle.toLowerCase()),
+          citationMatch: entryCite.includes(exactCitation.toLowerCase())
+        });
+      }
+      
       // HIERARCHICAL MATCHING SYSTEM WITH NEW SCORING
       
       // PRIORITY 1: EXACT CITATION MATCHES (100 points)
@@ -924,8 +937,22 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
               searchQuery: `${item.citation} ${item.title}`.trim(),
               matchesFound: matches.length,
               matchTitles: matches.map(m => m.title),
-              matchCitations: matches.map(m => m.canonical_citation)
+              matchCitations: matches.map(m => m.canonical_citation),
+              matchEntryIds: matches.map(m => m.entry_id)
             });
+            
+            // CRITICAL DEBUG: Show if these are the same matches for all citations
+            if (matches.length > 0) {
+              console.log(`🔍 MATCH DETAILS for "${item.title || item.citation}":`, 
+                matches.map((m, index) => ({
+                  index: index + 1,
+                  title: m.title,
+                  citation: m.canonical_citation,
+                  entry_id: m.entry_id,
+                  type: m.type
+                }))
+              );
+            }
             
             setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
             
