@@ -386,6 +386,12 @@ export const useLocalStorage = () => {
           s = s.replace(/[“”„‟❛❜❝❞]/g, '"').replace(/[‘’‚‛]/g, "'").replace(/[–—―]/g, '-');
           // Map punctuation variants to words before stripping
           s = s.replace(/[&/]/g, ' and ');
+          // Legal citation patterns and symbols
+          s = s
+            .replace(/§/g, ' section ')               // section symbol
+            .replace(/\bg\.?\s*r\.?\s*no\.?\b/g, ' gr number ') // G.R. No.
+            .replace(/\bgr\.?\s*no\.?\b/g, ' gr number ')
+            .replace(/\bblg\.?\b/g, ' bilang ');    // Blg. -> Bilang
           // Expand common legal abbreviations (with or without dot)
           s = s
             .replace(/\bart\.?\b/g, 'article')
@@ -438,7 +444,11 @@ export const useLocalStorage = () => {
           return out || null;
         };
         // Safer anti- handling: only strip for known allowlisted bases to avoid over-matching
-        const __ANTI_ALLOW__ = new Set(['graft','trafficking','terrorism','wiretapping','fencing','hazing','money-laundering','moneylaundering','red-tape','redtape']);
+        const __ANTI_ALLOW__ = new Set([
+          'graft','trafficking','terrorism','wiretapping','fencing','hazing',
+          'money-laundering','moneylaundering','red-tape','redtape',
+          'trafficking-in-persons','carnapping','illegal-drugs','dangerous-drugs','terrorism-financing'
+        ]);
         const removeAntiPrefix = (w) => {
           if (!(w.startsWith('anti') && w.length > 4)) return w;
           const base = w.replace(/^anti[-\s]?/, '');
@@ -491,10 +501,23 @@ export const useLocalStorage = () => {
         for (let i = 0; i < searchWords.length - 1; i++) {
           const a = searchWords[i];
           const b = searchWords[i + 1];
+          // Arabic number + letter (5 a)
           if (/^\d+$/.test(a) && /^[a-z]$/.test(b)) {
             searchWordVariants.add(`${a}${b}`);
             searchWordVariants.add(`${a}(${b})`);
             searchWordVariants.add(`${a}-${b}`);
+          }
+          // Roman numeral + letter (iii a)
+          if (isRoman && typeof isRoman === 'function' && isRoman(a) && /^[a-z]$/.test(b)) {
+            searchWordVariants.add(`${a}${b}`);
+            searchWordVariants.add(`${a}(${b})`);
+            searchWordVariants.add(`${a}-${b}`);
+            const arabic = romanToArabic && romanToArabic(a);
+            if (arabic) {
+              searchWordVariants.add(`${arabic}${b}`);
+              searchWordVariants.add(`${arabic}(${b})`);
+              searchWordVariants.add(`${arabic}-${b}`);
+            }
           }
         }
         // Generate compact and parenthetical variants for matching

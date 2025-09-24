@@ -49,6 +49,9 @@
     "test:e2e": "cypress run",
     "test:e2e:open": "cypress open",
     "test:lighthouse": "node scripts/lighthouse-tests.js",
+    "search:fetch": "node scripts/fetch-entries-to-file.js --api %REACT_APP_API_BASE% --out docs/entries.json",
+    "search:bootstrap": "node scripts/gold-bootstrap.js --entries docs/entries.json --gold docs/search_gold_sample.json --top 3 --out docs/search_gold_bootstrapped.json",
+    "search:eval": "node scripts/search-eval.js --entries docs/entries.json --gold docs/search_gold_bootstrapped.json --limit 20",
     "test:all": "npm run test:ci && npm run test:performance && npm run test:e2e && npm run test:lighthouse",
     "eject": "react-scripts eject"
   },

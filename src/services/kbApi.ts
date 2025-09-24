@@ -213,6 +213,39 @@ export async function fetchEntryById(entryId: string): Promise<any | null> {
   }
 }
 
+// Server lexical search (feature-flag-ready consumer)
+export async function serverSearch(params: {
+  query: string;
+  type?: string;
+  jurisdiction?: string;
+  status?: string;
+  verified?: 'yes' | 'not_verified';
+  team_member_id?: string | number;
+  limit?: number;
+  explain?: boolean;
+}): Promise<{ results: any[]; cursor: string | null }> {
+  const token = localStorage.getItem('auth_token');
+  const qs = new URLSearchParams();
+  qs.set('query', params.query || '');
+  if (params.type) qs.set('type', params.type);
+  if (params.jurisdiction) qs.set('jurisdiction', params.jurisdiction);
+  if (params.status) qs.set('status', params.status);
+  if (params.verified) qs.set('verified', params.verified);
+  if (params.team_member_id != null) qs.set('team_member_id', String(params.team_member_id));
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.explain) qs.set('explain', 'true');
+
+  const resp = await fetch(`${KB_BASE_URL}/search?${qs.toString()}`, {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+  if (!resp.ok) throw new Error(`Search failed: ${resp.status}`);
+  const json = await resp.json();
+  return { results: json.results || [], cursor: json.cursor || null };
+}
+
 // Verify entry
 export async function verifyEntry(entryId: string): Promise<any | null> {
   try {

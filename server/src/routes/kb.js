@@ -570,6 +570,7 @@ const SearchSchema = z.object({
 router.post('/search', async (req, res) => {
   try {
     const { query: q, limit = 10 } = SearchSchema.parse(req.body);
+    // Keep existing vector search endpoint intact; add a new lexical endpoint below
     const qEmbedding = await embedText(q);
     const qEmbeddingLiteral = `[${qEmbedding.join(',')}]`;
     const result = await query(
@@ -581,6 +582,165 @@ router.post('/search', async (req, res) => {
       [qEmbeddingLiteral, limit]
     );
     res.json({ success: true, results: result.rows });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ success: false, error: String(e.message || e) });
+  }
+});
+
+// New: GET /api/kb/search (lexical + trigram fallback)
+const LexicalQuerySchema = z.object({
+  query: z.string().min(1),
+  type: z.string().optional(),
+  jurisdiction: z.string().optional(),
+  status: z.string().optional(),
+  verified: z.enum(['yes','not_verified']).optional(),
+  team_member_id: z.string().optional(),
+  limit: z.preprocess((v)=>Number(v), z.number().int().min(1).max(100)).optional(),
+  cursor: z.string().optional(),
+  explain: z.preprocess((v)=> (v === 'true' || v === true), z.boolean()).optional(),
+});
+
+router.get('/search', async (req, res) => {
+  try {
+    const p = LexicalQuerySchema.parse(req.query);
+    const limit = p.limit || 20;
+    const q = String(p.query || '').trim();
+    if (!q) return res.status(400).json({ error: 'query is required' });
+
+    // websearch_to_tsquery + fallback trigram union
+    const sql = `
+      with params as (
+        select 
+          websearch_to_tsquery('simple', $1) as tsq,
+          regexp_replace(lower(unaccent($1)), '\\s+', '', 'g') as compact_q,
+          lower(unaccent($1)) as q_norm
+      ), lex as (
+        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+               k.verified, k.status, k.effective_date,
+               ts_rank_cd(k.search_vec, (select tsq from params)) as rank_score,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.title,''), (select tsq from params), 'MinWords=3, MaxWords=12') else null end as hl_title,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.summary,''), (select tsq from params), 'MinWords=6, MaxWords=18') else null end as hl_summary,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.canonical_citation,''), (select tsq from params), 'MinWords=2, MaxWords=8') else null end as hl_citation,
+               ((setweight(to_tsvector('simple', coalesce(k.title,'')),'A')) @@ (select tsq from params)) as m_title,
+               ((setweight(to_tsvector('simple', coalesce(k.canonical_citation,'')),'A')) @@ (select tsq from params)) as m_citation,
+               ((setweight(to_tsvector('simple', coalesce(k.section_id,'')),'B')) @@ (select tsq from params)) as m_section
+        from kb_entries k
+        where k.search_vec @@ (select tsq from params)
+          and ($2::text is null or k.type = $2)
+          and ($3::text is null or k.jurisdiction = $3)
+          and ($4::text is null or k.status = $4)
+          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      ), tri as (
+        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+               k.verified, k.status, k.effective_date,
+               0.15 as rank_score,
+               null::text as hl_title,
+               null::text as hl_summary,
+               null::text as hl_citation,
+               false as m_title,
+               false as m_citation,
+               false as m_section
+        from kb_entries k, params
+        where ($1 <> '') and (
+          lower(unaccent(k.title)) % (select q_norm from params) or
+          lower(unaccent(k.canonical_citation)) % (select q_norm from params) or
+          k.compact_citation like '%' || (select compact_q from params) || '%'
+        )
+          and ($2::text is null or k.type = $2)
+          and ($3::text is null or k.jurisdiction = $3)
+          and ($4::text is null or k.status = $4)
+          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      ), unioned as (
+        select * from lex
+        union all
+        select * from tri
+      )
+      select *,
+             (case when lower(unaccent(coalesce(title,'')||' '||coalesce(canonical_citation,''))) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
+             array_remove(array[
+               case when m_title then 'title' else null end,
+               case when m_citation then 'canonical_citation' else null end,
+               case when m_section then 'section_id' else null end
+             ], null) as matched_fields
+      from unioned
+      order by (rank_score + exact_pin) desc,
+               (case when verified then 1 else 0 end) desc,
+               (case when lower(coalesce(status,'')) = 'active' then 1 else 0 end) desc,
+               coalesce(effective_date, '0001-01-01') desc,
+               length(coalesce(title,'')) asc,
+               entry_id asc
+      limit $6`;
+
+    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit, Boolean(p.explain) ];
+    const result = await query(sql, params);
+
+    // Domain-aware re-rank boosts for agency/admin queries
+    const qn = q.toLowerCase();
+    const agencyKeys = ['nbi','bir','dilg','ltfrb','dotr','dhsud'];
+    const phraseSignals = [
+      { key: 'memorandum circular', type: 'agency_circular', boost: 2.5 },
+      { key: ' mc ', type: 'agency_circular', boost: 2.0 },
+      { key: 'department order', type: 'executive_issuance', boost: 2.5 },
+      { key: 'license to sell', type: 'executive_issuance', boost: 2.5 },
+      { key: 'franchise suspension', type: 'agency_circular', boost: 2.0 },
+      { key: 'clearance', type: null, boost: 1.0 },
+    ];
+    const hasAgency = agencyKeys.some(k => qn.includes(k));
+    const typeSig = phraseSignals.find(p => qn.includes(p.key)) || null;
+    const boostedRows = (result.rows || []).map(r => {
+      let extra = 0;
+      const title = String(r.title || '').toLowerCase();
+      const lawfam = String(r.law_family || '').toLowerCase();
+      const tags = Array.isArray(r.tags) ? String(r.tags.join(' ')).toLowerCase() : '';
+      if (hasAgency) {
+        if (agencyKeys.some(k => title.includes(k) || lawfam.includes(k) || tags.includes(k))) {
+          extra += 1.5; // agency acronyms align
+        }
+      }
+      if (typeSig && typeSig.type && String(r.type || '') === typeSig.type) {
+        extra += typeSig.boost;
+      }
+      return { ...r, __boost: extra };
+    })
+    .sort((a, b) => {
+      const sa = (a.rank_score || 0) + (a.exact_pin || 0) + (a.__boost || 0);
+      const sb = (b.rank_score || 0) + (b.exact_pin || 0) + (b.__boost || 0);
+      if (sb !== sa) return sb - sa;
+      const av = a.verified === true ? 1 : 0; const bv = b.verified === true ? 1 : 0; if (bv !== av) return bv - av;
+      const aActive = String(a.status || '').toLowerCase() === 'active' ? 1 : 0; const bActive = String(b.status || '').toLowerCase() === 'active' ? 1 : 0; if (bActive !== aActive) return bActive - aActive;
+      const ad = a.effective_date ? Date.parse(a.effective_date) : 0; const bd = b.effective_date ? Date.parse(b.effective_date) : 0; if (bd !== ad) return bd - ad;
+      const at = String(a.title || '').length; const bt = String(b.title || '').length; if (at !== bt) return at - bt;
+      const aid = String(a.entry_id || a.id || ''); const bid = String(b.entry_id || b.id || ''); return aid.localeCompare(bid);
+    });
+
+    let suggestion = null;
+    if ((result.rows || []).length < 3) {
+      try {
+        const s = await query(
+          `with params as (
+             select lower(unaccent($1)) as q
+           )
+           select title as suggestion
+           from kb_entries, params
+           where title is not null and title <> ''
+           order by similarity(lower(unaccent(title)), (select q from params)) desc
+           limit 1`,
+          [ q ]
+        );
+        suggestion = s.rows?.[0]?.suggestion || null;
+      } catch (e) {
+        suggestion = null;
+      }
+    }
+
+    res.json({
+      success: true,
+      took_ms: undefined,
+      results: boostedRows,
+      cursor: null,
+      suggestion,
+    });
   } catch (e) {
     console.error(e);
     res.status(400).json({ success: false, error: String(e.message || e) });

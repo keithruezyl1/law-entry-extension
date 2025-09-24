@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchEntryById } from '../../services/kbApi';
+import { fetchEntryById, serverSearch } from '../../services/kbApi';
 import { getEntryTypeOptions } from '../../data/entryTypes';
 import { getJurisdictionOptions } from '../../data/jurisdictions';
 import EntryView from '../EntryView/EntryView';
@@ -89,6 +89,20 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  // Feature flag for server lexical search
+  const useServerSearch = String(process.env.REACT_APP_USE_SERVER_SEARCH || '').toLowerCase() === 'true';
+  const [remoteResults, setRemoteResults] = useState([]);
+  const [didYouMean, setDidYouMean] = useState(null);
+
+  const renderHighlighted = useCallback((html, fallback) => {
+    if (!useServerSearch) return fallback;
+    if (!html || typeof html !== 'string') return fallback;
+    return (
+      <span
+        dangerouslySetInnerHTML={{ __html: html.replaceAll('<b>', '<b style="background:#fff3cd;color:#92400e;border-radius:4px;padding:0 2px;">') }}
+      />
+    );
+  }, [useServerSearch]);
   const [showFilters, setShowFilters] = useState(false);
   const [customJurisdiction, setCustomJurisdiction] = useState('');
   const [filters, setFilters] = useState({
@@ -121,10 +135,53 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   const jurisdictionOptions = getJurisdictionOptions();
   // const allTags = getAllTags();
 
-  const filteredEntries = useMemo(() => {
+  const filteredEntriesLocal = useMemo(() => {
     const filtered = searchEntries(debouncedSearchQuery, filters);
     return filtered;
   }, [debouncedSearchQuery, filters, searchEntries, teamMemberNames]);
+
+  // Fetch server search results (debounced) when flag is on
+  useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      if (!useServerSearch) return;
+      const q = String(debouncedSearchQuery || '').trim();
+      // For empty query, fall back to local list (no server call) to avoid flicker
+      if (!q) {
+        if (alive) setRemoteResults(filteredEntriesLocal);
+        return;
+      }
+      try {
+        setIsSearching(true);
+        const res = await serverSearch({
+          query: q,
+          type: filters?.type && filters.type !== 'all' ? filters.type : undefined,
+          jurisdiction: filters?.jurisdiction && filters.jurisdiction !== 'all' ? filters.jurisdiction : undefined,
+          status: filters?.status && filters.status !== 'all' ? filters.status : undefined,
+          verified: filters?.verified && filters.verified !== 'all' ? (filters.verified === 'yes' ? 'yes' : 'not_verified') : undefined,
+          team_member_id: filters?.team_member_id && filters.team_member_id !== 'all' ? String(filters.team_member_id) : undefined,
+          limit: 200,
+          explain: true,
+        });
+        if (!alive) return;
+        // Server returns a projection; normalize id field
+        const rows = Array.isArray(res.results) ? res.results.map(r => ({ ...r, id: r.entry_id || r.id })) : [];
+        setRemoteResults(rows);
+        setDidYouMean(res.suggestion || null);
+        // keep current page stable unless it exceeds new total
+      } catch (e) {
+        if (alive) {
+          console.warn('Server search failed; using local fallback', e);
+          setRemoteResults(filteredEntriesLocal);
+          setDidYouMean(null);
+        }
+      } finally {
+        if (alive) setIsSearching(false);
+      }
+    };
+    run();
+    return () => { alive = false; };
+  }, [useServerSearch, debouncedSearchQuery, filters, filteredEntriesLocal]);
 
   // Persist current filters and search so Export can follow them
   useEffect(() => {
@@ -137,21 +194,23 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   }, [filters, debouncedSearchQuery]);
 
   // Calculate pagination with memoization
+  const effectiveEntries = useServerSearch ? remoteResults : filteredEntriesLocal;
+
   const paginationData = useMemo(() => {
-    const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+    const totalPages = Math.ceil(effectiveEntries.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const paginatedEntries = filteredEntries.slice(startIndex, endIndex);
+    const paginatedEntries = effectiveEntries.slice(startIndex, endIndex);
     
     return { totalPages, startIndex, endIndex, paginatedEntries };
-  }, [filteredEntries, currentPage, itemsPerPage]);
+  }, [effectiveEntries, currentPage, itemsPerPage]);
   
   const { totalPages, paginatedEntries } = paginationData;
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, filters]);
+  }, [debouncedSearchQuery, filters, useServerSearch]);
 
   // Ensure current page is valid when total pages change
   useEffect(() => {
@@ -212,7 +271,8 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
   const searchTerm = normalize(debouncedSearchQuery);
   const hasExactMatch = useMemo(() => {
     if (!searchTerm) return true;
-    return entries.some(e => {
+    const source = useServerSearch ? effectiveEntries : entries;
+    return source.some(e => {
       const haystacks = [
         e.title,
         e.entry_id,
@@ -227,7 +287,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
       ];
       return haystacks.some(h => normalize(h) === searchTerm);
     });
-  }, [searchTerm, entries, normalize]);
+  }, [searchTerm, entries, effectiveEntries, normalize, useServerSearch]);
 
   return (
     <div className="entry-list-container">
@@ -259,6 +319,24 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
               </div>
             )}
           </div>
+          {useServerSearch && didYouMean && (
+            <div style={{ marginTop: 6 }}>
+              <span style={{ color: '#6b7280' }}>Did you mean:&nbsp;</span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery(didYouMean)}
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  color: '#2563eb',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontWeight: 600
+                }}
+              >{didYouMean}</button>
+            </div>
+          )}
           <button 
             onClick={() => setShowFilters(!showFilters)} 
             className="toggle-filters-btn"
@@ -376,13 +454,13 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
           <>
             <p style={{ marginBottom: '4px' }}>No exact matches for "{debouncedSearchQuery}"</p>
             <p>
-              Showing {filteredEntries.length} of {entries.length} entries that might be a match
+              Showing {effectiveEntries.length} of {entries.length} entries that might be a match
               {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
             </p>
           </>
         ) : (
           <p>
-            Showing {filteredEntries.length} of {entries.length} entries
+            Showing {effectiveEntries.length} of {entries.length} entries
             {debouncedSearchQuery && ` matching "${debouncedSearchQuery}"`}
             {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
           </p>
@@ -390,7 +468,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
       </div>
 
       {/* Entries List */}
-      {filteredEntries.length === 0 ? (
+      {effectiveEntries.length === 0 ? (
         <div className="no-results">
           <h3>No entries found.</h3>
           <p>Try adjusting your search terms or filters.</p>
@@ -407,7 +485,9 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
               <div className="entry-content">
                 <div className="entry-main">
                   <div className="entry-title-row">
-                    <h3 className="entry-title" onClick={() => { setEntryStack([]); setSelectedEntry(entry); }}>{entry.title || 'Untitled Entry'}</h3>
+                    <h3 className="entry-title" onClick={() => { setEntryStack([]); setSelectedEntry(entry); }}>
+                      {useServerSearch && entry.hl_title ? renderHighlighted(entry.hl_title, entry.title || 'Untitled Entry') : (entry.title || 'Untitled Entry')}
+                    </h3>
                     <div className="entry-badges">
                       <span className="entry-type-badge">{getEntryTypeLabel(entry.type)}</span>
                       {entry.status && (
@@ -417,8 +497,19 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
                       )}
                     </div>
                   </div>
-                                      <div className="entry-subtitle-row">
-                      <div className="entry-subtitle">civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}</div>
+                  <div className="entry-subtitle-row">
+                      <div className="entry-subtitle">
+                        civilify.local/{entry.type ? getEntryTypeLabel(entry.type).toLowerCase().replace(/\s+/g,'-') : 'unknown'}/{entry.entry_id || 'no-id'}
+                        {useServerSearch && (entry.hl_citation || entry.hl_summary) && (
+                          <>
+                            <span style={{ margin: '0 6px', color: '#9ca3af' }}>|</span>
+                            <span style={{ color: '#6b7280' }}>
+                              {entry.hl_citation ? renderHighlighted(entry.hl_citation, entry.canonical_citation) : null}
+                              {!entry.hl_citation && entry.hl_summary ? renderHighlighted(entry.hl_summary, '') : null}
+                            </span>
+                          </>
+                        )}
+                      </div>
                       
                       {entry.team_member_id && (
                         <div className="entry-team-member">
@@ -470,7 +561,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
-              totalItems={filteredEntries.length}
+              totalItems={effectiveEntries.length}
               itemsPerPage={itemsPerPage}
             />
           )}
