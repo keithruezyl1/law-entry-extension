@@ -1758,7 +1758,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
           });
 
 
-          console.log('🔍 About to filter results with enhanced matching logic...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 About to filter results with enhanced matching logic...');
+          }
 
 
 
@@ -2032,8 +2034,10 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             return shouldShow;
           });
 
-          console.log('🔍 Filtered duplicates:', filtered.length);
-          console.log('🔍 Final duplicate matches:', filtered);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Filtered duplicates:', filtered.length);
+            console.log('🔍 Final duplicate matches:', filtered);
+          }
 
 
           setNearDuplicates(filtered);
@@ -2047,7 +2051,9 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         }
       } finally {
         if (!cancelled) {
-          console.log('🔍 Setting searchingDupes to FALSE');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Setting searchingDupes to FALSE');
+          }
 
 
           setSearchingDupes(false);

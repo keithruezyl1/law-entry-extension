@@ -752,7 +752,9 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
         citation: ext.citation,
         title: ext.title,
         index: idx,
-        shouldTrigger: shouldTriggerDetection(ext)
+        shouldTrigger: shouldTriggerDetection(ext),
+        allEntriesCount: allEntries?.length || 0,
+        existingEntriesCount: existingEntries?.length || 0
       });
     }
     
@@ -852,6 +854,28 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       });
     }
   }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
+
+  // Additional effect to detect when both citation and title are filled
+  useEffect(() => {
+    if (!allEntries || allEntries.length === 0) return;
+    
+    items?.forEach((item, idx) => {
+      if (item && item.type === 'external') {
+        const citation = String(item.citation || '').trim();
+        const title = String(item.title || '').trim();
+        
+        // If both fields are filled and we haven't detected yet, trigger detection
+        if (citation.length > 0 && title.length > 0 && (!inlineMatches[idx] || inlineMatches[idx].length === 0)) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🔍 Triggering detection for index ${idx}: citation="${citation}", title="${title}"`);
+          }
+          setTimeout(() => {
+            handleDetectExternalMatchesDebounced(idx);
+          }, 300);
+        }
+      }
+    });
+  }, [items, allEntries, handleDetectExternalMatchesDebounced, inlineMatches]);
 
   const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
     try {
@@ -1070,6 +1094,8 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                         className="text-xs rounded-md border border-blue-400 bg-blue-100 text-gray-800 dark:bg-blue-200 dark:text-white px-2 py-1 hover:bg-blue-200 hover:border-blue-500 dark:hover:bg-blue-300"
                         onClick={() => {
                           console.log(`🔍 Manual trigger for index ${i}:`, items[i]);
+                          console.log(`🔍 All entries count:`, allEntries?.length || 0);
+                          console.log(`🔍 Existing entries count:`, existingEntries?.length || 0);
                           handleDetectExternalMatchesDebounced(i);
                         }}
                         title="Debug: Trigger detection manually"
@@ -1100,8 +1126,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       placeholder="e.g., People v. Doria, G.R. No. …"
                       {...register(`${name}.${i}.citation` as const, { 
                         required: 'Citation is required', 
-                        onBlur: () => void handleDetectExternalMatchesDebounced(i),
-                        onChange: () => void handleDetectExternalMatchesDebounced(i)
+                        onBlur: () => void handleDetectExternalMatchesDebounced(i)
                       })}
                     />
                   </div>
@@ -1122,8 +1147,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
                       {...register(`${name}.${i}.title` as const, { 
-                        onBlur: () => void handleDetectExternalMatchesDebounced(i),
-                        onChange: () => void handleDetectExternalMatchesDebounced(i)
+                        onBlur: () => void handleDetectExternalMatchesDebounced(i)
                       })}
                     />
                   </div>
