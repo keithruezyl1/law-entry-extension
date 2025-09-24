@@ -834,12 +834,12 @@
 }
 
 /* Generic dark mode buttons inside form (e.g., Add Item) - exclude all our custom buttons */
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):not(.bg-green-600) {
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):not(.bg-green-600):not(.kb-scan-button-orange) {
 	background: #374151 !important; /* Light grey background */
 	border: 1px solid #4b5563 !important; /* Grey border */
 	color: #e5e7eb !important; /* Light grey text */
 }
-.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):not(.bg-green-600):hover {
+.dark-mode .kb-form button:not(.kb-btn-primary):not(.orange):not(.logout):not([type="submit"]):not(.kb-internal-match-btn):not(.bg-red-600):not(.bg-orange-500):not(.bg-green-600):not(.kb-scan-button-orange):hover {
 	background: #4b5563 !important; /* Slightly lighter grey on hover */
 	border-color: #6b7280 !important;
 }

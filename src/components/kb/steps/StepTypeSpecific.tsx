@@ -150,7 +150,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
               </div>
               
               {/* Scan for Internal Citations Button */}
-              <div className="flex items-center gap-2" style={{ marginTop: '4px', marginBottom: '4px' }}>
+              <div className="flex items-center gap-2" style={{ marginTop: '4px', marginBottom: '8px' }}>
                 <button
                   type="button"
                   onClick={async () => {
@@ -169,22 +169,22 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   }}
                   className="scan-button kb-scan-button-orange"
                   style={{ 
-                    backgroundColor: '#f97316',
-                    border: '2px solid #f97316',
-                    color: 'white',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    cursor: 'pointer',
-                    boxShadow: 'none',
-                    outline: 'none',
-                    margin: '0',
-                    display: 'inline-block',
+                    backgroundColor: '#f97316 !important',
+                    border: '2px solid #f97316 !important',
+                    color: 'white !important',
+                    padding: '8px 16px !important',
+                    borderRadius: '8px !important',
+                    fontSize: '14px !important',
+                    fontWeight: '500 !important',
+                    transition: 'all 0.2s ease !important',
+                    cursor: 'pointer !important',
+                    boxShadow: 'none !important',
+                    outline: 'none !important',
+                    margin: '0 !important',
+                    display: 'inline-block !important',
                     textAlign: 'center',
-                    textDecoration: 'none',
-                    verticalAlign: 'middle',
+                    textDecoration: 'none !important',
+                    verticalAlign: 'middle !important',
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
                     MozUserSelect: 'none',
