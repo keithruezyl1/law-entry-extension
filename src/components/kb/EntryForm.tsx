@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { EntrySchema, Entry, TypeEnum, validateBusinessRules } from 'lib/civilify-kb-schemas';
@@ -1143,6 +1143,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     let hasUserInput = false;
     let debounceId: number | undefined;
     let lastSaved = '';
+    let lastSaveTime = 0;
+    const MIN_SAVE_INTERVAL = 2000; // Minimum 2 seconds between saves
 
     const onAnyInput = () => { hasUserInput = true; };
     try { document.addEventListener('input', onAnyInput, { passive: true }); } catch {}
@@ -1151,6 +1153,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       // Defer autosave until user has actually typed/changed something manually
       if (!hasUserInput) return;
       if (!methods.formState.isDirty) return;
+      
+      // Rate limit saves to prevent excessive localStorage writes
+      const now = Date.now();
+      if (now - lastSaveTime < MIN_SAVE_INTERVAL) return;
+      
       if (debounceId) window.clearTimeout(debounceId);
       debounceId = window.setTimeout(() => {
         try {
@@ -1162,13 +1169,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             setIsAutoSaving(true);
             localStorage.setItem('kb_entry_draft', serialized);
             lastSaved = serialized;
+            lastSaveTime = Date.now();
             setTimeout(() => setIsAutoSaving(false), 400);
           }
         } catch (e) {
           console.error('Failed to auto-save draft on change:', e);
           setIsAutoSaving(false);
         }
-      }, 600) as unknown as number;
+      }, 1500) as unknown as number; // Increased debounce from 600ms to 1500ms
     });
 
     return () => {
@@ -1569,24 +1577,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
   };
 
-  // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
-  // Disabled when editing existing entries to avoid confusion
-  useEffect(() => {
-    debugLog('🚨 DUPLICATE DETECTION useEffect RUNNING! 🚨');
-    // Don't run duplicate detection when editing existing entries
-    debugLog('🔍 DUPLICATE DETECTION useEffect TRIGGERED!', { 
-      hasEntry: !!entry, 
-      entryId: entry?.entry_id || (entry as any)?.id,
-      isEditMode,
-      isCreateMode,
-      isImportedEntry,
-      isOnCreateUrl,
-      formPopulated,
-      title: title || 'no title',
-      lawFamily: lawFamily || 'no law family',
-      currentUrl: window.location.pathname,
-      timestamp: new Date().toISOString()
-    });
+  const performDuplicateDetection = useCallback(() => {
 
 
     // Only disable duplicate detection if we're truly editing an existing entry (has an 'id' field and not on create URL)
@@ -1719,7 +1710,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             .toLowerCase()
             .replace(/[""]/g, '"')
             .replace(/[']/g, "'")
-            .replace(/[\-–—_()\[\],.:/]/g, ' ')
+            .replace(/[-–—_()[\].,:/]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
 
@@ -2064,7 +2055,36 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       }
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [title, lawFamily, sectionId, citation, effectiveDate, type, formPopulated, entry, isOnCreateUrl, existingEntries]);
+  }, [entry, isOnCreateUrl, title, lawFamily, sectionId, citation, effectiveDate, type, formPopulated, existingEntries, methods, setNearDuplicates, setSearchingDupes]);
+
+  // Debounced semantic suggestions for potential near-duplicates (title + identifiers)
+  // Disabled when editing existing entries to avoid confusion
+  useEffect(() => {
+    // Only log in development mode to reduce performance impact
+    if (process.env.NODE_ENV === 'development') {
+      debugLog('🚨 DUPLICATE DETECTION useEffect RUNNING! 🚨');
+      debugLog('🔍 DUPLICATE DETECTION useEffect TRIGGERED!', { 
+        hasEntry: !!entry, 
+        entryId: entry?.entry_id || (entry as any)?.id,
+        isEditMode,
+        isCreateMode,
+        isImportedEntry,
+        isOnCreateUrl,
+        formPopulated,
+        title: title || 'no title',
+        lawFamily: lawFamily || 'no law family',
+        currentUrl: window.location.pathname,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Debounce duplicate detection to prevent excessive API calls
+    const debounceId = setTimeout(() => {
+      performDuplicateDetection();
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(debounceId);
+  }, [title, lawFamily, sectionId, citation, effectiveDate, entry, isEditMode, isCreateMode, isImportedEntry, isOnCreateUrl, formPopulated, performDuplicateDetection]);
 
   // Debug logging for duplicate detection
   useEffect(() => {
