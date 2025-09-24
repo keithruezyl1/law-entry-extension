@@ -664,7 +664,7 @@ router.get('/search', async (req, res) => {
                case when m_section then 'section_id' else null end
              ], null) as matched_fields
       from unioned
-      order by (rank_score + exact_pin) desc,
+      order by (rank_score + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)) desc,
                (case when verified then 1 else 0 end) desc,
                (case when lower(coalesce(status,'')) = 'active' then 1 else 0 end) desc,
                coalesce(effective_date, '0001-01-01') desc,
@@ -719,12 +719,12 @@ router.get('/search', async (req, res) => {
       try {
         const s = await query(
           `with params as (
-             select lower(unaccent($1)) as q
+             select lower($1) as q
            )
            select title as suggestion
            from kb_entries, params
            where title is not null and title <> ''
-           order by similarity(lower(unaccent(title)), (select q from params)) desc
+           order by similarity(lower(title), (select q from params)) desc
            limit 1`,
           [ q ]
         );
