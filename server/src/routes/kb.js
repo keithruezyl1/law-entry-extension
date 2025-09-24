@@ -613,8 +613,8 @@ router.get('/search', async (req, res) => {
       with params as (
         select 
           websearch_to_tsquery('simple', $1) as tsq,
-          regexp_replace(lower(unaccent($1)), '\\s+', '', 'g') as compact_q,
-          lower(unaccent($1)) as q_norm
+          regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
+          lower($1) as q_norm
       ), lex as (
         select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
                k.verified, k.status, k.effective_date,
@@ -643,8 +643,8 @@ router.get('/search', async (req, res) => {
                false as m_section
         from kb_entries k, params
         where ($1 <> '') and (
-          lower(unaccent(k.title)) % (select q_norm from params) or
-          lower(unaccent(k.canonical_citation)) % (select q_norm from params) or
+          lower(k.title) % (select q_norm from params) or
+          lower(k.canonical_citation) % (select q_norm from params) or
           k.compact_citation like '%' || (select compact_q from params) || '%'
         )
           and ($2::text is null or k.type = $2)
@@ -657,7 +657,7 @@ router.get('/search', async (req, res) => {
         select * from tri
       )
       select *,
-             (case when lower(unaccent(coalesce(title,'')||' '||coalesce(canonical_citation,''))) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
+             (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
              array_remove(array[
                case when m_title then 'title' else null end,
                case when m_citation then 'canonical_citation' else null end,
