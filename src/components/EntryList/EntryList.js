@@ -510,6 +510,11 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
                           </>
                         )}
                       </div>
+                      {useServerSearch && Array.isArray(entry.matched_fields) && entry.matched_fields.length > 0 && (
+                        <div style={{ marginTop: 4, fontSize: 12, color: '#9ca3af' }}>
+                          matched: {entry.matched_fields.join(', ')}
+                        </div>
+                      )}
                       
                       {entry.team_member_id && (
                         <div className="entry-team-member">

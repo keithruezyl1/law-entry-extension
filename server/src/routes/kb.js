@@ -5,6 +5,72 @@ import { embedText } from '../embeddings.js';
 import buildEmbeddingText from '../embedding-builder.js';
 
 const router = Router();
+
+// --- Helpers for server-side query normalization/expansion ---
+function romanToInt(roman) {
+  if (!roman) return null;
+  const map = { i:1, v:5, x:10, l:50, c:100, d:500, m:1000 };
+  const s = roman.toLowerCase();
+  if (!/^[ivxlcdm]+$/.test(s)) return null;
+  let res = 0, prev = 0;
+  for (let i = s.length - 1; i >= 0; i--) {
+    const val = map[s[i]] || 0;
+    if (val < prev) res -= val; else res += val;
+    prev = val;
+  }
+  return res > 0 ? String(res) : null;
+}
+
+function normalizeAndExpandQuery(q) {
+  let s = String(q || '').toLowerCase();
+  // common punctuation → space
+  s = s.replace(/[“”"'’`]+/g, ' ').replace(/[–—‐−]/g, '-');
+  // abbreviations and acronyms (PH legal)
+  s = s
+    .replace(/\bra\.\b/g, ' republic act ')
+    .replace(/\br\.a\.\b/g, ' republic act ')
+    .replace(/\bra\b/g, ' republic act ')
+    .replace(/\bbp\b/g, ' batas pambansa ')
+    .replace(/\bb\.p\.\b/g, ' batas pambansa ')
+    .replace(/\bblg\.?\b/g, ' bilang ')
+    .replace(/\bca\b/g, ' commonwealth act ')
+    .replace(/\bc\.a\.\b/g, ' commonwealth act ')
+    .replace(/\bpd\b/g, ' presidential decree ')
+    .replace(/\bp\.d\.\b/g, ' presidential decree ')
+    .replace(/\broc\b/g, ' rules of court ')
+    .replace(/\birr\b/g, ' implementing rules and regulations ')
+    .replace(/\beo\b/g, ' executive order ')
+    .replace(/\bmc\b/g, ' memorandum circular ')
+    .replace(/\bvs\.?\b/g, ' v ')
+    .replace(/\bversus\b/g, ' v ');
+
+  // article/section Roman → Arabic
+  s = s.replace(/\b(article|art)\.?\s+([ivxlcdm]+)\b/g, (_m, _g1, r) => `article ${romanToInt(r) || r}`);
+  s = s.replace(/\b(section|sec)\.?\s+([ivxlcdm]+)\b/g, (_m, _g1, r) => `section ${romanToInt(r) || r}`);
+
+  // compact number-letter like 5 a → 5(a) (helps citation forms)
+  s = s.replace(/\b(\d+)\s*([a-z])\b/g, '$1($2)');
+
+  // jurisprudence citation: G.R. No. 123456 → gr number 123456
+  s = s.replace(/\bg\.?\s*r\.?\s*no\.?\s*(\d{1,7})\b/g, ' gr number $1 ');
+
+  // anti- allowlist expansion (hardened)
+  const antiAllow = [
+    'graft', 'trafficking', 'terrorism', 'wiretapping', 'fencing', 'hazing',
+    'money laundering', 'money-laundering', 'moneylaundering', 'red tape', 'red-tape', 'redtape'
+  ];
+  for (const term of antiAllow) {
+    // create a tolerant pattern that matches anti-term with optional hyphen/space
+    const base = term.replace(/[-\s]+/g, '[-\s]?');
+    const re = new RegExp(`\banti${base}\b`, 'g');
+    // expand to include base tokens alongside the anti- form
+    s = s.replace(re, (m) => `${m} ${term.replace(/-/g, ' ')}`);
+  }
+
+  // collapse whitespace
+  s = s.replace(/[^a-z0-9()\-\s]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return s;
+}
 // List entries (basic projection)
 router.get('/entries', async (req, res) => {
   try {
@@ -604,8 +670,14 @@ const LexicalQuerySchema = z.object({
 router.get('/search', async (req, res) => {
   try {
     const p = LexicalQuerySchema.parse(req.query);
-    const limit = p.limit || 20;
-    const q = String(p.query || '').trim();
+    let limit = p.limit || 20;
+    if (Number.isFinite(limit)) {
+      limit = Math.max(1, Math.min(100, limit));
+    } else {
+      limit = 20;
+    }
+    const originalQ = String(p.query || '').trim();
+    const q = normalizeAndExpandQuery(originalQ);
     if (!q) return res.status(400).json({ error: 'query is required' });
 
     // websearch_to_tsquery + fallback trigram union
@@ -673,7 +745,7 @@ router.get('/search', async (req, res) => {
       limit $6`;
 
     const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit, Boolean(p.explain) ];
-    const result = await query(sql, params);
+    let result = await query(sql, params);
 
     // Domain-aware re-rank boosts for agency/admin queries
     const qn = q.toLowerCase();
@@ -685,10 +757,11 @@ router.get('/search', async (req, res) => {
       { key: 'license to sell', type: 'executive_issuance', boost: 2.5 },
       { key: 'franchise suspension', type: 'agency_circular', boost: 2.0 },
       { key: 'clearance', type: null, boost: 1.0 },
+      { key: 'gr number', type: null, boost: 1.0 },
     ];
     const hasAgency = agencyKeys.some(k => qn.includes(k));
     const typeSig = phraseSignals.find(p => qn.includes(p.key)) || null;
-    const boostedRows = (result.rows || []).map(r => {
+    let boostedRows = (result.rows || []).map(r => {
       let extra = 0;
       const title = String(r.title || '').toLowerCase();
       const lawfam = String(r.law_family || '').toLowerCase();
@@ -713,6 +786,41 @@ router.get('/search', async (req, res) => {
       const at = String(a.title || '').length; const bt = String(b.title || '').length; if (at !== bt) return at - bt;
       const aid = String(a.entry_id || a.id || ''); const bid = String(b.entry_id || b.id || ''); return aid.localeCompare(bid);
     });
+
+    // Soft fallback: if no results, run multi-word ILIKE across title/citation/summary
+    if (!boostedRows.length) {
+      const tokens = q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5);
+      if (tokens.length) {
+        const likeClauses = tokens
+          .map((_, idx) => `(
+            lower(title) LIKE $${idx + 1}
+            OR lower(canonical_citation) LIKE $${idx + 1}
+            OR lower(summary) LIKE $${idx + 1}
+          )`)
+          .join(' AND ');
+        const likeParams = tokens.map(t => `%${t}%`);
+        const softSql = `
+          select entry_id, type, title, canonical_citation, section_id, law_family, tags, summary,
+                 verified, status, effective_date,
+                 0.05 as rank_score,
+                 null::text as hl_title,
+                 null::text as hl_summary,
+                 null::text as hl_citation,
+                 false as m_title,
+                 false as m_citation,
+                 false as m_section
+          from kb_entries
+          where ${likeClauses}
+          limit $${likeParams.length + 1}
+        `;
+        try {
+          const softRes = await query(softSql, [...likeParams, limit]);
+          boostedRows = softRes.rows || [];
+        } catch (e) {
+          // ignore; keep empty results
+        }
+      }
+    }
 
     let suggestion = null;
     if ((result.rows || []).length < 3) {
