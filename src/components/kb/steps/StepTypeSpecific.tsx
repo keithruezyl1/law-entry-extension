@@ -240,7 +240,6 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   onActivate={() => setActiveSide('related_sections')}
                 />
               </div>
-              </div>
             </div>
           </div>
         </div>
