@@ -305,7 +305,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
 
-  const { control, register, handleSubmit, watch, setValue, getValues, formState: { errors } } = methods;
+  const { control, register, handleSubmit, watch, setValue, getValues } = methods;
   const type = watch('type');
   const status = watch('status');
   const lawFamily = watch('law_family');
@@ -2731,25 +2731,18 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                             </div>
                             <div className="flex gap-3">
                               <Button type="button" variant="outline" onClick={goPrev} className="h-12 px-10 min-w-[130px] !text-black dark:!text-white border-2 border-orange-500">Previous</Button>
-                              <Button 
-                                type="submit" 
+                              <Button
+                                type="submit"
                                 disabled={isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)}
-                                onClick={() => {
+                                onClick={(e) => {
                                   console.log('🔘 CREATE ENTRY BUTTON CLICKED');
                                   console.log('🔘 Button disabled state:', isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0));
                                   console.log('🔘 isSubmitting:', isSubmitting);
                                   console.log('🔘 isUpdatingEntry:', isUpdatingEntry);
                                   console.log('🔘 nearDuplicates:', nearDuplicates);
-                                  console.log('🔘 Form errors:', errors);
-                                  console.log('🔘 Form values:', getValues());
                                   
-                                  // Force form submission if button is not disabled
-                                  if (!isSubmitting && !isUpdatingEntry && (!nearDuplicates || nearDuplicates.length === 0)) {
-                                    console.log('🔘 Triggering form submission...');
-                                    handleSubmit(onSubmit)();
-                                  } else {
-                                    console.log('🔘 Button is disabled, not submitting');
-                                  }
+                                  // Don't prevent default - let the form submit naturally
+                                  // The form's onSubmit will be called automatically
                                 }}
                                 className={`flex items-center gap-3 px-12 min-w-[160px] py-3 h-12 transition-all duration-200 ${
                                   isSubmitting || isUpdatingEntry || (nearDuplicates && nearDuplicates.length > 0)

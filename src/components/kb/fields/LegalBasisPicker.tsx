@@ -39,16 +39,6 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       return {};
     }
   });
-  
-  // Track dismissed suggestions separately
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<number>>(() => {
-    try {
-      const saved = localStorage.getItem(`kb_dismissed_suggestions_${name}`);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
   const searchCache = useRef<Map<string, EntryLite[]>>(new Map());
@@ -470,8 +460,8 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
           const finalScore = base + boost;
           if (finalScore >= 10) { // Balanced threshold to catch relevant matches
             results.push({ entry, score: finalScore });
-            // Early termination: if we have 2+ high-confidence matches (score >= 25), stop searching
-            if (finalScore >= 25) {
+            // Early termination: if we have 2+ high-confidence matches (score >= 1000), stop searching
+            if (finalScore >= 1000) {
               highConfidenceCount++;
               if (highConfidenceCount >= 2) break;
             }
@@ -668,15 +658,6 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     }
   }, [inlineMatches, name]);
 
-  // Save dismissed suggestions to localStorage for persistence
-  useEffect(() => {
-    try {
-      localStorage.setItem(`kb_dismissed_suggestions_${name}`, JSON.stringify([...dismissedSuggestions]));
-    } catch (error) {
-      console.warn('Failed to save dismissed suggestions to localStorage:', error);
-    }
-  }, [dismissedSuggestions, name]);
-
   // Manual scan function for the "Scan for Internal Citations" button
   const scanAllExternalCitations = useCallback(async () => {
     console.log('🔍 MANUAL SCAN BUTTON CLICKED - clearing existing matches and re-scanning...');
@@ -687,13 +668,24 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     setInlineMatches({});
     console.log('🔍 Cleared all existing matches for fresh scan');
     
-    // Clear dismissed suggestions to allow them to reappear on fresh scan
-    setDismissedSuggestions(new Set());
-    console.log('🔍 Cleared dismissed suggestions for fresh scan');
-    
     // Clear search cache to ensure fresh results
     searchCache.current.clear();
     console.log('🔍 Cleared search cache for fresh results');
+    
+    // Clear all dismissals to allow re-scanning
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(`kb_dismissed_${name}_`)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log(`🔍 Cleared ${keysToRemove.length} dismissals for fresh scan`);
+    } catch (error) {
+      console.warn('Failed to clear dismissals:', error);
+    }
     
     // Always refresh entries to ensure we have the latest KB data
     console.log('🔍 Refreshing entries from database to ensure latest KB data...');
@@ -780,7 +772,15 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
             );
           }
           
-          setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
+          // Check if this citation was previously dismissed
+          const dismissedKey = `kb_dismissed_${name}_${actualIndex}`;
+          const wasDismissed = localStorage.getItem(dismissedKey) === 'true';
+          
+          if (!wasDismissed && matches.length > 0) {
+            setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
+          } else if (wasDismissed) {
+            console.log(`🔍 Skipping dismissed citation at index ${actualIndex}`);
+          }
           
           // Debug: Show when yellow buttons should appear
           if (matches.length > 0) {
@@ -1017,23 +1017,27 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
               <div key={f.id} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="kb-form-subtitle text-sm font-medium">External Citation #{externalIndex}</div>
-                  {!!inlineMatches[i]?.length && !dismissedSuggestions.has(i) && (
+                  {!!inlineMatches[i]?.length && (
                     <button
                       type="button"
-                      className="kb-internal-match-btn text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-2 py-1 sm:px-3 sm:py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300 whitespace-nowrap relative pr-6"
+                      className="kb-internal-match-btn text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-2 py-1 sm:px-3 sm:py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300 whitespace-nowrap flex items-center gap-2"
                       onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
                       title={`Internal match:\n${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}\n${inlineMatches[i][0]?.canonical_citation || ''}`}
                       aria-label={`Convert to internal: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}`}
                     >
                       <span className="hidden sm:inline">This law might be in the KB. Add as Internal instead?</span>
                       <span className="sm:hidden">Add as Internal instead?</span>
-                      <button
-                        type="button"
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-4 h-4 rounded transition-colors"
+                      <X 
+                        className="w-3 h-3 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevent triggering the main button
-                          // Add this citation to dismissed suggestions
-                          setDismissedSuggestions(prev => new Set([...prev, i]));
+                          e.stopPropagation(); // Prevent button click
+                          // Persist dismissal in localStorage
+                          try {
+                            const dismissedKey = `kb_dismissed_${name}_${i}`;
+                            localStorage.setItem(dismissedKey, 'true');
+                          } catch (error) {
+                            console.warn('Failed to save dismissal to localStorage:', error);
+                          }
                           // Clear the matches for this specific citation
                           setInlineMatches(prev => {
                             const newMatches = { ...prev };
@@ -1041,11 +1045,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                             return newMatches;
                           });
                         }}
-                        title="Dismiss suggestion"
-                        aria-label="Dismiss suggestion"
-                      >
-                        <X className="w-3 h-3 text-gray-600 dark:text-gray-300" />
-                      </button>
+                      />
                     </button>
                   )}
                 </div>
