@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -30,7 +30,15 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     index: number | null;
     matches: EntryLite[];
   }>({ open: false, index: null, matches: [] });
-  const [inlineMatches, setInlineMatches] = useState<Record<number, EntryLite[]>>({});
+  const [inlineMatches, setInlineMatches] = useState<Record<number, EntryLite[]>>(() => {
+    // Load persistent matches from localStorage
+    try {
+      const saved = localStorage.getItem(`kb_inline_matches_${name}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
   const searchCache = useRef<Map<string, EntryLite[]>>(new Map());
@@ -640,6 +648,137 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       });
     }
   }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
+
+  // Save matches to localStorage for persistence
+  useEffect(() => {
+    try {
+      localStorage.setItem(`kb_inline_matches_${name}`, JSON.stringify(inlineMatches));
+    } catch (error) {
+      console.warn('Failed to save inline matches to localStorage:', error);
+    }
+  }, [inlineMatches, name]);
+
+  // Manual scan function for the "Scan for Internal Citations" button
+  const scanAllExternalCitations = useCallback(async () => {
+    console.log('🔍 MANUAL SCAN BUTTON CLICKED - clearing existing matches and re-scanning...');
+    console.log('🔍 allEntries:', allEntries?.length || 0);
+    console.log('🔍 existingEntries:', existingEntries?.length || 0);
+    
+    // Clear all existing matches to force fresh scan
+    setInlineMatches({});
+    console.log('🔍 Cleared all existing matches for fresh scan');
+    
+    // Always refresh entries to ensure we have the latest KB data
+    console.log('🔍 Refreshing entries from database to ensure latest KB data...');
+    try {
+      const rows = await fetchAllEntriesFromDb();
+      if (Array.isArray(rows) && rows.length) {
+        const mapped: EntryLite[] = rows.map((r: any) => ({
+          id: r.id,
+          entry_id: r.entry_id,
+          title: r.title || '',
+          type: r.type,
+          canonical_citation: r.canonical_citation || ''
+        }));
+        setAllEntries(mapped);
+        console.log('🔍 Successfully loaded ALL entries from KB:', mapped.length);
+        console.log('🔍 This includes entries from ALL users in the knowledge base');
+      } else {
+        console.log('🔍 No entries found in database');
+        return;
+      }
+    } catch (error) {
+      console.error('🔍 Error loading entries:', error);
+      return;
+    }
+
+    // Process each external citation individually
+    const externalCitations = items.filter((item: any, index: number) => 
+      item && item.type === 'external' && (item.citation || item.title || item.url)
+    );
+
+    console.log(`🔍 Found ${externalCitations.length} external citations to scan:`, 
+      externalCitations.map((item: any) => ({
+        citation: item.citation,
+        title: item.title,
+        url: item.url
+      }))
+    );
+
+    for (let i = 0; i < externalCitations.length; i++) {
+      const item = externalCitations[i];
+      const actualIndex = items.findIndex((i: any) => i === item);
+      
+      if (actualIndex !== -1) {
+        console.log(`🔍 Scanning citation ${i + 1}/${externalCitations.length}:`, {
+          citation: item.citation,
+          title: item.title,
+          url: item.url,
+          note: item.note,
+          actualIndex: actualIndex
+        });
+        
+        try {
+          const matches = await findSimilarEntriesForExternal(item);
+          console.log(`🔍 Found ${matches.length} matches for "${item.title || item.citation}":`, 
+            matches.map(m => ({
+              title: m.title,
+              citation: m.canonical_citation,
+              entry_id: m.entry_id,
+              type: m.type
+            }))
+          );
+          
+          // CRITICAL DEBUG: Show the actual search query being used
+          console.log(`🔍 SEARCH QUERY DEBUG for "${item.title || item.citation}":`, {
+            originalCitation: item.citation,
+            originalTitle: item.title,
+            searchQuery: `${item.citation} ${item.title}`.trim(),
+            matchesFound: matches.length,
+            matchTitles: matches.map(m => m.title),
+            matchCitations: matches.map(m => m.canonical_citation),
+            matchEntryIds: matches.map(m => m.entry_id)
+          });
+          
+          // CRITICAL DEBUG: Show if these are the same matches for all citations
+          if (matches.length > 0) {
+            console.log(`🔍 MATCH DETAILS for "${item.title || item.citation}":`, 
+              matches.map((m, index) => ({
+                index: index + 1,
+                title: m.title,
+                citation: m.canonical_citation,
+                entry_id: m.entry_id,
+                type: m.type
+              }))
+            );
+          }
+          
+          setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
+          
+          // Debug: Show when yellow buttons should appear
+          if (matches.length > 0) {
+            console.log(`🔍 YELLOW BUTTONS SHOULD APPEAR for "${item.title || item.citation}" - found ${matches.length} matches:`, 
+              matches.map(m => ({ title: m.title, citation: m.canonical_citation, entry_id: m.entry_id }))
+            );
+          } else {
+            console.log(`🔍 NO YELLOW BUTTONS for "${item.title || item.citation}" - no matches found`);
+          }
+          
+          // Small delay between scans to prevent overwhelming the system
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`🔍 Error scanning citation "${item.title || item.citation}":`, error);
+        }
+      }
+    }
+
+    console.log('🔍 Manual scan completed for all external citations');
+  }, [allEntries, existingEntries, items, findSimilarEntriesForExternal]);
+
+  // Expose the scan function via ref
+  useImperativeHandle(ref, () => ({
+    scanAllExternalCitations
+  }), [scanAllExternalCitations]);
 
   const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
     try {
