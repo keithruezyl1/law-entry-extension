@@ -991,15 +991,34 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                 <div className="flex items-center justify-between">
                   <div className="kb-form-subtitle text-sm font-medium">External Citation #{externalIndex}</div>
                   {!!inlineMatches[i]?.length && (
-                    <button
-                      type="button"
-                      className="kb-internal-match-btn text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-3 py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300"
-                      onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
-                      title={`Internal match:\n${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}\n${inlineMatches[i][0]?.canonical_citation || ''}`}
-                      aria-label={`Convert to internal: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}`}
-                    >
-                      This law might be in the KB. Add as Internal instead?
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="kb-internal-match-btn text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-2 py-1 sm:px-3 sm:py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300 whitespace-nowrap"
+                        onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
+                        title={`Internal match:\n${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}\n${inlineMatches[i][0]?.canonical_citation || ''}`}
+                        aria-label={`Convert to internal: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}`}
+                      >
+                        <span className="hidden sm:inline">This law might be in the KB. Add as Internal instead?</span>
+                        <span className="sm:hidden">Add as Internal instead?</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors"
+                        onClick={() => {
+                          // Clear the matches for this specific citation
+                          setInlineMatches(prev => {
+                            const newMatches = { ...prev };
+                            delete newMatches[i];
+                            return newMatches;
+                          });
+                        }}
+                        title="Dismiss suggestion"
+                        aria-label="Dismiss suggestion"
+                      >
+                        <X className="w-3 h-3 text-gray-600 dark:text-gray-300" />
+                      </button>
+                    </div>
                   )}
                 </div>
                 <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
