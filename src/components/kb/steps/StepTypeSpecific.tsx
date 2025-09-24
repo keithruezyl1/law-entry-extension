@@ -167,39 +167,48 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                       setIsScanning(false);
                     }
                   }}
-                  className="scan-button"
+                  className="scan-button kb-scan-button-orange"
                   style={{ 
-                    backgroundColor: '#f97316',
-                    border: '2px solid #f97316',
-                    color: 'white',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    cursor: 'pointer',
-                    boxShadow: 'none',
-                    outline: 'none'
+                    backgroundColor: '#f97316 !important',
+                    border: '2px solid #f97316 !important',
+                    color: 'white !important',
+                    padding: '8px 16px !important',
+                    borderRadius: '8px !important',
+                    fontSize: '14px !important',
+                    fontWeight: '500 !important',
+                    transition: 'all 0.2s ease !important',
+                    cursor: 'pointer !important',
+                    boxShadow: 'none !important',
+                    outline: 'none !important',
+                    margin: '0 !important',
+                    display: 'inline-block !important',
+                    textAlign: 'center !important',
+                    textDecoration: 'none !important',
+                    verticalAlign: 'middle !important',
+                    userSelect: 'none !important',
+                    WebkitUserSelect: 'none !important',
+                    MozUserSelect: 'none !important',
+                    msUserSelect: 'none !important'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ea580c';
-                    e.currentTarget.style.color = 'white';
-                    e.currentTarget.style.borderColor = '#ea580c';
+                    e.currentTarget.style.setProperty('background-color', '#ea580c', 'important');
+                    e.currentTarget.style.setProperty('color', 'white', 'important');
+                    e.currentTarget.style.setProperty('border-color', '#ea580c', 'important');
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f97316';
-                    e.currentTarget.style.color = 'white';
-                    e.currentTarget.style.borderColor = '#f97316';
+                    e.currentTarget.style.setProperty('background-color', '#f97316', 'important');
+                    e.currentTarget.style.setProperty('color', 'white', 'important');
+                    e.currentTarget.style.setProperty('border-color', '#f97316', 'important');
                   }}
                   onMouseDown={(e) => {
-                    e.currentTarget.style.backgroundColor = '#c2410c';
-                    e.currentTarget.style.color = 'white';
-                    e.currentTarget.style.borderColor = '#c2410c';
+                    e.currentTarget.style.setProperty('background-color', '#c2410c', 'important');
+                    e.currentTarget.style.setProperty('color', 'white', 'important');
+                    e.currentTarget.style.setProperty('border-color', '#c2410c', 'important');
                   }}
                   onMouseUp={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ea580c';
-                    e.currentTarget.style.color = 'white';
-                    e.currentTarget.style.borderColor = '#ea580c';
+                    e.currentTarget.style.setProperty('background-color', '#ea580c', 'important');
+                    e.currentTarget.style.setProperty('color', 'white', 'important');
+                    e.currentTarget.style.setProperty('border-color', '#ea580c', 'important');
                   }}
                 >
                   Scan for Internal Citations

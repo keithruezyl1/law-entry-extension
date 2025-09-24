@@ -1145,12 +1145,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
   };
 
   const handleInternalCitationModalConfirm = async () => {
+    console.log('🔍 User confirmed to create entry despite internal citation suggestions');
     setShowInternalCitationModal(false);
-    // User confirmed they want to create the entry as-is
-    // Re-trigger the submission
+    
+    // Clear the global flag to prevent the modal from showing again
+    try {
+      sessionStorage.removeItem('hasInternalSuggestion');
+    } catch {}
+    
+    // Get current form data and proceed with submission
     const formData = getValues();
-    debugLog('🔍 Re-triggering submission after internal citation modal confirmation');
-    await onSubmit(formData);
+    console.log('🔍 Re-triggering submission after internal citation modal confirmation:', formData);
+    
+    // Call the onSubmit function directly with the current form data, skipping internal citation check
+    await onSubmit(formData, true);
   };
 
   // Autosave: only after user input (keyup/change), debounced; CREATE MODE ONLY
@@ -1209,13 +1217,15 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     const legalBases = dataAny.legal_bases || [];
     const relatedSections = dataAny.related_sections || [];
     
-    debugLog('🔍 Checking for internal citation suggestions:', {
-      legalBases: legalBases.map((item: any) => ({ 
+    console.log('🔍 Checking for internal citation suggestions:', {
+      legalBases: legalBases.map((item: any, index: number) => ({ 
+        index: index + 1,
         type: item?.type, 
         hasSuggestion: item?._hasInternalSuggestion,
         title: item?.title || item?.citation 
       })),
-      relatedSections: relatedSections.map((item: any) => ({ 
+      relatedSections: relatedSections.map((item: any, index: number) => ({ 
+        index: index + 1,
         type: item?.type, 
         hasSuggestion: item?._hasInternalSuggestion,
         title: item?.title || item?.citation 
@@ -1229,12 +1239,14 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     legalBases.forEach((item: any, index: number) => {
       if (item && item.type === 'external' && item._hasInternalSuggestion) {
         legalBasesWithSuggestions.push(index + 1); // 1-based numbering
+        console.log(`🔍 Found Legal Bases External Citation #${index + 1} with suggestions:`, item.title || item.citation);
       }
     });
     
     relatedSections.forEach((item: any, index: number) => {
       if (item && item.type === 'external' && item._hasInternalSuggestion) {
         relatedSectionsWithSuggestions.push(index + 1); // 1-based numbering
+        console.log(`🔍 Found Related Section External Citation #${index + 1} with suggestions:`, item.title || item.citation);
       }
     });
     
@@ -1286,7 +1298,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
       message += ' might exist in the KB. Are you sure you don\'t want to add it as internal?';
     }
     
-    debugLog('🔍 Internal citation suggestions result:', {
+    console.log('🔍 Internal citation suggestions result:', {
       legalBasesWithSuggestions,
       relatedSectionsWithSuggestions,
       hasSuggestions,
@@ -1301,7 +1313,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     return { hasSuggestions, message };
   };
 
-  const onSubmit = async (data: Entry) => {
+  const onSubmit = async (data: Entry, skipInternalCitationCheck: boolean = false) => {
     // Prevent multiple submissions using both state and ref
     if (isSubmitting || isSubmittingRef.current) {
       console.log('Form submission already in progress, ignoring duplicate submission');
@@ -1533,7 +1545,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     debugLog('Effective date value:', withMember.effective_date);
 
     // Check for internal citation suggestions before submission (CREATE MODE ONLY)
-    if (isCreateMode) {
+    if (isCreateMode && !skipInternalCitationCheck) {
       debugLog('🔍 Checking for internal suggestions in CREATE MODE');
       const suggestionResult = checkForInternalCitationSuggestions(withMember);
       debugLog('🔍 Has internal suggestions:', suggestionResult.hasSuggestions);
@@ -1545,6 +1557,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         isSubmittingRef.current = false;
         return;
       }
+    } else if (skipInternalCitationCheck) {
+      debugLog('🔍 Skipping internal suggestions check - user confirmed to proceed');
     } else {
       debugLog('🔍 Skipping internal suggestions check - not in CREATE MODE');
     }
