@@ -49,8 +49,8 @@ i foun.entry-list-container {
 .search-clear-btn {
   position: absolute;
   right: 12px; /* anchor to far right */
-  top: 50%;
-  transform: translateY(-50%);
+  top: 45%;
+  transform: translateY(-50%); /* slight upward bias */
   width: 18px;
   height: 18px;
   line-height: 18px;
