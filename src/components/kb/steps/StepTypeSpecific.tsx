@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { ChevronRight } from 'lucide-react';
