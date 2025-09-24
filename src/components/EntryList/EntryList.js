@@ -160,7 +160,7 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
           status: filters?.status && filters.status !== 'all' ? filters.status : undefined,
           verified: filters?.verified && filters.verified !== 'all' ? (filters.verified === 'yes' ? 'yes' : 'not_verified') : undefined,
           team_member_id: filters?.team_member_id && filters.team_member_id !== 'all' ? String(filters.team_member_id) : undefined,
-          limit: 200,
+          limit: 50,
           explain: true,
         });
         if (!alive) return;
