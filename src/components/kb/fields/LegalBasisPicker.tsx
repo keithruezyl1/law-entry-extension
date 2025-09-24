@@ -889,23 +889,34 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         const actualIndex = items.findIndex((i: any) => i === item);
         
         if (actualIndex !== -1) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`🔍 Scanning citation ${i + 1}/${externalCitations.length}: "${item.title || item.citation}"`);
-          }
+          console.log(`🔍 Scanning citation ${i + 1}/${externalCitations.length}:`, {
+            citation: item.citation,
+            title: item.title,
+            url: item.url,
+            note: item.note,
+            actualIndex: actualIndex
+          });
           
           try {
             const matches = await findSimilarEntriesForExternal(item);
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`🔍 Found ${matches.length} matches for "${item.title || item.citation}"`);
-            }
+            console.log(`🔍 Found ${matches.length} matches for "${item.title || item.citation}":`, 
+              matches.map(m => ({
+                title: m.title,
+                citation: m.canonical_citation,
+                entry_id: m.entry_id,
+                type: m.type
+              }))
+            );
             
             setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
             
             // Debug: Show when yellow buttons should appear
-            if (process.env.NODE_ENV === 'development' && matches.length > 0) {
-              console.log(`🔍 Yellow buttons should appear for "${item.title || item.citation}" - found ${matches.length} matches:`, 
+            if (matches.length > 0) {
+              console.log(`🔍 YELLOW BUTTONS SHOULD APPEAR for "${item.title || item.citation}" - found ${matches.length} matches:`, 
                 matches.map(m => ({ title: m.title, citation: m.canonical_citation, entry_id: m.entry_id }))
               );
+            } else {
+              console.log(`🔍 NO YELLOW BUTTONS for "${item.title || item.citation}" - no matches found`);
             }
             
             // Small delay between scans to prevent overwhelming the system
