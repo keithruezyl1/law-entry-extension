@@ -468,7 +468,7 @@ body {
   flex-wrap: wrap;
 }
 
-.nav-right button,
+.nav-right button:not(.btn-danger):not(.btn-import),
 .nav-right label {
   padding: 0.75rem 1.5rem !important;
   border: none !important;

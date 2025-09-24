@@ -42,18 +42,13 @@ i foun.entry-list-container {
   box-sizing: border-box;
 }
 
-.search-loading-indicator {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
+/* Remove loading indicator in search */
+.search-loading-indicator { display: none; }
 
 /* Clear (X) button inside search input */
 .search-clear-btn {
   position: absolute;
-  right: 36px; /* leave space to the right */
+  right: 12px; /* anchor to far right */
   top: 50%;
   transform: translateY(-50%);
   width: 18px;
