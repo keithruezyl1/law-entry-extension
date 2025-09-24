@@ -185,10 +185,10 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                     textAlign: 'center',
                     textDecoration: 'none !important',
                     verticalAlign: 'middle !important',
-                    userSelect: 'none !important',
-                    WebkitUserSelect: 'none !important',
-                    MozUserSelect: 'none !important',
-                    msUserSelect: 'none !important'
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    MozUserSelect: 'none',
+                    msUserSelect: 'none'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.setProperty('background-color', '#ea580c', 'important');
