@@ -49,8 +49,9 @@ i foun.entry-list-container {
 .search-clear-btn {
   position: absolute;
   right: 12px; /* anchor to far right */
-  top: 45%;
-  transform: translateY(-50%); /* slight upward bias */
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
   width: 18px;
   height: 18px;
   line-height: 18px;
@@ -60,6 +61,13 @@ i foun.entry-list-container {
   color: #6b7280; /* dark grey */
   cursor: pointer;
   padding: 0;
+}
+
+/* Ensure no global styles override the position of the X */
+.entry-list-container .search-input-container .search-clear-btn {
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
 }
 .search-clear-btn:hover {
   color: #374151; /* darker grey on hover */

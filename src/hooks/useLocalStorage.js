@@ -414,7 +414,37 @@ export const useLocalStorage = () => {
         let searchTerm = normalize(query);
         const searchWords = searchTerm.split(/\s+/).filter(Boolean);
         // Generate simple synonym/variant expansions (non-destructive)
-        const removeAntiPrefix = (w) => w.startsWith('anti') && w.length > 4 ? w.replace(/^anti[-\s]?/, '') : w;
+        // Roman \u2194 Arabic helpers
+        const romanMap = { m:1000, d:500, c:100, l:50, x:10, v:5, i:1 };
+        const isRoman = (w) => /^[ivxlcdm]+$/.test(w);
+        const romanToArabic = (w) => {
+          if (!isRoman(w)) return null;
+          let sum = 0, prev = 0;
+          for (let i = w.length - 1; i >= 0; i--) {
+            const val = romanMap[w[i]] || 0;
+            if (val < prev) sum -= val; else sum += val;
+            prev = val;
+          }
+          return sum > 0 ? String(sum) : null;
+        };
+        const arabicToRoman = (numStr) => {
+          const n = Number(numStr);
+          if (!Number.isFinite(n) || n <= 0 || n >= 4000) return null;
+          const table = [
+            [1000,'m'],[900,'cm'],[500,'d'],[400,'cd'],[100,'c'],[90,'xc'],[50,'l'],[40,'xl'],[10,'x'],[9,'ix'],[5,'v'],[4,'iv'],[1,'i']
+          ];
+          let x = n; let out = '';
+          for (const [v, r] of table) { while (x >= v) { out += r; x -= v; } }
+          return out || null;
+        };
+        // Safer anti- handling: only strip for known allowlisted bases to avoid over-matching
+        const __ANTI_ALLOW__ = new Set(['graft','trafficking','terrorism','wiretapping','fencing','hazing','money-laundering','moneylaundering','red-tape','redtape']);
+        const removeAntiPrefix = (w) => {
+          if (!(w.startsWith('anti') && w.length > 4)) return w;
+          const base = w.replace(/^anti[-\s]?/, '');
+          const key = base.replace(/\s+/g, '-');
+          return (__ANTI_ALLOW__.has(base) || __ANTI_ALLOW__.has(key)) ? base : w;
+        };
         const expandWordVariants = (w) => {
           const variants = new Set([w]);
           // anti- prefix variant: "anti-torture" ~ "torture"
@@ -431,22 +461,63 @@ export const useLocalStorage = () => {
             'c.a.': ['commonwealth', 'act', 'commonwealth act'],
             bp: ['batas', 'pambansa', 'batas pambansa'],
             'b.p.': ['batas', 'pambansa', 'batas pambansa'],
+            blg: ['bilang'],
             pd: ['presidential', 'decree', 'presidential decree'],
             'p.d.': ['presidential', 'decree', 'presidential decree'],
             irr: ['implementing', 'rules', 'regulations', 'implementing rules and regulations'],
             roc: ['rules', 'of', 'court', 'rules of court'],
-            doj: ['department', 'of', 'justice', 'department of justice']
+            doj: ['department', 'of', 'justice', 'department of justice'],
+            brgy: ['barangay'],
+            bir: ['bureau', 'of', 'internal', 'revenue', 'bureau of internal revenue'],
+            nbi: ['national', 'bureau', 'of', 'investigation', 'national bureau of investigation'],
+            dilg: ['department', 'of', 'the', 'interior', 'and', 'local', 'government', 'department of the interior and local government'],
+            ltfrb: ['land', 'transportation', 'franchising', 'and', 'regulatory', 'board', 'land transportation franchising and regulatory board'],
+            dotr: ['department', 'of', 'transportation', 'department of transportation'],
+            dhsud: ['department', 'of', 'human', 'settlements', 'and', 'urban', 'development', 'department of human settlements and urban development']
           };
           if (syn[w]) syn[w].forEach(v => variants.add(v));
+          // Roman \u2194 Arabic expansions for numeric tokens
+          if (/^\d+$/.test(w)) {
+            const r = arabicToRoman(w);
+            if (r) variants.add(r);
+          } else if (isRoman(w)) {
+            const a = romanToArabic(w);
+            if (a) variants.add(a);
+          }
           return Array.from(variants).filter(Boolean);
         };
-        const searchWordVariants = new Set(searchWords.flatMap(expandWordVariants));
+        let searchWordVariants = new Set(searchWords.flatMap(expandWordVariants));
+        // Compose number-letter composites: "5 a" → "5a", "5(a)", "5-a"
+        for (let i = 0; i < searchWords.length - 1; i++) {
+          const a = searchWords[i];
+          const b = searchWords[i + 1];
+          if (/^\d+$/.test(a) && /^[a-z]$/.test(b)) {
+            searchWordVariants.add(`${a}${b}`);
+            searchWordVariants.add(`${a}(${b})`);
+            searchWordVariants.add(`${a}-${b}`);
+          }
+        }
         // Generate compact and parenthetical variants for matching
         const compactSearch = searchTerm.replace(/\s+/g, '');
         // Insert parentheses between trailing number-letter patterns for better match to canonical forms
         const parentheticalSearch = searchTerm
           .replace(/\b(\d+)\s*([a-z])\b/g, '$1($2)')
           .replace(/\b(\d+)\s*\(\s*([a-z])\s*\)\b/g, '$1($2)');
+        
+        // Ordered proximity helper: boosts when query tokens appear in order within a short window
+        const hasOrderedProximity = (normalizedText, words) => {
+          if (!normalizedText || !words || words.length < 2) return false;
+          let start = 0;
+          const positions = [];
+          for (const w of words) {
+            const idx = normalizedText.indexOf(w, start);
+            if (idx === -1) return false;
+            positions.push(idx);
+            start = idx + w.length;
+          }
+          const span = positions[positions.length - 1] - positions[0];
+          return span <= 40; // small window
+        };
         
         // Fast simple fuzzy matching - no complex algorithms
         const simpleFuzzyMatch = (text, query) => {
@@ -557,6 +628,10 @@ export const useLocalStorage = () => {
             if (!phraseBoostApplied && searchWords.length > 1 && (weight >= 12 || text === entry.summary)) {
               score += Math.min(20, Math.round(weight * 1.5));
               phraseBoostApplied = true;
+            }
+            // Light proximity boost when ordered tokens are near each other for key fields
+            if (searchWords.length > 1 && (weight >= 9) && hasOrderedProximity(normalizedText, searchWords)) {
+              score += Math.min(10, Math.round(weight * 0.5));
             }
           }
           // Compact contains: ignore spaces/parentheses differences

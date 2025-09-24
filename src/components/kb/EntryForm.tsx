@@ -2039,6 +2039,116 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
           setNearDuplicates(filtered);
+
+          // Re-rank using the same boosted local+semantic algorithm as LegalBasisPicker (override above if stronger)
+          try {
+            const normalizeSearchText = (text: string): string => {
+              let normalized = String(text || '')
+                .toLowerCase()
+                .replace(/\b(rule|roc)\s*(\d+)\b/g, 'rule $2')
+                .replace(/\b(section|sec\.?)\s*(\d+)\b/g, 'section $2')
+                .replace(/\b(article|art\.?)\s*(\d+)\b/g, 'article $2')
+                .replace(/\b(republic act|ra)\s*(\d+)\b/g, 'republic act $2')
+                .replace(/\b(presidential decree|pd)\s*(\d+)\b/g, 'presidential decree $2')
+                .replace(/\b(executive order|eo)\s*(\d+)\b/g, 'executive order $2')
+                .replace(/\b(memorandum circular|mc)\s*(\d+)\b/g, 'memorandum circular $2')
+                .replace(/\b(department order|do)\s*(\d+)\b/g, 'department order $2')
+                .replace(/\b(administrative order|ao)\s*(\d+)\b/g, 'administrative order $2')
+                .replace(/\b(commonwealth act|ca)\s*(\d+)\b/g, 'commonwealth act $2')
+                .replace(/\b(batas pambansa|bp)\s*(\d+)\b/g, 'batas pambansa $2')
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+              return normalized;
+            };
+            const getSearchTerms = (s: string) => normalizeSearchText(s).split(' ').filter(Boolean);
+            const romanToNumber = (roman: string): number => { const map: any = {I:1,V:5,X:10,L:50,C:100,D:500,M:1000,i:1,v:5,x:10,l:50,c:100,d:500,m:1000}; let res=0; for(let i=0;i<roman.length;i++){ const cur=map[roman[i]], nxt=map[roman[i+1]]; res += (nxt && cur<nxt)?-cur:cur; } return res; };
+            const numberToRoman = (num: number): string => { const values=[1000,900,500,400,100,90,50,40,10,9,5,4,1]; const symbols=['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I']; let out=''; for(let i=0;i<values.length;i++){ while(num>=values[i]){ out+=symbols[i]; num-=values[i]; } } return out; };
+            const createSearchVariations = (term: string): string[] => { const vars=new Set([term]); if(term.endsWith('s')&&term.length>3){vars.add(term.slice(0,-1));}else{vars.add(term+'s');} const rm=term.match(/^([IVXLC]+)$/i); if(rm){ const n=romanToNumber(rm[1].toUpperCase()); if(n>0&&n<=100){ vars.add(String(n)); vars.add(numberToRoman(n)); } } const nm=term.match(/^(\d+)$/); if(nm){ const n=parseInt(nm[1]); if(n>0&&n<=100){ vars.add(numberToRoman(n)); } } return Array.from(vars); };
+            const editDistance = (a: string, b: string): number => { const m=a.length,n=b.length; const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0)); for(let i=0;i<=m;i++) dp[i][0]=i; for(let j=0;j<=n;j++) dp[0][j]=j; for(let i=1;i<=m;i++){ for(let j=1;j<=n;j++){ const cost=a[i-1]===b[j-1]?0:1; dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost); } } return dp[m][n]; };
+            const calculateMatchScore = (entry: any, terms: string[], exactQuery: string): number => {
+              const tagsJoined = Array.isArray(entry.tags) ? entry.tags.join(' ') : '';
+              const searchable = [
+                { text: entry.title, weight: 10 },
+                { text: entry.entry_id, weight: 8 },
+                { text: entry.law_family, weight: 6 },
+                { text: entry.canonical_citation, weight: 6 },
+                { text: tagsJoined, weight: 5 },
+                { text: entry.summary, weight: 4 },
+                { text: entry.text, weight: 2 },
+                { text: entry.section_id, weight: 3 },
+                { text: entry.type, weight: 2 }
+              ];
+              let total=0, matched=0;
+              for (const term of terms){
+                const vars = createSearchVariations(term);
+                let hit=false, tscore=0;
+                for (const {text,weight} of searchable){
+                  if (!text) continue;
+                  const norm = normalizeSearchText(text);
+                  if (norm===exactQuery){ tscore=Math.max(tscore, weight*3); hit=true; }
+                  else if (norm.startsWith(exactQuery)){ tscore=Math.max(tscore, weight*2); hit=true; }
+                  else if (norm.includes(exactQuery)){ tscore=Math.max(tscore, weight); hit=true; }
+                  else {
+                    for (const v of vars){
+                      if (norm===v){ tscore=Math.max(tscore, weight*2); hit=true; }
+                      else if (norm.startsWith(v)){ tscore=Math.max(tscore, weight*1.5); hit=true; }
+                      else if (norm.includes(v)){ tscore=Math.max(tscore, weight); hit=true; }
+                      else { const words=norm.split(' '); for (const w of words){ const dist=editDistance(v,w); const allowed=v.length<=5?1:2; if (dist<=allowed){ tscore=Math.max(tscore, weight*0.5); hit=true; break; } } }
+                      if (hit) break;
+                    }
+                  }
+                  if (hit) break;
+                }
+                if (hit){ total+=tscore; matched++; }
+              }
+              return matched===terms.length ? total : 0;
+            };
+
+            const pool = existingEntries || [];
+            const terms = getSearchTerms(q);
+            const exactQuery = normalizeSearchText(q);
+            const exactCitationNorm = normalizeSearchText(citation || '');
+            const exactTitleNorm = normalizeSearchText(title || '');
+            const exactSectionNorm = normalizeSearchText(sectionId || '');
+
+            const localScored = pool.map((e: any) => {
+              const base = calculateMatchScore(e, terms, exactQuery);
+              const eTitle = normalizeSearchText(e.title || '');
+              const eCite = normalizeSearchText(e.canonical_citation || '');
+              const eSection = normalizeSearchText(e.section_id || '');
+              let boost = 0;
+              if (exactCitationNorm){ if (eCite===exactCitationNorm) boost+=2000; if (eTitle===exactCitationNorm) boost+=1500; if (eCite.startsWith(exactCitationNorm)) boost+=1000; if (eTitle.startsWith(exactCitationNorm)) boost+=800; if (eCite.includes(exactCitationNorm)) boost+=600; if (eTitle.includes(exactCitationNorm)) boost+=400; }
+              if (exactTitleNorm){ if (eTitle===exactTitleNorm) boost+=1000; if (eCite===exactTitleNorm) boost+=800; if (eTitle.startsWith(exactTitleNorm)) boost+=500; if (eCite.startsWith(exactTitleNorm)) boost+=400; if (eTitle.includes(exactTitleNorm)) boost+=300; if (eCite.includes(exactTitleNorm)) boost+=200; }
+              if (exactSectionNorm){ if (eSection===exactSectionNorm) boost+=800; if (eSection.startsWith(exactSectionNorm)) boost+=400; if (eSection.includes(exactSectionNorm)) boost+=200; }
+              return { entry: e, score: base + boost };
+            }).filter(it => it.score >= 10);
+
+            const semanticRaw = (resp.success && Array.isArray(resp.results)) ? resp.results : [];
+            const semanticScored = semanticRaw.map((r: any) => {
+              let score = Number(r.similarity || r.score || 0) * 100;
+              const rTitle = normalizeSearchText(r.title || '');
+              const rCite = normalizeSearchText(r.canonical_citation || '');
+              if (exactCitationNorm && (rCite===exactCitationNorm || rTitle===exactCitationNorm)) score += 25;
+              else if (exactTitleNorm && (rTitle===exactTitleNorm || rCite===exactTitleNorm)) score += 20;
+              else score *= 0.5;
+              return { entry: r, score };
+            });
+
+            const merged: Record<string, { entry: any; local: number; semantic: number }> = {} as any;
+            for (const it of localScored){ const id = it.entry.entry_id || it.entry.id || it.entry.title; const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 }; merged[id] = { entry: it.entry, local: Math.max(prev.local, it.score), semantic: prev.semantic }; }
+            for (const it of semanticScored){ const id = it.entry.entry_id || it.entry.id || it.entry.title; const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 }; merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) }; }
+
+            const SEM_THRESHOLD = 50;
+            const LOC_THRESHOLD = 10;
+            const reRanked = Object.values(merged)
+              .filter(m => (m.local >= LOC_THRESHOLD) || (m.semantic >= SEM_THRESHOLD && m.local >= 8))
+              .sort((a, b) => (b.local * 2 + b.semantic) - (a.local * 2 + a.semantic))
+              .slice(0, 5)
+              .map(m => m.entry);
+
+            setNearDuplicates(reRanked);
+          } catch {}
         }
       } catch (error) {
         console.error('❌ Error in duplicate detection:', error);
