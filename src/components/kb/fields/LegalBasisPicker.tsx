@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -16,7 +16,7 @@ interface LegalBasisPickerProps {
   existingEntries?: EntryLite[];
 }
 
-export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActivate?: () => void }>(({ name, control, register, existingEntries = [], onActivate }, ref) => {
+export function LegalBasisPicker({ name, control, register, existingEntries = [], onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove, update } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -34,23 +34,6 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
   const suppressDetectForExternal = useRef<Set<number>>(new Set());
   const detectTimersRef = useRef<Record<number, number | undefined>>({});
   const searchCache = useRef<Map<string, EntryLite[]>>(new Map());
-  const [isScanning, setIsScanning] = useState(false);
-
-  const persistRemoval = (item: any) => {
-    try {
-      const key = String(item?.entry_id || item?.citation || item?.title || item?.url || JSON.stringify(item)).toLowerCase();
-      const raw = localStorage.getItem('kb_deleted_relations');
-      const tombstones = Array.isArray(raw ? JSON.parse(raw) : []) ? JSON.parse(raw || '[]') : [];
-      tombstones.push({ scope: name, key });
-      localStorage.setItem('kb_deleted_relations', JSON.stringify(tombstones.slice(-200)));
-      // Only log in development mode to reduce console spam
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🗑️ Tombstoned deletion:', { scope: name, key, item: { citation: item?.citation, title: item?.title } });
-      }
-    } catch (e) {
-      console.error('Failed to persist removal:', e);
-    }
-  };
   
   // Internal citation states
   const [showInternalSearch, setShowInternalSearch] = useState(internalCount === 0);
@@ -89,51 +72,22 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
   }, []);
 
 
-  // Enhanced search function with Unicode normalization and comprehensive legal patterns
+  // Enhanced search function that handles pluralization, word variations, and minor typos
   const normalizeSearchText = (text: string): string => {
     let normalized = String(text || '')
-      // Unicode NFKC normalization
-      .normalize('NFKC')
       .toLowerCase()
-      // Collapse whitespace and normalize special characters
-      .replace(/[\u00A0\u2000-\u200F\u2028-\u202F\u205F-\u206F\u3000]/g, ' ') // NBSP and other spaces
-      .replace(/[""]/g, '"') // Smart quotes to regular quotes
-      .replace(/['']/g, "'") // Smart apostrophes to regular apostrophes
-      .replace(/[–—]/g, '-') // En-dash and em-dash to hyphen
-      // Expand comprehensive law number patterns
-      .replace(/\b(ra\s+no\.?\s*|r\.a\.\s*|republic\s+act\s+no\.?\s*|republic\s+act\s*)\s*(\d+)\b/g, 'republic act $2')
-      .replace(/\b(pd\s+no\.?\s*|p\.d\.\s*|presidential\s+decree\s+no\.?\s*|presidential\s+decree\s*)\s*(\d+)\b/g, 'presidential decree $2')
-      .replace(/\b(eo\s+no\.?\s*|e\.o\.\s*|executive\s+order\s+no\.?\s*|executive\s+order\s*)\s*(\d+)\b/g, 'executive order $2')
-      .replace(/\b(mc\s+no\.?\s*|m\.c\.\s*|memorandum\s+circular\s+no\.?\s*|memorandum\s+circular\s*)\s*(\d+)\b/g, 'memorandum circular $2')
-      .replace(/\b(do\s+no\.?\s*|d\.o\.\s*|department\s+order\s+no\.?\s*|department\s+order\s*)\s*(\d+)\b/g, 'department order $2')
-      .replace(/\b(ao\s+no\.?\s*|a\.o\.\s*|administrative\s+order\s+no\.?\s*|administrative\s+order\s*)\s*(\d+)\b/g, 'administrative order $2')
-      .replace(/\b(ca\s+no\.?\s*|c\.a\.\s*|commonwealth\s+act\s+no\.?\s*|commonwealth\s+act\s*)\s*(\d+)\b/g, 'commonwealth act $2')
-      .replace(/\b(bp\s+no\.?\s*|b\.p\.\s*|batas\s+pambansa\s+no\.?\s*|batas\s+pambansa\s*)\s*(\d+)\b/g, 'batas pambansa $2')
-      // Fix redundant "Rule of Court Rule X" patterns
-      .replace(/\b(rule\s+of\s+court\s+rule\s+)(\d+)\b/g, 'rule $2')
-      .replace(/\b(rules\s+of\s+court\s+rule\s+)(\d+)\b/g, 'rule $2')
-      .replace(/\b(roc\s+rule\s+)(\d+)\b/g, 'rule $2')
-      // Normalize legal abbreviations (strip periods)
+      // Normalize legal abbreviations before removing punctuation
       .replace(/\b(rule|roc)\s*(\d+)\b/g, 'rule $2')
-      .replace(/\b(section|sec\.?|§)\s*(\d+)\b/g, 'section $2')
+      .replace(/\b(section|sec\.?)\s*(\d+)\b/g, 'section $2')
       .replace(/\b(article|art\.?)\s*(\d+)\b/g, 'article $2')
-      // Court & Legal Process abbreviations
-      .replace(/\b(revised\s+penal\s+code|rpc)\s*(\d+)\b/g, 'revised penal code $2')
-      .replace(/\b(rules\s+of\s+court|roc)\s*(\d+)\b/g, 'rules of court $2')
-      .replace(/\b(general\s+register|gr\.?)\s*no\.?\s*(\d+)\b/g, 'general register no $2')
-      .replace(/\b(versus|vs\.?|v\.?)\s*/g, 'versus ')
-      // Agency abbreviations
-      .replace(/\b(land\s+transportation\s+office|lto)\s*/g, 'land transportation office ')
-      .replace(/\b(philippine\s+national\s+police|pnp)\s*/g, 'philippine national police ')
-      .replace(/\b(department\s+of\s+health|doh)\s*/g, 'department of health ')
-      .replace(/\b(department\s+of\s+justice|doj)\s*/g, 'department of justice ')
-      .replace(/\b(commission\s+on\s+human\s+rights|chr)\s*/g, 'commission on human rights ')
-      // Legal terms
-      .replace(/\b(beyond\s+reasonable\s+doubt|brd)\b/g, 'beyond reasonable doubt')
-      .replace(/\b(preponderance\s+of\s+evidence|poe)\b/g, 'preponderance of evidence')
-      .replace(/\b(standard\s+operating\s+procedure|sop)\b/g, 'standard operating procedure')
-      .replace(/\b(gender\s+based\s+violence|gbv)\b/g, 'gender based violence')
-      .replace(/\b(driving\s+under\s+influence|dui)\b/g, 'driving under influence')
+      .replace(/\b(republic act|ra)\s*(\d+)\b/g, 'republic act $2')
+      .replace(/\b(presidential decree|pd)\s*(\d+)\b/g, 'presidential decree $2')
+      .replace(/\b(executive order|eo)\s*(\d+)\b/g, 'executive order $2')
+      .replace(/\b(memorandum circular|mc)\s*(\d+)\b/g, 'memorandum circular $2')
+      .replace(/\b(department order|do)\s*(\d+)\b/g, 'department order $2')
+      .replace(/\b(administrative order|ao)\s*(\d+)\b/g, 'administrative order $2')
+      .replace(/\b(commonwealth act|ca)\s*(\d+)\b/g, 'commonwealth act $2')
+      .replace(/\b(batas pambansa|bp)\s*(\d+)\b/g, 'batas pambansa $2')
       // Handle common word variations for better title matching
       .replace(/\b(physical\s+)?injuries?\b/g, 'injuries')
       .replace(/\b(slight\s+)?injuries?\b/g, 'slight injuries')
@@ -388,7 +342,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       .slice(0, 8);
     
     return scoredEntries.map(item => item.entry);
-  }, [existingEntries, allEntries, query, calculateMatchScore, getSearchTerms]);
+  }, [existingEntries, allEntries, query]);
 
   // Build a search query from an external citation row
   const buildExternalQuery = (ext: any): string => {
@@ -410,15 +364,6 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     const q = buildExternalQuery(ext).trim();
     if (!q) return [];
     
-    // CRITICAL DEBUG: Log the exact search query being built
-    console.log(`🔍 BUILDING SEARCH QUERY for external citation:`, {
-      citation: ext?.citation,
-      title: ext?.title,
-      url: ext?.url,
-      note: ext?.note,
-      builtQuery: q
-    });
-    
     // Create a more specific cache key that includes the citation and title
     const cacheKey = `${ext?.citation || ''}-${ext?.title || ''}-${ext?.url || ''}`.toLowerCase();
     if (searchCache.current.has(cacheKey)) {
@@ -427,183 +372,106 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     
     const searchTerms = getSearchTerms(q);
     if (searchTerms.length === 0) return [];
-    
-    // CRITICAL FIX: Always use allEntries (full KB) - never fall back to existingEntries
-    const pool = allEntries && allEntries.length > 0 ? allEntries : [];
-    
-    // Debug: Log what pool we're using
-    console.log('🔍 POOL SELECTION DEBUG:', {
-      allEntriesCount: allEntries?.length || 0,
-      existingEntriesCount: existingEntries?.length || 0,
-      usingPool: allEntries && allEntries.length > 0 ? 'allEntries (full KB)' : 'EMPTY ARRAY (no fallback)',
-      poolCount: pool.length,
-      sample: pool.slice(0, 5).map(e => ({ 
-        title: e.title, 
-        entry_id: e.entry_id,
-        type: e.type,
-        citation: e.canonical_citation
-      }))
-    });
-    
-    // If no pool available, return empty results
-    if (pool.length === 0) {
-      console.log('🔍 No entries available for search - returning empty results');
-      return [];
-    }
-    
+    const pool = (allEntries && allEntries.length ? allEntries : existingEntries);
     const exactCitation = normalizeSearchText(String(ext?.citation || ''));
     const exactTitle = normalizeSearchText(String(ext?.title || ''));
-    
-    // Use the entire pool - search ALL entries in the knowledge base
-    const filteredPool = pool;
-    
-    console.log('🔍 SEARCHING ENTIRE KB:', {
-      totalEntries: pool.length,
-      searchScope: 'ENTIRE KNOWLEDGE BASE (all users\' entries)',
-      note: 'Including all entries from all users'
-    });
 
-    // Run local scoring first using entire KB pool (including all users' entries)
-    const localScored: { entry: any; score: number }[] = [];
-    let highConfidenceCount = 0;
-    
-    console.log('🔍 Starting scoring with entire KB pool:', {
-      totalEntries: filteredPool.length,
-      searchQuery: q,
-      exactCitation,
-      exactTitle
-    });
-    
-    for (const entry of filteredPool) {
-      const base = calculateMatchScore(entry, searchTerms);
-      // Strong exact/near-exact boosts
-      const entryTitle = normalizeSearchText(entry.title || '');
-      const entryCite = normalizeSearchText(entry.canonical_citation || '');
-      let boost = 0;
-      
-      // DEBUG: Log scoring for entries that might match
-      if (base > 0 || entryTitle.includes(exactTitle.toLowerCase()) || entryCite.includes(exactCitation.toLowerCase())) {
-        console.log(`🔍 SCORING DEBUG for entry "${entry.title}":`, {
-          entryTitle: entryTitle,
-          entryCitation: entryCite,
-          searchTitle: exactTitle,
-          searchCitation: exactCitation,
-          baseScore: base,
-          titleMatch: entryTitle.includes(exactTitle.toLowerCase()),
-          citationMatch: entryCite.includes(exactCitation.toLowerCase())
-        });
-      }
-      
-      // HIERARCHICAL MATCHING SYSTEM WITH NEW SCORING
-      
-      // PRIORITY 1: EXACT CITATION MATCHES (100 points)
-      if (exactCitation) {
-        // Exact citation match gets highest priority
-        if (entryCite === exactCitation) boost += 100;
-        if (entryTitle === exactCitation) boost += 80;
+    // Run local and semantic search in parallel for better performance
+    const [localScored, semanticScored] = await Promise.all([
+      // Local scoring (synchronous) with early termination for high-confidence matches
+      Promise.resolve((() => {
+        const results: { entry: any; score: number }[] = [];
+        let highConfidenceCount = 0;
         
-        // Citation starts-with matches
-        if (entryCite.startsWith(exactCitation)) boost += 60;
-        if (entryTitle.startsWith(exactCitation)) boost += 50;
-        
-        // Citation contains matches
-        if (entryCite.includes(exactCitation)) boost += 40;
-        if (entryTitle.includes(exactCitation)) boost += 30;
-      }
-      
-      // PRIORITY 2: TITLE-BASED MATCHES (70 points max)
-      if (exactTitle) {
-        // Exact title match gets high priority
-        if (entryTitle === exactTitle) boost += 70;
-        if (entryCite === exactTitle) boost += 60;
-        
-        // Title starts-with matches
-        if (entryTitle.startsWith(exactTitle)) boost += 50;
-        if (entryCite.startsWith(exactTitle)) boost += 40;
-        
-        // Title contains matches
-        if (entryTitle.includes(exactTitle)) boost += 30;
-        if (entryCite.includes(exactTitle)) boost += 20;
-        
-        // Fuzzy title matching for slight variations
-        if (exactTitle.length > 5) {
-          const titleWords = exactTitle.split(' ');
-          const entryTitleWords = entryTitle.split(' ');
-          let matchingWords = 0;
+        for (const entry of pool) {
+          const base = calculateMatchScore(entry, searchTerms);
+          // Strong exact/near-exact boosts
+          const entryTitle = normalizeSearchText(entry.title || '');
+          const entryCite = normalizeSearchText(entry.canonical_citation || '');
+          let boost = 0;
           
-          for (const word of titleWords) {
-            if (entryTitleWords.some(ew => ew === word || ew.startsWith(word) || word.startsWith(ew))) {
-              matchingWords++;
+          // CITATION MATCHES (HIGHEST PRIORITY) - DRAMATICALLY INCREASED BOOSTS
+          if (exactCitation) {
+            // Exact citation match gets HIGHEST priority
+            if (entryCite === exactCitation) boost += 2000; // EXACT CITATION MATCH - HIGHEST POSSIBLE
+            if (entryTitle === exactCitation) boost += 1500; // CITATION IN TITLE - VERY HIGH
+            
+            // Citation starts-with matches
+            if (entryCite.startsWith(exactCitation)) boost += 1000; // CITATION STARTS WITH - HIGH
+            if (entryTitle.startsWith(exactCitation)) boost += 800; // TITLE STARTS WITH - HIGH
+            
+            // Citation contains matches
+            if (entryCite.includes(exactCitation)) boost += 600; // CITATION CONTAINS - MEDIUM-HIGH
+            if (entryTitle.includes(exactCitation)) boost += 400; // TITLE CONTAINS - MEDIUM
+          }
+          
+          // TITLE MATCHES (SECOND PRIORITY) - DRAMATICALLY INCREASED BOOSTS
+          if (exactTitle) {
+            // Exact title match gets VERY high priority
+            if (entryTitle === exactTitle) boost += 1000; // EXACT TITLE MATCH - HIGHEST PRIORITY
+            if (entryCite === exactTitle) boost += 800; // TITLE IN CITATION - VERY HIGH
+            
+            // Title starts-with matches
+            if (entryTitle.startsWith(exactTitle)) boost += 500; // TITLE STARTS WITH - HIGH
+            if (entryCite.startsWith(exactTitle)) boost += 400; // CITATION STARTS WITH - HIGH
+            
+            // Title contains matches
+            if (entryTitle.includes(exactTitle)) boost += 300; // TITLE CONTAINS - MEDIUM-HIGH
+            if (entryCite.includes(exactTitle)) boost += 200; // CITATION CONTAINS - MEDIUM
+            
+            // Fuzzy title matching for slight variations
+            if (exactTitle.length > 5) {
+              const titleWords = exactTitle.split(' ');
+              const entryTitleWords = entryTitle.split(' ');
+              let matchingWords = 0;
+              
+              for (const word of titleWords) {
+                if (entryTitleWords.some(ew => ew === word || ew.startsWith(word) || word.startsWith(ew))) {
+                  matchingWords++;
+                }
+              }
+              
+              // If most words match, give a boost
+              if (matchingWords >= Math.ceil(titleWords.length * 0.7)) {
+                boost += 5 + (matchingWords / titleWords.length) * 5;
+              }
+
             }
           }
           
-          // If most words match, give a boost
-          if (matchingWords >= Math.ceil(titleWords.length * 0.7)) {
-            boost += 10 + (matchingWords / titleWords.length) * 10;
+          // COMBINED EXACT MATCHES (HIGHEST POSSIBLE SCORE)
+          if (exactCitation && exactTitle) {
+            if (entryCite === exactCitation && entryTitle === exactTitle) {
+              boost += 5000; // PERFECT MATCH - HIGHEST POSSIBLE SCORE
+            } else if ((entryCite.includes(exactCitation) || exactCitation.includes(entryCite)) && 
+                       (entryTitle.includes(exactTitle) || exactTitle.includes(entryTitle))) {
+              boost += 3000; // COMBINED PARTIAL MATCH - VERY HIGH
+            }
+          }
+          
+          const finalScore = base + boost;
+          if (finalScore >= 10) { // Balanced threshold to catch relevant matches
+            results.push({ entry, score: finalScore });
+            // Early termination: if we have 2+ high-confidence matches (score >= 1000), stop searching
+            if (finalScore >= 1000) {
+              highConfidenceCount++;
+              if (highConfidenceCount >= 2) break;
+            }
           }
         }
-      }
+        return results;
+      })()),
       
-      // ADDITIONAL BONUSES
-      // Jurisdiction match bonus
-      const extJurisdiction = normalizeSearchText(String(ext?.jurisdiction || ''));
-      const entryJurisdiction = normalizeSearchText(String((entry as any).jurisdiction || ''));
-      if (extJurisdiction && entryJurisdiction && extJurisdiction === entryJurisdiction) {
-        boost += 5;
-      }
-      
-      // Year proximity bonus (if both have years)
-      const extYear = String(ext?.citation || ext?.title || '').match(/\b(19|20)\d{2}\b/);
-      const entryYear = String(entry.canonical_citation || entry.title || '').match(/\b(19|20)\d{2}\b/);
-      if (extYear && entryYear) {
-        const yearDiff = Math.abs(parseInt(extYear[0]) - parseInt(entryYear[0]));
-        if (yearDiff <= 5) boost += 3; // Same or very close years
-        else if (yearDiff <= 10) boost += 1; // Moderately close years
-      }
-      
-      const finalScore = base + boost;
-      
-      // Special case: exact title matches should always be included
-      const isExactTitleMatch = exactTitle && entryTitle && entryTitle === exactTitle;
-      
-      if (finalScore >= 10 || isExactTitleMatch) { // Lowered threshold for better matching
-        localScored.push({ entry, score: finalScore });
-        // Early termination: if we have 2+ high-confidence matches (score >= 70), stop searching
-        if (finalScore >= 70) {
-          highConfidenceCount++;
-          if (highConfidenceCount >= 2) break;
-        }
-      }
-      
-      // Debug logging for all matches (development only)
-      if (process.env.NODE_ENV === 'development' && finalScore >= 5) {
-        console.log('🔍 Match debug:', {
-          externalTitle: exactTitle,
-          externalCitation: exactCitation,
-          entryTitle: entryTitle,
-          entryCitation: entryCite,
-          baseScore: base,
-          boost: boost,
-          finalScore: finalScore,
-          isExactTitleMatch: isExactTitleMatch,
-          threshold: 10,
-          passed: finalScore >= 10 || isExactTitleMatch
-        });
-      }
-    }
-
-    // Run semantic search only if we don't have high-confidence matches
-    let semanticScored: { entry: any; score: number }[] = [];
-    const hasHighConfidenceMatches = localScored.some(item => item.score >= 70);
-    
-    if (!hasHighConfidenceMatches) {
-      try {
-        // Only use semantic search for exact citation/title matches to avoid irrelevant results
-        const semanticQuery = exactCitation || exactTitle;
-        if (semanticQuery) {
+      // Semantic scoring via API (asynchronous) - reduced influence
+      (async () => {
+        try {
+          // Only use semantic search for exact citation/title matches to avoid irrelevant results
+          const semanticQuery = exactCitation || exactTitle;
+          if (!semanticQuery) return []; // Skip semantic search if no exact citation/title
+          
           const resp = await semanticSearch(semanticQuery, 2); // Reduced limit to avoid noise
           if (resp?.success && Array.isArray(resp.results)) {
-            semanticScored = resp.results.map((r: any) => {
+            return resp.results.map((r: any) => {
               let semanticScore = Number(r.similarity || r.score || 0) * 100;
               
               // Only boost if it's an exact match - semantic search is unreliable for variations
@@ -611,26 +479,25 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
               const rCite = normalizeSearchText(r.canonical_citation || '');
               
               if (exactCitation && (rCite === exactCitation || rTitle === exactCitation)) {
-                semanticScore += 30; // Higher boost for exact citation matches
+                semanticScore += 25; // Higher boost for exact citation matches
               } else if (exactTitle && (rTitle === exactTitle || rCite === exactTitle)) {
-                semanticScore += 25; // Higher boost for exact title matches
+                semanticScore += 20; // Higher boost for exact title matches
               } else {
                 // Reduce semantic score for non-exact matches to avoid irrelevant suggestions
-                semanticScore *= 0.3;
+                semanticScore *= 0.5;
               }
               
               return { entry: r, score: semanticScore };
             });
           }
+          return [];
+        } catch {
+          // If semantic search fails, return empty array - local search will handle it
+          return [];
         }
-      } catch {
-        // If semantic search fails, return empty array - local search will handle it
-        semanticScored = [];
-      }
-    } else if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Skipping semantic search - high confidence matches already found');
-    }
-    
+      })()
+    ]);
+
     // Merge and rank by score, prefer entries with exact boosts
     // Merge while tracking both local and semantic scores
     const merged = {} as Record<string, { entry: any; local: number; semantic: number }>;
@@ -645,35 +512,27 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
     }
 
-    // Helper token/overlap utilities for high-confidence gating
-    const tokenize = (s: string) => String(s || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .split(/\s+/)
-      .filter(Boolean);
-    const overlap = (a: string, b: string) => {
-      const A = new Set(tokenize(a));
-      const B = new Set(tokenize(b));
-      if (A.size === 0 || B.size === 0) return 0;
-      let inter = 0;
-      A.forEach(w => { if (B.has(w)) inter++; });
-      return inter / Math.min(A.size, B.size);
-    };
-
-    // Updated thresholds for new scoring system - lowered for better matching
-    const SEM_THRESHOLD = 20; // semantic must be high to matter
-    const LOC_THRESHOLD = 10; // require minimal local evidence
-    const prelim = Object.values(merged)
+    // Balanced thresholds to avoid irrelevant suggestions but still find relevant ones
+    const SEM_THRESHOLD = 50; // balanced to avoid poor semantic matches
+    const LOC_THRESHOLD = 10; // balanced to require decent local matches
+    const results = Object.values(merged)
       .filter(m => {
+        // Only include results with strong local matches OR very high semantic scores
         const hasStrongLocal = m.local >= LOC_THRESHOLD;
         const hasHighSemantic = m.semantic >= SEM_THRESHOLD;
-        return hasStrongLocal || (hasHighSemantic && m.local >= 20);
+        
+        // Prioritize local matches heavily - semantic search often returns irrelevant results
+        return hasStrongLocal || (hasHighSemantic && m.local >= 8);
       })
+      .sort((a, b) => {
+        // Heavily prioritize local matches over semantic
+        const scoreA = a.local * 2 + a.semantic; // Local matches get 2x weight
+        const scoreB = b.local * 2 + b.semantic;
+        
+        return scoreB - scoreA;
+      })
+      .slice(0, 3) // Reduce to top 3 to avoid clutter
       .map(m => m.entry as EntryLite);
-
-    // SIMPLIFIED FILTERING: Keep all matches that passed the initial threshold
-    // The initial scoring already handles the matching logic properly
-    const results = prelim.slice(0, 5); // Show maximum 5 suggestions per external citation
     
     // Cache results for future use (limit cache size to prevent memory issues)
     if (searchCache.current.size > 50) {
@@ -684,311 +543,103 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     }
     searchCache.current.set(cacheKey, results);
     
-    // Enhanced telemetry and logging
-    const telemetry = {
-      query: q,
-      exactCitation,
-      exactTitle,
-      resultCount: results.length,
-      localMatches: localScored.length,
-      semanticMatches: semanticScored.length,
-      hasHighConfidence: results.some(r => {
-        const entryId = r.entry_id || r.id || r.title;
-        return (merged[entryId]?.local || 0) >= 70;
-      }),
-      scoreDistribution: results.map(r => {
-        const entryId = r.entry_id || r.id || r.title;
-        return (merged[entryId]?.local || 0) + (merged[entryId]?.semantic || 0);
-      }),
-      timestamp: Date.now()
-    };
-    
-    // Enhanced debugging for all searches (always enabled for testing)
-    console.log(`🔍 FINAL RESULTS DEBUG:`, {
-      query: q,
-      exactCitation,
-      exactTitle,
-      totalKBSize: pool.length,
-      searchedEntries: filteredPool.length,
-      localScoredCount: localScored.length,
-      resultsCount: results.length,
-      results: results.map(r => ({
-        title: r.title,
-        citation: r.canonical_citation,
-        entry_id: r.entry_id,
-        score: merged[r.entry_id || r.id || r.title]?.local || 0
-      }))
-    });
-    
+    // Debug logging to help understand search results
     if (results.length > 0) {
-      console.log(`🔍 SUCCESS: Search for "${q}" found ${results.length} matches:`, results.map(r => {
+      console.log(`🔍 Search for "${q}" found ${results.length} matches:`, results.map(r => {
         const entryId = r.entry_id || r.id || r.title;
         const localScore = merged[entryId]?.local || 0;
+        const semanticScore = merged[entryId]?.semantic || 0;
         return {
           title: r.title,
           citation: r.canonical_citation,
           localScore,
+          semanticScore,
+          totalScore: localScore + semanticScore,
           entryId
         };
       }));
     } else {
-      console.log(`🔍 NO MATCHES: Search for "${q}" found no matches`, {
-        exactCitation: `"${exactCitation}"`,
-        exactTitle: `"${exactTitle}"`,
-        filteredPoolSize: filteredPool.length,
-        localScoredCount: localScored.length
-      });
-    }
-    
-    // Store telemetry for performance monitoring
-    try {
-      const telemetryKey = `citation_telemetry_${Date.now()}`;
-      sessionStorage.setItem(telemetryKey, JSON.stringify(telemetry));
-      // Clean up old telemetry (keep last 10 entries)
-      const keys = Object.keys(sessionStorage).filter(k => k.startsWith('citation_telemetry_'));
-      if (keys.length > 10) {
-        keys.sort().slice(0, keys.length - 10).forEach(k => sessionStorage.removeItem(k));
-      }
-    } catch (e) {
-      // Ignore storage errors
+      console.log(`🔍 No matches found for "${q}" - exactCitation: "${exactCitation}", exactTitle: "${exactTitle}"`);
     }
     
     return results;
-  };
-
-  // Helper function to check if both citation and title are filled
-  const shouldTriggerDetection = (ext: any): boolean => {
-    if (!ext || ext.type !== 'external') return false;
-    const citation = String(ext.citation || '').trim();
-    const title = String(ext.title || '').trim();
-    return citation.length > 0 && title.length > 0;
   };
 
   const handleDetectExternalMatches = useCallback(async (idx: number) => {
     const ext = items?.[idx];
     if (!ext || ext.type !== 'external') return;
     if (suppressDetectForExternal.current.has(idx)) return;
-    
-    // Only trigger detection if BOTH citation AND title are filled
-    if (!shouldTriggerDetection(ext)) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔍 Skipping detection for index ${idx} - citation: "${ext.citation}", title: "${ext.title}"`);
-      }
-      return;
-    }
-    
-    // Special debugging for "Interventions" case (always enabled for testing)
-    if (ext.title?.toLowerCase().includes('intervention') || ext.citation?.toLowerCase().includes('intervention')) {
-      console.log(`🔍 INTERVENTION DEBUG - Starting detection for:`, {
-        citation: ext.citation,
-        title: ext.title,
-        index: idx,
-        shouldTrigger: shouldTriggerDetection(ext),
-        allEntriesCount: allEntries?.length || 0,
-        existingEntriesCount: existingEntries?.length || 0
-      });
-    }
-    
     const matches = await findSimilarEntriesForExternal(ext);
-    
-    // Log for debugging the Intervention issue (always enabled for testing)
-    if (ext.title?.toLowerCase().includes('intervention') || ext.citation?.toLowerCase().includes('intervention')) {
-      console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
-        external: ext,
-        matches: matches.length,
-        matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
-      });
-    }
-    
-    // quiet by default; enable by kb_debug=1 in storage
-    try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') {
-      console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
-        external: ext,
-        matches: matches.length,
-        matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
-      });
-    } } catch {}
+    console.log(`🔍 External citation matching for "${ext.title || ext.citation}":`, {
+      external: ext,
+      matches: matches.length,
+      matchDetails: matches.map(m => ({ title: m.title, entry_id: m.entry_id, citation: m.canonical_citation }))
+    });
     setInlineMatches(prev => ({ ...prev, [idx]: matches }));
     
     // Set flag to indicate this external citation has internal suggestions
     if (matches.length > 0) {
-      try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') console.log(`🔍 Setting _hasInternalSuggestion=true for external citation at index ${idx}:`, ext.title || ext.citation); } catch {}
-      // Use setTimeout to make update non-blocking and prevent flickering
-      setTimeout(() => update(idx, { ...ext, _hasInternalSuggestion: true }), 0);
+      console.log(`🔍 Setting _hasInternalSuggestion=true for external citation at index ${idx}:`, ext.title || ext.citation);
+      update(idx, { ...ext, _hasInternalSuggestion: true });
       try {
         // Surface a global hint so the create form can gate submission even if
         // this specific row hasn't been re-rendered yet
         sessionStorage.setItem('hasInternalSuggestion', 'true');
       } catch {}
     } else {
-      try { if (localStorage.getItem('kb_debug') === '1' || sessionStorage.getItem('kb_debug') === '1') console.log(`🔍 Setting _hasInternalSuggestion=false for external citation at index ${idx}:`, ext.title || ext.citation); } catch {}
-      // Use setTimeout to make update non-blocking and prevent flickering
-      setTimeout(() => update(idx, { ...ext, _hasInternalSuggestion: false }), 0);
+      console.log(`🔍 Setting _hasInternalSuggestion=false for external citation at index ${idx}:`, ext.title || ext.citation);
+      update(idx, { ...ext, _hasInternalSuggestion: false });
     }
     // keep toast optional off by default
-  }, [items, update, findSimilarEntriesForExternal]);
+  }, [items, update]);
 
-  // Removed unused clearInlineIfEmpty function
-
-  // Adaptive debounce: 0ms after idle 300ms, else 150-250ms during active typing
-  const lastDetectionTime = useRef<number>(0);
-  const adaptiveDebounce = useCallback((idx: number) => {
-    const now = Date.now();
-    const timeSinceLastDetection = now - lastDetectionTime.current;
-    
-    // If more than 300ms since last detection, run immediately
-    if (timeSinceLastDetection > 300) {
-      lastDetectionTime.current = now;
-      handleDetectExternalMatches(idx);
-    } else {
-      // During active typing, use 200ms debounce
-      const existing = detectTimersRef.current[idx];
-      if (existing) {
-        window.clearTimeout(existing);
-      }
-      const timer = window.setTimeout(() => {
-        lastDetectionTime.current = Date.now();
-        handleDetectExternalMatches(idx);
-      }, 200);
-      detectTimersRef.current[idx] = timer as unknown as number;
-    }
-  }, [handleDetectExternalMatches]);
-
-  const handleDetectExternalMatchesDebounced = adaptiveDebounce;
-
-  // Manual scan function for all external citations
-  const scanAllExternalCitations = async () => {
-    console.log('🔍 Scan button clicked - checking entries...');
-    console.log('🔍 allEntries:', allEntries?.length || 0);
-    console.log('🔍 existingEntries:', existingEntries?.length || 0);
-    
-    // Always refresh entries to ensure we have the latest KB data
-    console.log('🔍 Refreshing entries from database to ensure latest KB data...');
-    try {
-      const rows = await fetchAllEntriesFromDb();
-      if (Array.isArray(rows) && rows.length) {
-        const mapped: EntryLite[] = rows.map((r: any) => ({
-          id: r.id,
-          entry_id: r.entry_id,
-          title: r.title || '',
-          type: r.type,
-          canonical_citation: r.canonical_citation || ''
-        }));
-        setAllEntries(mapped);
-        console.log('🔍 Successfully loaded ALL entries from KB:', mapped.length);
-        console.log('🔍 This includes entries from ALL users in the knowledge base');
-      } else {
-        console.log('🔍 No entries found in database');
-        return;
-      }
-    } catch (error) {
-      console.error('🔍 Error loading entries:', error);
-      return;
-    }
-
-    setIsScanning(true);
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Starting manual scan of all external citations...');
-    }
-
-    try {
-      const externalCitations = items.filter((item: any, index: number) => 
-        item && item.type === 'external' && shouldTriggerDetection(item)
-      );
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔍 Found ${externalCitations.length} external citations to scan:`, 
-          externalCitations.map((item: any) => ({
-            citation: item.citation,
-            title: item.title,
-            url: item.url
-          }))
-        );
-      }
-
-      for (let i = 0; i < externalCitations.length; i++) {
-        const item = externalCitations[i];
-        const actualIndex = items.findIndex((i: any) => i === item);
-        
-        if (actualIndex !== -1) {
-          console.log(`🔍 Scanning citation ${i + 1}/${externalCitations.length}:`, {
-            citation: item.citation,
-            title: item.title,
-            url: item.url,
-            note: item.note,
-            actualIndex: actualIndex
-          });
-          
-          try {
-            const matches = await findSimilarEntriesForExternal(item);
-            console.log(`🔍 Found ${matches.length} matches for "${item.title || item.citation}":`, 
-              matches.map(m => ({
-                title: m.title,
-                citation: m.canonical_citation,
-                entry_id: m.entry_id,
-                type: m.type
-              }))
-            );
-            
-            // CRITICAL DEBUG: Show the actual search query being used
-            console.log(`🔍 SEARCH QUERY DEBUG for "${item.title || item.citation}":`, {
-              originalCitation: item.citation,
-              originalTitle: item.title,
-              searchQuery: `${item.citation} ${item.title}`.trim(),
-              matchesFound: matches.length,
-              matchTitles: matches.map(m => m.title),
-              matchCitations: matches.map(m => m.canonical_citation),
-              matchEntryIds: matches.map(m => m.entry_id)
-            });
-            
-            // CRITICAL DEBUG: Show if these are the same matches for all citations
-            if (matches.length > 0) {
-              console.log(`🔍 MATCH DETAILS for "${item.title || item.citation}":`, 
-                matches.map((m, index) => ({
-                  index: index + 1,
-                  title: m.title,
-                  citation: m.canonical_citation,
-                  entry_id: m.entry_id,
-                  type: m.type
-                }))
-              );
-            }
-            
-            setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
-            
-            // Debug: Show when yellow buttons should appear
-            if (matches.length > 0) {
-              console.log(`🔍 YELLOW BUTTONS SHOULD APPEAR for "${item.title || item.citation}" - found ${matches.length} matches:`, 
-                matches.map(m => ({ title: m.title, citation: m.canonical_citation, entry_id: m.entry_id }))
-              );
-            } else {
-              console.log(`🔍 NO YELLOW BUTTONS for "${item.title || item.citation}" - no matches found`);
-            }
-            
-            // Small delay between scans to prevent overwhelming the system
-            await new Promise(resolve => setTimeout(resolve, 100));
-          } catch (error) {
-            console.error(`🔍 Error scanning citation "${item.title || item.citation}":`, error);
-          }
-        }
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Manual scan completed');
-      }
-    } catch (error) {
-      console.error('🔍 Error during manual scan:', error);
-    } finally {
-      setIsScanning(false);
+  const clearInlineIfEmpty = (idx: number) => {
+    const ext = items?.[idx];
+    const c = String(ext?.citation || '').trim();
+    const u = String(ext?.url || '').trim();
+    const t = String(ext?.title || '').trim();
+    if (!c && !u && !t) {
+      setInlineMatches(prev => {
+        if (!prev[idx]) return prev;
+        const next = { ...prev } as Record<number, EntryLite[]>;
+        delete next[idx];
+        return next;
+      });
     }
   };
 
-  // Expose scan function to parent component
-  useImperativeHandle(ref, () => ({
-    scanAllExternalCitations
-  }), [scanAllExternalCitations]);
+  const handleDetectExternalMatchesDebounced = useCallback((idx: number) => {
+    const existing = detectTimersRef.current[idx];
+    if (existing) {
+      window.clearTimeout(existing);
+    }
+    const timer = window.setTimeout(() => handleDetectExternalMatches(idx), 300);
+    detectTimersRef.current[idx] = timer as unknown as number;
+  }, [handleDetectExternalMatches]);
 
-  // Removed automatic detection - now using manual scan button
+  // Auto-detect internal citations when external citations are loaded (e.g., after import)
+  useEffect(() => {
+    if (!allEntries || allEntries.length === 0) return;
+    
+    // Check if we have external citations that haven't been processed yet
+    const externalCitations = items.filter((item: any, index: number) => 
+      item && item.type === 'external' && 
+      (item.citation || item.title || item.url) &&
+      !inlineMatches[index] // Only process if not already processed
+    );
+    
+    if (externalCitations.length > 0) {
+      console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
+      
+      // Trigger detection for each external citation
+      externalCitations.forEach((item: any, index: number) => {
+        const actualIndex = items.findIndex((i: any) => i === item);
+        if (actualIndex !== -1) {
+          handleDetectExternalMatchesDebounced(actualIndex);
+        }
+      });
+    }
+  }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
 
   const convertExternalToInternal = async (extIndex: number, chosen: EntryLite) => {
     try {
@@ -1009,7 +660,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
 
   return (
     <>
-      <div className="space-y-4" data-picker={name}>
+      <div className="space-y-4">
       {/* Picker tabs on top */}
       <div className="flex gap-3 kb-toggle-row">
         <Button
@@ -1101,7 +752,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                   <Button
                     type="button"
                     variant="delete"
-                    onClick={() => { try { persistRemoval(items?.[i]); } catch {}; remove(i); }}
+                    onClick={() => remove(i)}
                     className={`h-11 rounded-xl ${isLastInternal && (showAddInternalButton || showInternalSearch) ? 'flex-1 mb-2' : 'flex-1 mb-2'}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -1200,19 +851,17 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
               <div key={f.id} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="kb-form-subtitle text-sm font-medium">External Citation #{externalIndex}</div>
-                  <div className="flex items-center gap-2">
-                    {!!inlineMatches[i]?.length && (
-                      <button
-                        type="button"
-                        className="kb-internal-match-btn text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-3 py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300"
-                        onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
-                        title={`Internal match:\n${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}\n${inlineMatches[i][0]?.canonical_citation || ''}`}
-                        aria-label={`Convert to internal: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}`}
-                      >
-                        This law might be in the KB. Add as Internal instead?
-                      </button>
-                    )}
-                  </div>
+                  {!!inlineMatches[i]?.length && (
+                    <button
+                      type="button"
+                      className="kb-internal-match-btn text-xs rounded-md border border-yellow-400 bg-yellow-100 text-gray-800 dark:bg-yellow-200 dark:text-white px-3 py-1.5 hover:bg-yellow-200 hover:border-yellow-500 dark:hover:bg-yellow-300"
+                      onClick={() => { const pick = inlineMatches[i][0]; if (pick) void convertExternalToInternal(i, pick); }}
+                      title={`Internal match:\n${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}\n${inlineMatches[i][0]?.canonical_citation || ''}`}
+                      aria-label={`Convert to internal: ${inlineMatches[i][0]?.title || inlineMatches[i][0]?.entry_id || ''}`}
+                    >
+                      This law might be in the KB. Add as Internal instead?
+                    </button>
+                  )}
                 </div>
                 <input type="hidden" value="external" {...register(`${name}.${i}.type` as const)} />
                 
@@ -1222,9 +871,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
-                      {...register(`${name}.${i}.citation` as const, { 
-                        required: 'Citation is required'
-                      })}
+                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -1232,9 +879,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { 
-                        required: 'URL is required'
-                      })}
+                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -1242,7 +887,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const)}
+                      {...register(`${name}.${i}.title` as const, { onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
                     />
                   </div>
                   <div>
@@ -1273,7 +918,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                   <Button
                     type="button"
                     variant="delete"
-                    onClick={() => { setInlineMatches(prev => { const next = { ...prev }; delete next[i]; return next; }); try { persistRemoval(items?.[i]); } catch {}; remove(i); }}
+                    onClick={() => { setInlineMatches(prev => { const next = { ...prev }; delete next[i]; return next; }); remove(i); }}
                     className={`h-11 rounded-xl ${externalCount > 1 ? 'flex-1 mb-2' : 'w-11 mb-2'}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -1377,7 +1022,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       </Toast>
     </>
   );
-});
+}
 
 
 
