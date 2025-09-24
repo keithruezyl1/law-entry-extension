@@ -1261,45 +1261,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Build the message
     let message = '';
     if (hasSuggestions) {
-      const parts: string[] = [];
-      
-      if (legalBasesWithSuggestions.length > 0) {
-        const citationNumbers = legalBasesWithSuggestions.length === 1 
-          ? `#${legalBasesWithSuggestions[0]}`
-          : legalBasesWithSuggestions.length === 2
-          ? `#${legalBasesWithSuggestions[0]}, #${legalBasesWithSuggestions[1]}`
-          : `#${legalBasesWithSuggestions[0]}-${legalBasesWithSuggestions[legalBasesWithSuggestions.length - 1]}`;
-        parts.push(`Legal Bases External Citation ${citationNumbers}`);
-      }
-      
-      if (relatedSectionsWithSuggestions.length > 0) {
-        const citationNumbers = relatedSectionsWithSuggestions.length === 1 
-          ? `#${relatedSectionsWithSuggestions[0]}`
-          : relatedSectionsWithSuggestions.length === 2
-          ? `#${relatedSectionsWithSuggestions[0]}, #${relatedSectionsWithSuggestions[1]}`
-          : `#${relatedSectionsWithSuggestions[0]}-${relatedSectionsWithSuggestions[relatedSectionsWithSuggestions.length - 1]}`;
-        parts.push(`Related Section External Citation ${citationNumbers}`);
-      }
-      
-      // Build the final message
-      if (parts.length > 0) {
-        message = parts.join(', ');
-      } else if (globalFlag) {
-        // Fallback: count all external citations with content
-        const totalExternal = legalBases.filter((item: any) => 
-          item && item.type === 'external' && item.citation && item.title
-        ).length + relatedSections.filter((item: any) => 
-          item && item.type === 'external' && item.citation && item.title
-        ).length;
-        
-        if (totalExternal === 1) {
-          message = 'External Citation detected';
-        } else {
-          message = `External Citations (${totalExternal} found)`;
-        }
-      }
-      
-      message += ' might exist in the KB. Are you sure you don\'t want to add it as internal?';
+      // Use a clear, generic prompt without counts
+      message = 'There are still external citations that might exist in the KB. Are you sure you want to ignore and not add them as internal?';
     }
     
     console.log('🔍 Internal citation suggestions result:', {

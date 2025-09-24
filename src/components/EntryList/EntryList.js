@@ -242,6 +242,17 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                className="search-clear-btn"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                title="Clear"
+              >
+                ×
+              </button>
+            )}
             {isSearching && (
               <div className="search-loading-indicator">
                 <div className="spinner"></div>

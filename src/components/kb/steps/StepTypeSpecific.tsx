@@ -247,6 +247,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   register={register}
                   existingEntries={existingEntries}
                   getValues={getValues}
+                  defaultTab="external"
                   onActivate={() => setActiveSide('legal_bases')}
                 />
               </div>
@@ -260,6 +261,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   register={register}
                   existingEntries={existingEntries}
                   getValues={getValues}
+                  defaultTab="external"
                   onActivate={() => setActiveSide('related_sections')}
                 />
               </div>

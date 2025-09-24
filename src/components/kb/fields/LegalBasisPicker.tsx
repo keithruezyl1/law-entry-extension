@@ -15,12 +15,13 @@ interface LegalBasisPickerProps {
   register: UseFormRegister<any>;
   existingEntries?: EntryLite[];
   getValues?: () => any; // For manual form data saving
+  defaultTab?: 'internal' | 'external';
 }
 
-export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActivate?: () => void }>(({ name, control, register, existingEntries = [], getValues, onActivate }, ref) => {
+export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActivate?: () => void }>(({ name, control, register, existingEntries = [], getValues, defaultTab, onActivate }, ref) => {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove, update } = useFieldArray({ name, control });
-  const [tab, setTab] = useState<'internal' | 'external'>('internal');
+  const [tab, setTab] = useState<'internal' | 'external'>(defaultTab ?? 'internal');
   const [query, setQuery] = useState('');
   const items = (useWatch({ control, name }) as any[]) || [];
   const [allEntries, setAllEntries] = useState<EntryLite[] | null>(null);

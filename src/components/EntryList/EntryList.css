@@ -50,6 +50,28 @@ i foun.entry-list-container {
   pointer-events: none;
 }
 
+/* Clear (X) button inside search input */
+.search-clear-btn {
+  position: absolute;
+  right: 36px; /* leave space to the right */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border: 0;
+  background: transparent;
+  color: #6b7280; /* dark grey */
+  cursor: pointer;
+  padding: 0;
+}
+.search-clear-btn:hover {
+  color: #374151; /* darker grey on hover */
+}
+.dark-mode .search-clear-btn { color: #9ca3af; }
+.dark-mode .search-clear-btn:hover { color: #e5e7eb; }
+
 .spinner {
   width: 16px;
   height: 16px;
