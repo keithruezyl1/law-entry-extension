@@ -419,26 +419,53 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     const searchTerms = getSearchTerms(q);
     if (searchTerms.length === 0) return [];
     
-    // Always prefer allEntries (full KB) over existingEntries (user's recent entries)
-    const pool = allEntries && allEntries.length > 0 ? allEntries : existingEntries;
+    // CRITICAL FIX: Always use allEntries (full KB) - never fall back to existingEntries
+    const pool = allEntries && allEntries.length > 0 ? allEntries : [];
     
     // Debug: Log what pool we're using
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Using pool:', {
-        source: allEntries && allEntries.length > 0 ? 'allEntries (full KB)' : 'existingEntries (recent)',
-        count: pool.length,
-        sample: pool.slice(0, 3).map(e => ({ title: e.title, entry_id: e.entry_id }))
-      });
+    console.log('🔍 POOL SELECTION DEBUG:', {
+      allEntriesCount: allEntries?.length || 0,
+      existingEntriesCount: existingEntries?.length || 0,
+      usingPool: allEntries && allEntries.length > 0 ? 'allEntries (full KB)' : 'EMPTY ARRAY (no fallback)',
+      poolCount: pool.length,
+      sample: pool.slice(0, 5).map(e => ({ 
+        title: e.title, 
+        entry_id: e.entry_id,
+        type: e.type,
+        citation: e.canonical_citation
+      }))
+    });
+    
+    // If no pool available, return empty results
+    if (pool.length === 0) {
+      console.log('🔍 No entries available for search - returning empty results');
+      return [];
     }
     
     const exactCitation = normalizeSearchText(String(ext?.citation || ''));
     const exactTitle = normalizeSearchText(String(ext?.title || ''));
+    
+    // Use the entire pool - search ALL entries in the knowledge base
+    const filteredPool = pool;
+    
+    console.log('🔍 SEARCHING ENTIRE KB:', {
+      totalEntries: pool.length,
+      searchScope: 'ENTIRE KNOWLEDGE BASE (all users\' entries)',
+      note: 'Including all entries from all users'
+    });
 
-    // Run local scoring first
+    // Run local scoring first using entire KB pool (including all users' entries)
     const localScored: { entry: any; score: number }[] = [];
     let highConfidenceCount = 0;
     
-    for (const entry of pool) {
+    console.log('🔍 Starting scoring with entire KB pool:', {
+      totalEntries: filteredPool.length,
+      searchQuery: q,
+      exactCitation,
+      exactTitle
+    });
+    
+    for (const entry of filteredPool) {
       const base = calculateMatchScore(entry, searchTerms);
       // Strong exact/near-exact boosts
       const entryTitle = normalizeSearchText(entry.title || '');
@@ -654,37 +681,41 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       timestamp: Date.now()
     };
     
-    // General debugging for all searches (development only)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔍 Citation Detection Debug:`, {
-        query: q,
-        exactCitation,
-        exactTitle,
-        poolSize: pool.length,
-        localScoredCount: localScored.length,
-        resultsCount: results.length,
-        results: results.map(r => ({
+    // Enhanced debugging for all searches (always enabled for testing)
+    console.log(`🔍 FINAL RESULTS DEBUG:`, {
+      query: q,
+      exactCitation,
+      exactTitle,
+      totalKBSize: pool.length,
+      searchedEntries: filteredPool.length,
+      localScoredCount: localScored.length,
+      resultsCount: results.length,
+      results: results.map(r => ({
+        title: r.title,
+        citation: r.canonical_citation,
+        entry_id: r.entry_id,
+        score: merged[r.entry_id || r.id || r.title]?.local || 0
+      }))
+    });
+    
+    if (results.length > 0) {
+      console.log(`🔍 SUCCESS: Search for "${q}" found ${results.length} matches:`, results.map(r => {
+        const entryId = r.entry_id || r.id || r.title;
+        const localScore = merged[entryId]?.local || 0;
+        return {
           title: r.title,
           citation: r.canonical_citation,
-          entry_id: r.entry_id,
-          score: merged[r.entry_id || r.id || r.title]?.local || 0
-        }))
+          localScore,
+          entryId
+        };
+      }));
+    } else {
+      console.log(`🔍 NO MATCHES: Search for "${q}" found no matches`, {
+        exactCitation: `"${exactCitation}"`,
+        exactTitle: `"${exactTitle}"`,
+        filteredPoolSize: filteredPool.length,
+        localScoredCount: localScored.length
       });
-      
-      if (results.length > 0) {
-        console.log(`🔍 Search for "${q}" found ${results.length} matches:`, results.map(r => {
-          const entryId = r.entry_id || r.id || r.title;
-          const localScore = merged[entryId]?.local || 0;
-          return {
-            title: r.title,
-            citation: r.canonical_citation,
-            localScore,
-            entryId
-          };
-        }));
-      } else {
-        console.log(`🔍 No matches found for "${q}" - exactCitation: "${exactCitation}", exactTitle: "${exactTitle}"`);
-      }
     }
     
     // Store telemetry for performance monitoring
@@ -809,31 +840,28 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     console.log('🔍 allEntries:', allEntries?.length || 0);
     console.log('🔍 existingEntries:', existingEntries?.length || 0);
     
-    if (!allEntries || allEntries.length === 0) {
-      console.log('🔍 No entries loaded yet, cannot scan');
-      console.log('🔍 Attempting to load entries...');
-      
-      // Try to load entries if they're not loaded
-      try {
-        const rows = await fetchAllEntriesFromDb();
-        if (Array.isArray(rows) && rows.length) {
-          const mapped: EntryLite[] = rows.map((r: any) => ({
-            id: r.id,
-            entry_id: r.entry_id,
-            title: r.title || '',
-            type: r.type,
-            canonical_citation: r.canonical_citation || ''
-          }));
-          setAllEntries(mapped);
-          console.log('🔍 Successfully loaded entries:', mapped.length);
-        } else {
-          console.log('🔍 No entries found in database');
-          return;
-        }
-      } catch (error) {
-        console.error('🔍 Error loading entries:', error);
+    // Always refresh entries to ensure we have the latest KB data
+    console.log('🔍 Refreshing entries from database to ensure latest KB data...');
+    try {
+      const rows = await fetchAllEntriesFromDb();
+      if (Array.isArray(rows) && rows.length) {
+        const mapped: EntryLite[] = rows.map((r: any) => ({
+          id: r.id,
+          entry_id: r.entry_id,
+          title: r.title || '',
+          type: r.type,
+          canonical_citation: r.canonical_citation || ''
+        }));
+        setAllEntries(mapped);
+        console.log('🔍 Successfully loaded ALL entries from KB:', mapped.length);
+        console.log('🔍 This includes entries from ALL users in the knowledge base');
+      } else {
+        console.log('🔍 No entries found in database');
         return;
       }
+    } catch (error) {
+      console.error('🔍 Error loading entries:', error);
+      return;
     }
 
     setIsScanning(true);

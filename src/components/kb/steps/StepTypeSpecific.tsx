@@ -150,34 +150,48 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
               </div>
               
               {/* Scan for Internal Citations Button */}
-              <div className="mt-1 mb-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setIsScanning(true);
-                      try {
-                        // Trigger scan for both legal_bases and related_sections
-                        if (legalBasesRef.current?.scanAllExternalCitations) {
-                          await legalBasesRef.current.scanAllExternalCitations();
-                        }
-                        if (relatedSectionsRef.current?.scanAllExternalCitations) {
-                          await relatedSectionsRef.current.scanAllExternalCitations();
-                        }
-                      } finally {
-                        setIsScanning(false);
+              <div className="flex items-center gap-2" style={{ marginTop: '4px !important', marginBottom: '16px !important' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsScanning(true);
+                    try {
+                      // Trigger scan for both legal_bases and related_sections
+                      if (legalBasesRef.current?.scanAllExternalCitations) {
+                        await legalBasesRef.current.scanAllExternalCitations();
                       }
-                    }}
-                    className="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 border-2 hover:bg-blue-600 hover:text-white hover:border-blue-600"
-                    style={{ 
-                      backgroundColor: '#3b82f6',
-                      borderColor: '#3b82f6',
-                      color: '#1e40af',
-                      padding: '8px 16px'
-                    }}
-                  >
-                    Scan for Internal Citations
-                  </button>
+                      if (relatedSectionsRef.current?.scanAllExternalCitations) {
+                        await relatedSectionsRef.current.scanAllExternalCitations();
+                      }
+                    } finally {
+                      setIsScanning(false);
+                    }
+                  }}
+                  className="scan-button"
+                  style={{ 
+                    backgroundColor: '#3b82f6 !important',
+                    border: '2px solid #3b82f6 !important',
+                    color: '#1e40af !important',
+                    padding: '8px 16px !important',
+                    borderRadius: '8px !important',
+                    fontSize: '14px !important',
+                    fontWeight: '500 !important',
+                    transition: 'all 0.2s ease !important',
+                    cursor: 'pointer !important'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1d4ed8 !important';
+                    e.currentTarget.style.color = 'white !important';
+                    e.currentTarget.style.borderColor = '#1d4ed8 !important';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3b82f6 !important';
+                    e.currentTarget.style.color = '#1e40af !important';
+                    e.currentTarget.style.borderColor = '#3b82f6 !important';
+                  }}
+                >
+                  Scan for Internal Citations
+                </button>
                   
                   {/* Loading indicator */}
                   <div className="flex items-center gap-2">
