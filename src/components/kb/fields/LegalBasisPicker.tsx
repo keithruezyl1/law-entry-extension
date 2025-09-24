@@ -14,9 +14,10 @@ interface LegalBasisPickerProps {
   control: Control<any>;
   register: UseFormRegister<any>;
   existingEntries?: EntryLite[];
+  getValues?: () => any; // For manual form data saving
 }
 
-export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActivate?: () => void }>(({ name, control, register, existingEntries = [], onActivate }, ref) => {
+export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActivate?: () => void }>(({ name, control, register, existingEntries = [], getValues, onActivate }, ref) => {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove, update } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -640,7 +641,35 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         }
       });
     }
-  }, [allEntries, items, inlineMatches, handleDetectExternalMatchesDebounced]); // Run when allEntries loads or items change
+  }, [allEntries]); // Only run when allEntries loads, not on every form change
+
+  // Track previous items count to detect new external citations without flickering
+  const prevItemsCountRef = useRef(0);
+  
+  useEffect(() => {
+    if (!allEntries || allEntries.length === 0) return;
+    
+    const currentItemsCount = items.length;
+    const prevItemsCount = prevItemsCountRef.current;
+    
+    // Only run detection if new items were added (not on every change)
+    if (currentItemsCount > prevItemsCount) {
+      // Check the new items for external citations that need detection
+      for (let i = prevItemsCount; i < currentItemsCount; i++) {
+        const item = items[i];
+        if (item && item.type === 'external' && 
+            item.citation && item.title && 
+            !inlineMatches[i] && 
+            !suppressDetectForExternal.current.has(i)) {
+          
+          console.log(`🔍 Auto-detecting for new external citation at index ${i}:`, item.title);
+          handleDetectExternalMatchesDebounced(i);
+        }
+      }
+    }
+    
+    prevItemsCountRef.current = currentItemsCount;
+  }, [items.length, allEntries, handleDetectExternalMatchesDebounced]);
 
   // Load persistent matches from localStorage only after allEntries is loaded
   useEffect(() => {
@@ -650,7 +679,21 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         if (saved) {
           const savedMatches = JSON.parse(saved);
           console.log('🔍 Loading saved matches from localStorage:', Object.keys(savedMatches).length);
-          setInlineMatches(savedMatches);
+          
+          // Filter out dismissed matches
+          const filteredMatches: Record<number, EntryLite[]> = {};
+          Object.entries(savedMatches).forEach(([indexStr, matches]) => {
+            const index = parseInt(indexStr);
+            const dismissedKey = `kb_dismissed_${name}_${index}`;
+            const isDismissed = localStorage.getItem(dismissedKey) === 'true';
+            
+            if (!isDismissed && Array.isArray(matches) && matches.length > 0) {
+              filteredMatches[index] = matches;
+            }
+          });
+          
+          console.log('🔍 Filtered matches after checking dismissals:', Object.keys(filteredMatches).length);
+          setInlineMatches(filteredMatches);
         }
       } catch (error) {
         console.warn('Failed to load inline matches from localStorage:', error);
@@ -681,20 +724,8 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     searchCache.current.clear();
     console.log('🔍 Cleared search cache for fresh results');
     
-    // Clear all dismissals to allow re-scanning
-    try {
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(`kb_dismissed_${name}_`)) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log(`🔍 Cleared ${keysToRemove.length} dismissals for fresh scan`);
-    } catch (error) {
-      console.warn('Failed to clear dismissals:', error);
-    }
+    // Keep dismissals persistent - don't clear them on manual scan
+    console.log('🔍 Keeping dismissals persistent - not clearing them on manual scan');
     
     // Always refresh entries to ensure we have the latest KB data
     console.log('🔍 Refreshing entries from database to ensure latest KB data...');
@@ -828,6 +859,20 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         note: full?.summary || ''
       } as any;
       update(extIndex, newInternal);
+      
+      // Trigger a manual save to localStorage to persist the conversion
+      setTimeout(() => {
+        try {
+          // Get the current form values and save them
+          if (getValues) {
+            const currentValues = getValues();
+            localStorage.setItem('kb_entry_draft', JSON.stringify(currentValues));
+            console.log('💾 Manually saved form data after external->internal conversion');
+          }
+        } catch (error) {
+          console.warn('Failed to manually save form data after conversion:', error);
+        }
+      }, 100);
     } finally {
       setExternalToast({ open: false, index: null, matches: [] });
     }
@@ -1047,12 +1092,14 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                           } catch (error) {
                             console.warn('Failed to save dismissal to localStorage:', error);
                           }
-                          // Clear the matches for this specific citation
+                          // Clear the matches for this specific citation without triggering detection
                           setInlineMatches(prev => {
                             const newMatches = { ...prev };
                             delete newMatches[i];
                             return newMatches;
                           });
+                          // Add to suppress list to prevent re-detection
+                          suppressDetectForExternal.current.add(i);
                         }}
                       />
                     </button>
@@ -1066,7 +1113,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., People v. Doria, G.R. No. …"
-                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.citation` as const, { required: 'Citation is required', onBlur: () => void handleDetectExternalMatches(i) })}
                     />
                   </div>
                   <div>
@@ -1074,7 +1121,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                     <Input
                       className="kb-form-input"
                       placeholder="https://…"
-                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.url` as const, { required: 'URL is required', onBlur: () => void handleDetectExternalMatches(i) })}
                     />
                   </div>
                   <div>
@@ -1082,7 +1129,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                     <Input
                       className="kb-form-input"
                       placeholder="e.g., Arrest, Search, Bail"
-                      {...register(`${name}.${i}.title` as const, { onBlur: () => void handleDetectExternalMatches(i), onChange: () => { handleDetectExternalMatchesDebounced(i); setTimeout(() => clearInlineIfEmpty(i), 0); } })}
+                      {...register(`${name}.${i}.title` as const, { onBlur: () => void handleDetectExternalMatches(i) })}
                     />
                   </div>
                   <div>
