@@ -150,7 +150,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
               </div>
               
               {/* Scan for Internal Citations Button */}
-              <div className="flex items-center gap-2" style={{ marginTop: '4px !important', marginBottom: '4px !important' }}>
+              <div className="flex items-center gap-2" style={{ marginTop: '4px', marginBottom: '4px' }}>
                 <button
                   type="button"
                   onClick={async () => {
@@ -169,27 +169,37 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                   }}
                   className="scan-button"
                   style={{ 
-                    backgroundColor: '#3b82f6 !important',
-                    border: '2px solid #3b82f6 !important',
-                    color: '#1e40af !important',
-                    padding: '8px 16px !important',
-                    borderRadius: '8px !important',
-                    fontSize: '14px !important',
-                    fontWeight: '500 !important',
-                    transition: 'all 0.2s ease !important',
-                    cursor: 'pointer !important',
-                    boxShadow: 'none !important',
-                    outline: 'none !important'
+                    backgroundColor: '#3b82f6',
+                    border: '2px solid #3b82f6',
+                    color: '#1e40af',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer',
+                    boxShadow: 'none',
+                    outline: 'none'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.setProperty('background-color', '#1d4ed8', 'important');
-                    e.currentTarget.style.setProperty('color', 'white', 'important');
-                    e.currentTarget.style.setProperty('border-color', '#1d4ed8', 'important');
+                    e.currentTarget.style.backgroundColor = '#1d4ed8';
+                    e.currentTarget.style.color = 'white';
+                    e.currentTarget.style.borderColor = '#1d4ed8';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.setProperty('background-color', '#3b82f6', 'important');
-                    e.currentTarget.style.setProperty('color', '#1e40af', 'important');
-                    e.currentTarget.style.setProperty('border-color', '#3b82f6', 'important');
+                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                    e.currentTarget.style.color = '#1e40af';
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1e40af';
+                    e.currentTarget.style.color = 'white';
+                    e.currentTarget.style.borderColor = '#1e40af';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1d4ed8';
+                    e.currentTarget.style.color = 'white';
+                    e.currentTarget.style.borderColor = '#1d4ed8';
                   }}
                 >
                   Scan for Internal Citations

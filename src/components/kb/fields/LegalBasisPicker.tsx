@@ -410,6 +410,15 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     const q = buildExternalQuery(ext).trim();
     if (!q) return [];
     
+    // CRITICAL DEBUG: Log the exact search query being built
+    console.log(`🔍 BUILDING SEARCH QUERY for external citation:`, {
+      citation: ext?.citation,
+      title: ext?.title,
+      url: ext?.url,
+      note: ext?.note,
+      builtQuery: q
+    });
+    
     // Create a more specific cache key that includes the citation and title
     const cacheKey = `${ext?.citation || ''}-${ext?.title || ''}-${ext?.url || ''}`.toLowerCase();
     if (searchCache.current.has(cacheKey)) {
@@ -907,6 +916,16 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
                 type: m.type
               }))
             );
+            
+            // CRITICAL DEBUG: Show the actual search query being used
+            console.log(`🔍 SEARCH QUERY DEBUG for "${item.title || item.citation}":`, {
+              originalCitation: item.citation,
+              originalTitle: item.title,
+              searchQuery: `${item.citation} ${item.title}`.trim(),
+              matchesFound: matches.length,
+              matchTitles: matches.map(m => m.title),
+              matchCitations: matches.map(m => m.canonical_citation)
+            });
             
             setInlineMatches(prev => ({ ...prev, [actualIndex]: matches }));
             
