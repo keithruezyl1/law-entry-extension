@@ -49,9 +49,9 @@ i foun.entry-list-container {
 .search-clear-btn {
   position: absolute;
   right: 12px; /* anchor to far right */
-  top: 50%;
+  top: 10px; /* move up inside the input */
   bottom: auto;
-  transform: translateY(-50%);
+  transform: none; /* ensure no vertical centering keeps it low */
   width: 18px;
   height: 18px;
   line-height: 18px;
@@ -65,9 +65,9 @@ i foun.entry-list-container {
 
 /* Ensure no global styles override the position of the X */
 .entry-list-container .search-input-container .search-clear-btn {
-  top: 50% !important;
+  top: 10px !important; /* explicitly position higher */
   bottom: auto !important;
-  transform: translateY(-50%) !important;
+  transform: none !important;
 }
 .search-clear-btn:hover {
   color: #374151; /* darker grey on hover */
