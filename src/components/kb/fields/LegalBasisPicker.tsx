@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from 'react';
 import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-form';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -16,7 +16,7 @@ interface LegalBasisPickerProps {
   existingEntries?: EntryLite[];
 }
 
-export function LegalBasisPicker({ name, control, register, existingEntries = [], onActivate }: LegalBasisPickerProps & { onActivate?: () => void }) {
+export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActivate?: () => void }>(({ name, control, register, existingEntries = [], onActivate }, ref) => {
   // RHF context helpers will be provided via register/controls in parent
   const { fields, append, remove, update } = useFieldArray({ name, control });
   const [tab, setTab] = useState<'internal' | 'external'>('internal');
@@ -1022,7 +1022,7 @@ export function LegalBasisPicker({ name, control, register, existingEntries = []
       </Toast>
     </>
   );
-}
+});
 
 
 
