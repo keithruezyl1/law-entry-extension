@@ -46,6 +46,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
   
   const legalBasesRef = useRef<any>(null);
   const relatedSectionsRef = useRef<any>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   const isRelationsRequired = (entryType: string | undefined) => entryType === 'rights_advisory';
   const relationsRequired = isRelationsRequired(type as any);
@@ -149,28 +150,53 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
               </div>
               
               {/* Scan for Internal Citations Button */}
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Trigger scan for both legal_bases and related_sections
-                    if (legalBasesRef.current?.scanAllExternalCitations) {
-                      legalBasesRef.current.scanAllExternalCitations();
-                    }
-                    if (relatedSectionsRef.current?.scanAllExternalCitations) {
-                      relatedSectionsRef.current.scanAllExternalCitations();
-                    }
-                  }}
-                  className="px-4 py-2 text-sm font-medium rounded-lg transition-colors border"
-                  style={{ 
-                    backgroundColor: '#eff6ff',
-                    borderColor: '#3b82f6',
-                    color: '#1e40af',
-                    padding: '8px 16px'
-                  }}
-                >
-                  Scan for Internal Citations
-                </button>
+              <div className="mt-1 mb-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsScanning(true);
+                      try {
+                        // Trigger scan for both legal_bases and related_sections
+                        if (legalBasesRef.current?.scanAllExternalCitations) {
+                          await legalBasesRef.current.scanAllExternalCitations();
+                        }
+                        if (relatedSectionsRef.current?.scanAllExternalCitations) {
+                          await relatedSectionsRef.current.scanAllExternalCitations();
+                        }
+                      } finally {
+                        setIsScanning(false);
+                      }
+                    }}
+                    className="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 border-2 hover:bg-blue-600 hover:text-white hover:border-blue-600"
+                    style={{ 
+                      backgroundColor: '#3b82f6',
+                      borderColor: '#3b82f6',
+                      color: '#1e40af',
+                      padding: '8px 16px'
+                    }}
+                  >
+                    Scan for Internal Citations
+                  </button>
+                  
+                  {/* Loading indicator */}
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
+                      style={{ 
+                        display: isScanning ? 'block' : 'none'
+                      }}
+                    />
+                    <span 
+                      className="text-sm text-blue-600"
+                      style={{ 
+                        display: isScanning ? 'block' : 'none'
+                      }}
+                    >
+                      Scanning...
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 

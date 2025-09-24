@@ -418,7 +418,19 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     
     const searchTerms = getSearchTerms(q);
     if (searchTerms.length === 0) return [];
-    const pool = (allEntries && allEntries.length ? allEntries : existingEntries);
+    
+    // Always prefer allEntries (full KB) over existingEntries (user's recent entries)
+    const pool = allEntries && allEntries.length > 0 ? allEntries : existingEntries;
+    
+    // Debug: Log what pool we're using
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Using pool:', {
+        source: allEntries && allEntries.length > 0 ? 'allEntries (full KB)' : 'existingEntries (recent)',
+        count: pool.length,
+        sample: pool.slice(0, 3).map(e => ({ title: e.title, entry_id: e.entry_id }))
+      });
+    }
+    
     const exactCitation = normalizeSearchText(String(ext?.citation || ''));
     const exactTitle = normalizeSearchText(String(ext?.title || ''));
 
@@ -793,9 +805,35 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
 
   // Manual scan function for all external citations
   const scanAllExternalCitations = async () => {
+    console.log('🔍 Scan button clicked - checking entries...');
+    console.log('🔍 allEntries:', allEntries?.length || 0);
+    console.log('🔍 existingEntries:', existingEntries?.length || 0);
+    
     if (!allEntries || allEntries.length === 0) {
       console.log('🔍 No entries loaded yet, cannot scan');
-      return;
+      console.log('🔍 Attempting to load entries...');
+      
+      // Try to load entries if they're not loaded
+      try {
+        const rows = await fetchAllEntriesFromDb();
+        if (Array.isArray(rows) && rows.length) {
+          const mapped: EntryLite[] = rows.map((r: any) => ({
+            id: r.id,
+            entry_id: r.entry_id,
+            title: r.title || '',
+            type: r.type,
+            canonical_citation: r.canonical_citation || ''
+          }));
+          setAllEntries(mapped);
+          console.log('🔍 Successfully loaded entries:', mapped.length);
+        } else {
+          console.log('🔍 No entries found in database');
+          return;
+        }
+      } catch (error) {
+        console.error('🔍 Error loading entries:', error);
+        return;
+      }
     }
 
     setIsScanning(true);
