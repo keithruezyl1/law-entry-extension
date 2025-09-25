@@ -2151,26 +2151,44 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
                 else if (eCite.includes(exactTitleNorm)) titleScore = 300;
               }
               
-              // Section scoring (lower priority)
-              if (exactSectionNorm) {
-                if (eSection === exactSectionNorm) boost += 400;
-                else if (eSection.startsWith(exactSectionNorm)) boost += 200;
-                else if (eSection.includes(exactSectionNorm)) boost += 100;
+              // Section scoring (much lower priority - only for exact matches)
+              if (exactSectionNorm && exactSectionNorm.length > 2) { // Avoid single digits
+                if (eSection === exactSectionNorm) boost += 50; // Much lower
+                else if (eSection.startsWith(exactSectionNorm)) boost += 25;
+                // Remove partial section matches to avoid "Section 4" spam
               }
               
-              // Dual-threshold: require both citation AND title relevance
+              // Require meaningful content overlap, not just section numbers
               const hasCitationRelevance = citationScore > 0;
               const hasTitleRelevance = titleScore > 0;
               
-              // Only boost if BOTH citation and title show relevance
+              // Check for actual word overlap in titles (content similarity)
+              const titleWords = exactTitleNorm.split(' ').filter(w => w.length > 3); // Skip short words
+              const entryTitleWords = eTitle.split(' ').filter(w => w.length > 3);
+              const hasContentOverlap = titleWords.some(word => 
+                entryTitleWords.some(eword => eword.includes(word) || word.includes(eword))
+              );
+              
+              // Only boost if there's meaningful content overlap
               if (hasCitationRelevance && hasTitleRelevance) {
                 boost += citationScore + titleScore;
+              } else if (hasTitleRelevance && hasContentOverlap) {
+                // Strong title + content match (e.g., "terrorism" concepts)
+                boost += titleScore * 1.2;
               } else if (hasTitleRelevance && !hasCitationRelevance) {
-                // Allow title-only matches for content relevance (e.g., "terrorism" in title)
-                boost += titleScore * 0.8;
+                // Title-only matches need content overlap
+                if (hasContentOverlap) {
+                  boost += titleScore * 0.8;
+                } else {
+                  boost += titleScore * 0.2; // Very weak if no content overlap
+                }
               } else if (hasCitationRelevance && !hasTitleRelevance) {
-                // Reduce citation-only matches (weak relevance)
-                boost += citationScore * 0.3;
+                // Citation-only matches are weak unless there's content overlap
+                if (hasContentOverlap) {
+                  boost += citationScore * 0.5;
+                } else {
+                  boost += citationScore * 0.1; // Very weak
+                }
               }
               
               return { entry: e, score: base + boost };
