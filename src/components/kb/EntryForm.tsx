@@ -2199,9 +2199,24 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               let score = Number(r.similarity || r.score || 0) * 100;
               const rTitle = normalizeSearchText(r.title || '');
               const rCite = normalizeSearchText(r.canonical_citation || '');
-              if (exactCitationNorm && (rCite===exactCitationNorm || rTitle===exactCitationNorm)) score += 25;
-              else if (exactTitleNorm && (rTitle===exactTitleNorm || rCite===exactTitleNorm)) score += 20;
-              else score *= 0.5;
+              
+              // Apply same content overlap logic to semantic results
+              const titleWords = exactTitleNorm.split(' ').filter(w => w.length > 3);
+              const entryTitleWords = rTitle.split(' ').filter(w => w.length > 3);
+              const hasContentOverlap = titleWords.some(word => 
+                entryTitleWords.some(eword => eword.includes(word) || word.includes(eword))
+              );
+              
+              // Only boost semantic results if there's content overlap
+              if (exactCitationNorm && (rCite===exactCitationNorm || rTitle===exactCitationNorm) && hasContentOverlap) {
+                score += 25;
+              } else if (exactTitleNorm && (rTitle===exactTitleNorm || rCite===exactTitleNorm) && hasContentOverlap) {
+                score += 20;
+              } else if (hasContentOverlap) {
+                score *= 0.8; // Keep some semantic relevance if content matches
+              } else {
+                score *= 0.1; // Heavily penalize semantic results without content overlap
+              }
               return { entry: r, score };
             });
 
@@ -2209,11 +2224,16 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             for (const it of localScored){ const id = it.entry.entry_id || it.entry.id || it.entry.title; const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 }; merged[id] = { entry: it.entry, local: Math.max(prev.local, it.score), semantic: prev.semantic }; }
             for (const it of semanticScored){ const id = it.entry.entry_id || it.entry.id || it.entry.title; const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 }; merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) }; }
 
-            const SEM_THRESHOLD = 50;
-            const LOC_THRESHOLD = 10;
+            const SEM_THRESHOLD = 80; // Much higher threshold
+            const LOC_THRESHOLD = 25; // Much higher threshold
             const reRanked = Object.values(merged)
-              .filter(m => (m.local >= LOC_THRESHOLD) || (m.semantic >= SEM_THRESHOLD && m.local >= 8))
-              .sort((a, b) => (b.local * 2 + b.semantic) - (a.local * 2 + a.semantic))
+              .filter(m => {
+                // Require strong local matches OR very strong semantic matches with content overlap
+                const hasStrongLocal = m.local >= LOC_THRESHOLD;
+                const hasStrongSemantic = m.semantic >= SEM_THRESHOLD && m.local >= 15;
+                return hasStrongLocal || hasStrongSemantic;
+              })
+              .sort((a, b) => (b.local * 3 + b.semantic) - (a.local * 3 + a.semantic)) // Favor local matches more
               .slice(0, 5)
               .map(m => m.entry);
 
