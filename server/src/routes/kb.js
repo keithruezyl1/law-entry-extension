@@ -736,6 +736,9 @@ router.get('/search', async (req, res) => {
         select * from tri
       )
       select *,
+             -- symmetric trigram similarities for title and citation (equal weight)
+             similarity(lower(coalesce(title,'')), (select q_norm from params)) as sim_title,
+             similarity(lower(coalesce(canonical_citation,'')), (select q_norm from params)) as sim_citation,
              (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
              array_remove(array[
                case when m_title then 'title' else null end,
@@ -743,7 +746,12 @@ router.get('/search', async (req, res) => {
                case when m_section then 'section_id' else null end
              ], null) as matched_fields
       from unioned
-      order by (rank_score + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)) desc,
+      order by (
+                 rank_score
+                 + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)
+                 + (sim_title * 0.75)
+                 + (sim_citation * 0.75)
+               ) desc,
                (case when verified then 1 else 0 end) desc,
                (case when lower(coalesce(status,'')) = 'active' then 1 else 0 end) desc,
                coalesce(effective_date, '0001-01-01') desc,
