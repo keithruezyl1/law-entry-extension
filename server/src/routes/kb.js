@@ -693,7 +693,8 @@ router.get('/search', async (req, res) => {
         select 
           websearch_to_tsquery('simple', $1) as tsq,
           regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
-          lower($1) as q_norm
+          lower($1) as q_norm,
+          split_part(lower($1), ' ', 1) as first_tok
       ), lex as (
         select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
                k.verified, k.status, k.effective_date,
@@ -739,6 +740,8 @@ router.get('/search', async (req, res) => {
              -- symmetric trigram similarities for title and citation (equal weight)
              similarity(lower(coalesce(title,'')), (select q_norm from params)) as sim_title,
              similarity(lower(coalesce(canonical_citation,'')), (select q_norm from params)) as sim_citation,
+             similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q_norm from params)) as sim_tags,
+             (case when lower(coalesce(title,'')) like (select first_tok from params) || ' %' or lower(coalesce(title,'')) = (select first_tok from params) then 1 else 0 end) as title_starts,
              (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
              array_remove(array[
                case when m_title then 'title' else null end,
@@ -751,6 +754,8 @@ router.get('/search', async (req, res) => {
                  + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)
                  + (sim_title * 0.75)
                  + (sim_citation * 0.75)
+                 + (sim_tags * 0.50)
+                 + (case when title_starts = 1 then 0.60 else 0 end)
                ) desc,
                (case when verified then 1 else 0 end) desc,
                (case when lower(coalesce(status,'')) = 'active' then 1 else 0 end) desc,
