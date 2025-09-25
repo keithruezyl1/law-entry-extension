@@ -44,6 +44,13 @@ function normalizeAndExpandQuery(q) {
     .replace(/\bvs\.?\b/g, ' v ')
     .replace(/\bversus\b/g, ' v ');
 
+  // compact citation forms (no space): ra7610, bp22, pd1602, ca141
+  s = s
+    .replace(/\bra(\d{2,5})\b/g, ' republic act $1 ')
+    .replace(/\bbp(\d{1,4})\b/g, ' batas pambansa $1 ')
+    .replace(/\bpd(\d{1,5})\b/g, ' presidential decree $1 ')
+    .replace(/\bca(\d{1,5})\b/g, ' commonwealth act $1 ');
+
   // article/section Roman → Arabic
   s = s.replace(/\b(article|art)\.?\s+([ivxlcdm]+)\b/g, (_m, _g1, r) => `article ${romanToInt(r) || r}`);
   s = s.replace(/\b(section|sec)\.?\s+([ivxlcdm]+)\b/g, (_m, _g1, r) => `section ${romanToInt(r) || r}`);
@@ -766,6 +773,22 @@ router.get('/search', async (req, res) => {
       const title = String(r.title || '').toLowerCase();
       const lawfam = String(r.law_family || '').toLowerCase();
       const tags = Array.isArray(r.tags) ? String(r.tags.join(' ')).toLowerCase() : '';
+      // Citation-aware boosts: RA and Section tokens
+      const raMatch = qn.match(/\brepublic\s+act\s+(\d{2,5})\b/);
+      const secMatch = qn.match(/\bsection\s+(\d+[a-z]?|\d+\([a-z]\))\b/);
+      if (raMatch) {
+        const raNum = raMatch[1];
+        const inTitle = title.includes(`ra ${raNum}`) || title.includes(`republic act ${raNum}`);
+        const inCit = String(r.canonical_citation || '').toLowerCase().includes(raNum);
+        const inCompact = String(r.compact_citation || '').toLowerCase().includes(`ra${raNum}`);
+        if (inTitle || inCit || inCompact) extra += 2.0;
+      }
+      if (secMatch) {
+        const secTok = secMatch[1].replace(/\s+/g,'');
+        const secPlain = secTok.replace(/\(|\)/g,'');
+        const txt = `${title} ${String(r.canonical_citation||'').toLowerCase()} ${String(r.section_id||'').toLowerCase()} ${String(r.compact_citation||'').toLowerCase()}`;
+        if (txt.includes(`section ${secPlain}`) || txt.includes(secTok) || txt.includes(secPlain)) extra += 1.5;
+      }
       if (hasAgency) {
         if (agencyKeys.some(k => title.includes(k) || lawfam.includes(k) || tags.includes(k))) {
           extra += 1.5; // agency acronyms align
@@ -822,23 +845,55 @@ router.get('/search', async (req, res) => {
       }
     }
 
-    let suggestion = null;
-    if ((result.rows || []).length < 3) {
+    // Always compute a best suggestion (title-based)
+    let bestSuggestion = null;
+    try {
+      const s = await query(
+        `with params as (
+           select lower($1) as q
+         )
+         select title
+         from kb_entries, params
+         where title is not null and title <> ''
+         order by similarity(lower(title), (select q from params)) desc
+         limit 1`,
+        [ originalQ ]
+      );
+      bestSuggestion = s.rows?.[0]?.title || null;
+    } catch (e) {
+      bestSuggestion = null;
+    }
+
+    // Build suggestions[] when results are low or empty
+    let suggestions = [];
+    if (boostedRows.length < 3) {
       try {
-        const s = await query(
+        const sug = await query(
           `with params as (
              select lower($1) as q
            )
-           select title as suggestion
-           from kb_entries, params
-           where title is not null and title <> ''
-           order by similarity(lower(title), (select q from params)) desc
-           limit 1`,
-          [ q ]
+           select entry_id, type, title, canonical_citation
+           from (
+             select entry_id, type, title, canonical_citation,
+                    similarity(lower(title), (select q from params)) as score
+             from kb_entries
+             union all
+             select entry_id, type, title, canonical_citation,
+                    similarity(lower(coalesce(canonical_citation,'')), (select q from params)) as score
+             from kb_entries
+             union all
+             select entry_id, type, title, canonical_citation,
+                    similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q from params)) as score
+             from kb_entries
+           ) s
+           where score > 0
+           order by score desc
+           limit 10`,
+          [ originalQ ]
         );
-        suggestion = s.rows?.[0]?.suggestion || null;
+        suggestions = Array.isArray(sug.rows) ? sug.rows : [];
       } catch (e) {
-        suggestion = null;
+        suggestions = [];
       }
     }
 
@@ -847,7 +902,8 @@ router.get('/search', async (req, res) => {
       took_ms: undefined,
       results: boostedRows,
       cursor: null,
-      suggestion,
+      suggestion: bestSuggestion,
+      suggestions,
     });
   } catch (e) {
     console.error(e);
