@@ -407,7 +407,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
             if (entryTitle.includes(exactCitation)) boost += 400; // TITLE CONTAINS - MEDIUM
           }
           
-          // TITLE MATCHES (SECOND PRIORITY) - DRAMATICALLY INCREASED BOOSTS
+          // TITLE MATCHES (SECOND PRIORITY) - IMPROVED CONTENT SIMILARITY
           if (exactTitle) {
             // Exact title match gets VERY high priority
             if (entryTitle === exactTitle) boost += 1000; // EXACT TITLE MATCH - HIGHEST PRIORITY
@@ -421,23 +421,47 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
             if (entryTitle.includes(exactTitle)) boost += 300; // TITLE CONTAINS - MEDIUM-HIGH
             if (entryCite.includes(exactTitle)) boost += 200; // CITATION CONTAINS - MEDIUM
             
-            // Fuzzy title matching for slight variations
+            // Enhanced content similarity matching
             if (exactTitle.length > 5) {
-              const titleWords = exactTitle.split(' ');
-              const entryTitleWords = entryTitle.split(' ');
+              const titleWords = exactTitle.split(' ').filter(w => w.length > 3); // Skip short words
+              const entryTitleWords = entryTitle.split(' ').filter(w => w.length > 3);
               let matchingWords = 0;
+              let strongMatches = 0;
               
               for (const word of titleWords) {
-                if (entryTitleWords.some(ew => ew === word || ew.startsWith(word) || word.startsWith(ew))) {
+                const found = entryTitleWords.find(ew => 
+                  ew === word || 
+                  ew.startsWith(word) || 
+                  word.startsWith(ew) ||
+                  ew.includes(word) || 
+                  word.includes(ew)
+                );
+                if (found) {
                   matchingWords++;
+                  // Stronger boost for exact/prefix matches
+                  if (found === word || found.startsWith(word) || word.startsWith(found)) {
+                    strongMatches++;
+                  }
                 }
               }
               
-              // If most words match, give a boost
-              if (matchingWords >= Math.ceil(titleWords.length * 0.7)) {
-                boost += 5 + (matchingWords / titleWords.length) * 5;
+              // Content overlap scoring - more generous for legal concepts
+              if (matchingWords > 0) {
+                const overlapRatio = matchingWords / titleWords.length;
+                const strongRatio = strongMatches / titleWords.length;
+                
+                // Base content similarity boost
+                let contentBoost = matchingWords * 15; // 15 points per matching word
+                
+                // Bonus for strong matches
+                if (strongRatio >= 0.5) contentBoost *= 1.5;
+                
+                // Bonus for high overlap
+                if (overlapRatio >= 0.6) contentBoost *= 1.3;
+                else if (overlapRatio >= 0.4) contentBoost *= 1.1;
+                
+                boost += contentBoost;
               }
-
             }
           }
           
