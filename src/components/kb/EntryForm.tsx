@@ -2127,11 +2127,54 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               const eCite = normalizeSearchText(e.canonical_citation || '');
               const eSection = normalizeSearchText(e.section_id || '');
               let boost = 0;
-              if (exactCitationNorm){ if (eCite===exactCitationNorm) boost+=2000; if (eTitle===exactCitationNorm) boost+=1500; if (eCite.startsWith(exactCitationNorm)) boost+=1000; if (eTitle.startsWith(exactCitationNorm)) boost+=800; if (eCite.includes(exactCitationNorm)) boost+=600; if (eTitle.includes(exactCitationNorm)) boost+=400; }
-              if (exactTitleNorm){ if (eTitle===exactTitleNorm) boost+=1000; if (eCite===exactTitleNorm) boost+=800; if (eTitle.startsWith(exactTitleNorm)) boost+=500; if (eCite.startsWith(exactTitleNorm)) boost+=400; if (eTitle.includes(exactTitleNorm)) boost+=300; if (eCite.includes(exactTitleNorm)) boost+=200; }
-              if (exactSectionNorm){ if (eSection===exactSectionNorm) boost+=800; if (eSection.startsWith(exactSectionNorm)) boost+=400; if (eSection.includes(exactSectionNorm)) boost+=200; }
+              
+              // Require BOTH citation AND title relevance for strong matches
+              let citationScore = 0, titleScore = 0;
+              
+              // Citation scoring
+              if (exactCitationNorm) {
+                if (eCite === exactCitationNorm) citationScore = 2000;
+                else if (eTitle === exactCitationNorm) citationScore = 1500;
+                else if (eCite.startsWith(exactCitationNorm)) citationScore = 1000;
+                else if (eTitle.startsWith(exactCitationNorm)) citationScore = 800;
+                else if (eCite.includes(exactCitationNorm)) citationScore = 600;
+                else if (eTitle.includes(exactCitationNorm)) citationScore = 400;
+              }
+              
+              // Title scoring (weighted more heavily for content relevance)
+              if (exactTitleNorm) {
+                if (eTitle === exactTitleNorm) titleScore = 1500;
+                else if (eCite === exactTitleNorm) titleScore = 1000;
+                else if (eTitle.startsWith(exactTitleNorm)) titleScore = 800;
+                else if (eCite.startsWith(exactTitleNorm)) titleScore = 600;
+                else if (eTitle.includes(exactTitleNorm)) titleScore = 500;
+                else if (eCite.includes(exactTitleNorm)) titleScore = 300;
+              }
+              
+              // Section scoring (lower priority)
+              if (exactSectionNorm) {
+                if (eSection === exactSectionNorm) boost += 400;
+                else if (eSection.startsWith(exactSectionNorm)) boost += 200;
+                else if (eSection.includes(exactSectionNorm)) boost += 100;
+              }
+              
+              // Dual-threshold: require both citation AND title relevance
+              const hasCitationRelevance = citationScore > 0;
+              const hasTitleRelevance = titleScore > 0;
+              
+              // Only boost if BOTH citation and title show relevance
+              if (hasCitationRelevance && hasTitleRelevance) {
+                boost += citationScore + titleScore;
+              } else if (hasTitleRelevance && !hasCitationRelevance) {
+                // Allow title-only matches for content relevance (e.g., "terrorism" in title)
+                boost += titleScore * 0.8;
+              } else if (hasCitationRelevance && !hasTitleRelevance) {
+                // Reduce citation-only matches (weak relevance)
+                boost += citationScore * 0.3;
+              }
+              
               return { entry: e, score: base + boost };
-            }).filter(it => it.score >= 10);
+            }).filter(it => it.score >= 15); // Higher threshold for better precision
 
             const semanticRaw = (resp.success && Array.isArray(resp.results)) ? resp.results : [];
             const semanticScored = semanticRaw.map((r: any) => {

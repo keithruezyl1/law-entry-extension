@@ -931,6 +931,8 @@ export const useLocalStorage = () => {
         verified: false,
         verified_at: null,
         verified_by: null,
+        // Always set last_reviewed to today, ignoring any imported value
+        last_reviewed: new Date().toISOString().slice(0, 10),
       };
       
       // Clear all existing drafts and replace with imported entry
