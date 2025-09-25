@@ -903,26 +903,30 @@ export const useLocalStorage = () => {
       
       // For the new workflow, we'll process the first entry and return it for form population
       const entry = list[0];
-      if (!entry || !entry.entry_id) {
-        return { success: false, error: 'Invalid entry format' };
+      if (!entry || !entry.title) {
+        return { success: false, error: 'Invalid entry format - entry must have at least a title' };
       }
       
       // Check if entry already exists (optional - don't block import if API fails)
-      try {
-        const existing = await fetchAllEntriesFromDb();
-        const existingIds = new Set((existing || []).map((e) => e.entry_id));
-        
-        if (existingIds.has(entry.entry_id)) {
-          return { success: false, error: `Entry with ID "${entry.entry_id}" already exists` };
+      // Only check for duplicates if entry_id is provided
+      if (entry.entry_id) {
+        try {
+          const existing = await fetchAllEntriesFromDb();
+          const existingIds = new Set((existing || []).map((e) => e.entry_id));
+          
+          if (existingIds.has(entry.entry_id)) {
+            return { success: false, error: `Entry with ID "${entry.entry_id}" already exists` };
+          }
+        } catch (err) {
+          console.warn('Could not check for existing entries, proceeding with import:', err);
+          // Continue with import even if duplicate check fails
         }
-      } catch (err) {
-        console.warn('Could not check for existing entries, proceeding with import:', err);
-        // Continue with import even if duplicate check fails
       }
       
       // Prepare the entry data for form population
+      const { id, entry_id, ...entryWithoutIds } = entry; // Remove any provided IDs
       const formData = {
-        ...entry,
+        ...entryWithoutIds,
         // Override with user info for created_by fields
         created_by: userInfo?.personId ? Number(String(userInfo.personId).replace('P','')) : (entry.created_by && entry.created_by !== 0 ? entry.created_by : 5),
         created_by_name: userInfo?.name || userInfo?.username || entry.created_by_name || 'Imported User',
