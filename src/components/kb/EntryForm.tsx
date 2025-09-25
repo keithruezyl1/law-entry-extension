@@ -574,7 +574,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         text: entry.text || '',
         source_urls: entry.source_urls && entry.source_urls.length > 0 ? entry.source_urls : [''],
         tags: entry.tags || [],
-        last_reviewed: normalizeDate(entry.last_reviewed) || new Date().toISOString().slice(0, 10),
+        last_reviewed: new Date().toISOString().slice(0, 10), // Always use today's date
         visibility: { gli: true, cpa: true }, // Always set both GLI and CPA
         // Type-specific fields
         elements: normalizeStringArray((entry as any)?.elements),
@@ -705,7 +705,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             text: parsed.text || '',
             source_urls: parsed.source_urls && parsed.source_urls.length > 0 ? parsed.source_urls : [''],
             tags: parsed.tags || [],
-            last_reviewed: normalizeDate(parsed.last_reviewed) || new Date().toISOString().slice(0, 10),
+            last_reviewed: new Date().toISOString().slice(0, 10), // Always use today's date
             visibility: { gli: true, cpa: true },
             // Type-specific fields
             elements: normalizeStringArray(parsed?.elements),
@@ -882,7 +882,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             text: parsed.text || '',
             source_urls: parsed.source_urls && parsed.source_urls.length > 0 ? parsed.source_urls : [''],
             tags: parsed.tags || [],
-            last_reviewed: parsed.last_reviewed || new Date().toISOString().slice(0, 10),
+            last_reviewed: new Date().toISOString().slice(0, 10), // Always use today's date
             visibility: parsed.visibility || { gli: true, cpa: false },
             // Type-specific fields
             elements: parsed.elements || [],
