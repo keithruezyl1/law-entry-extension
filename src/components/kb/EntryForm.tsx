@@ -1261,8 +1261,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Build the message
     let message = '';
     if (hasSuggestions) {
-      // Use a clear, generic prompt without counts
-      message = 'There are still external citations that might exist in the KB. Are you sure you want to ignore and not add them as internal?';
+      // Use a clear, generic prompt without counts (desktop shows as two lines)
+      message = 'There are still external citations that might exist in the KB.\nAre you sure you want to ignore and not add them as internal?';
     }
     
     console.log('🔍 Internal citation suggestions result:', {
@@ -1664,34 +1664,43 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
         if (!cancelled) {
-          // If semantic search fails or returns no results, try a fallback text search
+          // If semantic search is insufficient, query backend lexical search and then fall back to simple local text search
           let resultsRaw = [];
           if (resp.success && resp.results && Array.isArray(resp.results) && resp.results.length > 0) {
             resultsRaw = resp.results;
             debugLog('🔍 Using semantic search results:', resultsRaw.length);
           } else {
-            debugLog('🔍 Semantic search failed or returned no results, trying fallback text search');
-
-
-            // Fallback: simple text search through existing entries
-            const searchTerm = q.toLowerCase();
-            resultsRaw = existingEntries
-              .filter(entry => {
-                const searchableText = [
-                  entry.title,
-                  (entry as any).canonical_citation,
-                  (entry as any).section_id,
-                  (entry as any).law_family,
-                  (entry as any).summary
-                ].filter(Boolean).join(' ').toLowerCase();
-                return searchableText.includes(searchTerm);
-              })
-              .map(entry => ({
-                ...entry,
-                similarity: 0.35 // Lower default similarity for naive text matches
-              }))
-              .slice(0, 10);
-            debugLog('🔍 Fallback text search results:', resultsRaw.length);
+            debugLog('🔍 Semantic search failed or returned no results, trying server lexical search');
+            try {
+              const { serverSearch } = await import('../../services/kbApi');
+              const server = await serverSearch({ query: q, limit: 10, explain: false });
+              const serverRows = Array.isArray(server.results)
+                ? server.results.map(r => ({ ...r, id: r.entry_id || r.id, similarity: r.score ?? 0.5 }))
+                : [];
+              resultsRaw = serverRows;
+              debugLog('🔍 Server search results:', serverRows.length);
+            } catch (err) {
+              debugLog('🔍 Server search failed, using final local text fallback', err);
+              // Final fallback: simple local text search through existing entries
+              const searchTerm = q.toLowerCase();
+              resultsRaw = existingEntries
+                .filter(entry => {
+                  const searchableText = [
+                    entry.title,
+                    (entry as any).canonical_citation,
+                    (entry as any).section_id,
+                    (entry as any).law_family,
+                    (entry as any).summary
+                  ].filter(Boolean).join(' ').toLowerCase();
+                  return searchableText.includes(searchTerm);
+                })
+                .map(entry => ({
+                  ...entry,
+                  similarity: 0.35 // Lower default similarity for naive text matches
+                }))
+                .slice(0, 10);
+              debugLog('🔍 Fallback text search results:', resultsRaw.length);
+            }
 
 
           }

@@ -145,7 +145,7 @@ export function StepTypeSpecific({ onNext, onPrevious, onCancel, onSaveDraft, is
                 {relationsRequired ? (
                   <span className="text-xs rounded-md px-2 py-1 bg-red-100 text-red-700 mt-1">Required for Rights Advisory. Add at least one Legal Basis (internal or external).</span>
                 ) : (
-                  <span className="text-xs text-muted-foreground mt-1">Optional (helps citations & navigation)</span>
+                  <span className="text-xs text-muted-foreground mt-1">REQUIRED 3 minimum (helps citations & navigation)</span>
                 )}
               </div>
               

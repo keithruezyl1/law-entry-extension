@@ -61,6 +61,12 @@ export function ImportJsonModal({ isOpen, onClose, onImport }: ImportJsonModalPr
                 id="json-input"
                 value={jsonText}
                 onChange={(e) => setJsonText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleImport();
+                  }
+                }}
                 placeholder="Paste your JSON entry here..."
                 className="json-textarea w-full h-full font-mono text-sm border-2 !border-gray-200 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-200 rounded-lg resize-none placeholder:pl-4 placeholder:pt-3"
                 style={textareaStyle}

@@ -3,7 +3,7 @@ import { useFieldArray, UseFormRegister, Control, useWatch } from 'react-hook-fo
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Trash2, Plus, Search, ArrowLeft, X } from 'lucide-react';
-import { fetchEntryById, fetchAllEntriesFromDb } from '../../../services/kbApi';
+import { fetchEntryById, fetchAllEntriesFromDb, serverSearch } from '../../../services/kbApi';
 import { semanticSearch } from '../../../services/vectorApi';
 import { Toast } from '../../ui/Toast';
 
@@ -378,8 +378,8 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
     const exactCitation = normalizeSearchText(String(ext?.citation || ''));
     const exactTitle = normalizeSearchText(String(ext?.title || ''));
 
-    // Run local and semantic search in parallel for better performance
-    const [localScored, semanticScored] = await Promise.all([
+    // Run local, backend lexical, and semantic search in parallel for better performance
+    const [localScored, backendLexicalScored, semanticScored] = await Promise.all([
       // Local scoring (synchronous) with early termination for high-confidence matches
       Promise.resolve((() => {
         const results: { entry: any; score: number }[] = [];
@@ -463,6 +463,49 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         }
         return results;
       })()),
+
+      // Backend lexical search (always on, same engine as dashboard search)
+      (async () => {
+        try {
+          const resp = await serverSearch({ query: q, limit: 8, explain: false });
+          const rows = Array.isArray(resp.results) ? resp.results : [];
+          const toNorm = (s: any) => normalizeSearchText(String(s || ''));
+          const rowsScored = rows.map((r: any) => {
+            const rTitle = toNorm(r.title);
+            const rCite = toNorm(r.canonical_citation);
+            const matchedFields: string[] = Array.isArray(r.matched_fields) ? r.matched_fields : [];
+            const rank = Number(r.rank_score || 0) * 100; // normalize rank to ~0-100 range
+            let boost = 0;
+
+            // Favor exact pins and matched canonical_citation/title
+            if (Number(r.exact_pin || 0) > 0) boost += 1200;
+            if (matchedFields.includes('canonical_citation')) boost += 250;
+            if (matchedFields.includes('title')) boost += 200;
+
+            // Strong boosts for exact or prefix matches vs extracted citation/title
+            if (exactCitation) {
+              if (rCite === exactCitation) boost += 1500;
+              else if (rCite.startsWith(exactCitation)) boost += 700;
+              else if (rCite.includes(exactCitation)) boost += 350;
+            }
+            if (exactTitle) {
+              if (rTitle === exactTitle) boost += 900;
+              else if (rTitle.startsWith(exactTitle)) boost += 450;
+              else if (rTitle.includes(exactTitle)) boost += 250;
+            }
+
+            // Prefer verified/active entries a bit (mirrors server ordering)
+            if (r.verified === true) boost += 40;
+            if (String(r.status || '').toLowerCase() === 'active') boost += 30;
+
+            return { entry: r, score: rank + boost };
+          });
+          // Only keep reasonably relevant ones
+          return rowsScored.filter(x => x.score >= 60);
+        } catch {
+          return [];
+        }
+      })(),
       
       // Semantic scoring via API (asynchronous) - reduced influence
       (async () => {
@@ -508,6 +551,12 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 };
       merged[id] = { entry: it.entry, local: Math.max(prev.local, it.score), semantic: prev.semantic };
     }
+    // Treat backend lexical score as part of semantic axis but weight strongly later
+    for (const it of backendLexicalScored) {
+      const id = it.entry.entry_id || it.entry.id || it.entry.title;
+      const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 };
+      merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) };
+    }
     for (const it of semanticScored) {
       const id = it.entry.entry_id || it.entry.id || it.entry.title;
       const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 };
@@ -527,10 +576,9 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
         return hasStrongLocal || (hasHighSemantic && m.local >= 8);
       })
       .sort((a, b) => {
-        // Heavily prioritize local matches over semantic
-        const scoreA = a.local * 2 + a.semantic; // Local matches get 2x weight
-        const scoreB = b.local * 2 + b.semantic;
-        
+        // Strongly prioritize local, but give backend lexical substantial weight
+        const scoreA = a.local * 2 + a.semantic * 1.25;
+        const scoreB = b.local * 2 + b.semantic * 1.25;
         return scoreB - scoreA;
       })
       .slice(0, 3) // Reduce to top 3 to avoid clutter

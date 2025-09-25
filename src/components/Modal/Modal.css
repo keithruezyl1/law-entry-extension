@@ -57,6 +57,13 @@
   text-align: center;
 }
 
+/* Respect explicit newlines in subtitles on desktop */
+@media (min-width: 1024px) {
+  .modal-subtitle {
+    white-space: pre-line;
+  }
+}
+
 .modal-body {
   display: flex;
   flex-direction: column;
