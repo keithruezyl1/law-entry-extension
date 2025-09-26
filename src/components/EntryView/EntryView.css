@@ -743,19 +743,14 @@
 .legal-bases-grid,
 .related-sections-grid {
   display: flex;
-  flex-direction: row;
   gap: 1rem;
   margin-top: 1rem;
-  overflow-x: hidden;
-  padding-bottom: 0.5rem;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e0 #f7fafc;
-}
-
-/* Enable scrolling only when there are more than 3 cards */
-.legal-bases-grid:has(.legal-basis-card:nth-child(4)),
-.related-sections-grid:has(.related-section-card:nth-child(4)) {
   overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 transparent;
 }
 
 .legal-bases-grid::-webkit-scrollbar,
@@ -765,8 +760,7 @@
 
 .legal-bases-grid::-webkit-scrollbar-track,
 .related-sections-grid::-webkit-scrollbar-track {
-  background: #f7fafc;
-  border-radius: 3px;
+  background: transparent;
 }
 
 .legal-bases-grid::-webkit-scrollbar-thumb,
@@ -780,37 +774,16 @@
   background: #a0aec0;
 }
 
-/* Dark mode scrollbar */
-.dark-mode .legal-bases-grid,
-.dark-mode .related-sections-grid {
-  scrollbar-color: #4a5568 #1a202c;
-}
-
-.dark-mode .legal-bases-grid::-webkit-scrollbar-track,
-.dark-mode .related-sections-grid::-webkit-scrollbar-track {
-  background: #1a202c;
-}
-
-.dark-mode .legal-bases-grid::-webkit-scrollbar-thumb,
-.dark-mode .related-sections-grid::-webkit-scrollbar-thumb {
-  background: #4a5568;
-}
-
-.dark-mode .legal-bases-grid::-webkit-scrollbar-thumb:hover,
-.dark-mode .related-sections-grid::-webkit-scrollbar-thumb:hover {
-  background: #718096;
-}
-
+/* Ensure cards maintain their width and don't shrink */
 .legal-basis-card,
 .related-section-card {
+  flex: 0 0 300px;
+  min-width: 300px;
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 1.25rem;
+  padding: 1rem;
   transition: all 0.2s ease;
-  min-width: 300px;
-  flex-shrink: 0;
-  min-height: 200px;
 }
 
 /* Dark citation cards */
@@ -1082,13 +1055,14 @@
   .legal-bases-grid,
   .related-sections-grid {
     gap: 0.75rem;
+    /* Keep horizontal scroll on mobile too */
   }
   
   .legal-basis-card,
   .related-section-card {
     padding: 0.75rem;
-    min-width: 250px;
-    min-height: 180px;
+    flex: 0 0 280px;
+    min-width: 280px;
   }
   
   .field-group {
