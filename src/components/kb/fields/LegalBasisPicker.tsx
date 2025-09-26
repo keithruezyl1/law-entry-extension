@@ -978,7 +978,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       </div>
 
       {tab === 'internal' ? (
-        <div className="space-y-4">
+        <div className="flex gap-4 overflow-x-auto pb-4">
           {/* Show existing internal citations */}
           {fields.map((f, i) => {
             if (items?.[i]?.type === 'external') return null;
@@ -988,7 +988,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
             const internalIndex = Math.max(1, internalFields.findIndex((row) => row.id === f.id) + 1);
             
             return (
-              <div key={f.id} className="space-y-3">
+              <div key={f.id} className="space-y-3 min-w-[320px] flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="kb-form-subtitle text-sm font-medium">Internal Citation #{internalIndex}</div>
                 </div>
@@ -1134,7 +1134,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex gap-4 overflow-x-auto pb-4">
           {/* Show existing external citations */}
           {fields.map((f, i) => {
             if (items?.[i]?.type !== 'external') return null;
@@ -1144,7 +1144,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
             const externalIndex = Math.max(1, externalFields.findIndex((row) => row.id === f.id) + 1);
             
             return (
-              <div key={f.id} className="space-y-3">
+              <div key={f.id} className="space-y-3 min-w-[320px] flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="kb-form-subtitle text-sm font-medium">External Citation #{externalIndex}</div>
                   {!!inlineMatches[i]?.length && (
