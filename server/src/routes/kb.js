@@ -676,7 +676,11 @@ const LexicalQuerySchema = z.object({
 
 router.get('/search', async (req, res) => {
   try {
+    console.log('🔍 Search request received:', req.query);
+    
     const p = LexicalQuerySchema.parse(req.query);
+    console.log('🔍 Parsed query params:', p);
+    
     let limit = p.limit || 20;
     if (Number.isFinite(limit)) {
       limit = Math.max(1, Math.min(100, limit));
@@ -684,8 +688,15 @@ router.get('/search', async (req, res) => {
       limit = 20;
     }
     const originalQ = String(p.query || '').trim();
+    console.log('🔍 Original query:', originalQ);
+    
     const q = normalizeAndExpandQuery(originalQ);
-    if (!q) return res.status(400).json({ error: 'query is required' });
+    console.log('🔍 Normalized query:', q);
+    
+    if (!q) {
+      console.log('🔍 Query is empty, returning 400');
+      return res.status(400).json({ error: 'query is required' });
+    }
 
     // Ultra-simple search that will never fail
     const sql = `
@@ -712,7 +723,11 @@ router.get('/search', async (req, res) => {
       limit $6`;
 
     const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit ];
+    console.log('🔍 SQL params:', params);
+    console.log('🔍 Executing SQL...');
+    
     let result = await query(sql, params);
+    console.log('🔍 SQL executed successfully, rows:', result.rows?.length || 0);
 
     // Domain-aware re-rank boosts for agency/admin queries
     const qn = q.toLowerCase();
@@ -866,7 +881,9 @@ router.get('/search', async (req, res) => {
       suggestions,
     });
   } catch (e) {
-    console.error(e);
+    console.error('🔍 Search endpoint error:', e);
+    console.error('🔍 Error message:', e.message);
+    console.error('🔍 Error stack:', e.stack);
     res.status(400).json({ success: false, error: String(e.message || e) });
   }
 });
