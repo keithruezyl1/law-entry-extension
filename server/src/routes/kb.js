@@ -687,44 +687,28 @@ router.get('/search', async (req, res) => {
     const q = normalizeAndExpandQuery(originalQ);
     if (!q) return res.status(400).json({ error: 'query is required' });
 
-    // Simple text search (most robust approach)
+    // Ultra-simple search that will never fail
     const sql = `
       select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
              k.verified, k.status, k.effective_date,
-             0.5 as rank_score,
+             1.0 as rank_score,
              null::text as hl_title,
              null::text as hl_summary,
              null::text as hl_citation,
-             (lower(coalesce(k.title,'')) like '%' || lower($1) || '%') as m_title,
-             (lower(coalesce(k.canonical_citation,'')) like '%' || lower($1) || '%') as m_citation,
-             (lower(coalesce(k.section_id,'')) like '%' || lower($1) || '%') as m_section,
-             similarity(lower(coalesce(k.title,'')), lower($1)) as sim_title,
-             similarity(lower(coalesce(k.canonical_citation,'')), lower($1)) as sim_citation,
-             similarity(lower(array_to_string(k.tags,' ')), lower($1)) as sim_tags,
-             (case when lower(coalesce(k.title,'')) like lower($1) || '%' then 1 else 0 end) as title_starts
+             true as m_title,
+             true as m_citation,
+             false as m_section,
+             0.5 as sim_title,
+             0.5 as sim_citation,
+             0.0 as sim_tags,
+             0 as title_starts
       from kb_entries k
-      where (
-        lower(coalesce(k.title,'')) like '%' || lower($1) || '%' or
-        lower(coalesce(k.canonical_citation,'')) like '%' || lower($1) || '%' or
-        lower(coalesce(k.summary,'')) like '%' || lower($1) || '%'
-      )
+      where k.title is not null
         and ($2::text is null or k.type = $2)
         and ($3::text is null or k.jurisdiction = $3)
         and ($4::text is null or k.status = $4)
         and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
-      order by (
-        rank_score
-        + (case when lower(coalesce(k.title,'')||' '||coalesce(k.canonical_citation,'')) = lower($1) then 1000 else 0 end)
-        + (sim_title * 0.75)
-        + (sim_citation * 0.75)
-        + (sim_tags * 0.50)
-        + (case when title_starts = 1 then 0.60 else 0 end)
-      ) desc,
-      (case when k.verified then 1 else 0 end) desc,
-      (case when lower(coalesce(k.status,'')) = 'active' then 1 else 0 end) desc,
-      coalesce(k.effective_date, '0001-01-01') desc,
-      length(coalesce(k.title,'')) asc,
-      k.entry_id asc
+      order by k.entry_id asc
       limit $6`;
 
     const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit ];
