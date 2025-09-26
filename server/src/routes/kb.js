@@ -676,11 +676,7 @@ const LexicalQuerySchema = z.object({
 
 router.get('/search', async (req, res) => {
   try {
-    console.log('🔍 Search request received:', req.query);
-    
     const p = LexicalQuerySchema.parse(req.query);
-    console.log('🔍 Parsed query params:', p);
-    
     let limit = p.limit || 20;
     if (Number.isFinite(limit)) {
       limit = Math.max(1, Math.min(100, limit));
@@ -688,47 +684,88 @@ router.get('/search', async (req, res) => {
       limit = 20;
     }
     const originalQ = String(p.query || '').trim();
-    console.log('🔍 Original query:', originalQ);
-    
     const q = normalizeAndExpandQuery(originalQ);
-    console.log('🔍 Normalized query:', q);
-    
-    if (!q) {
-      console.log('🔍 Query is empty, returning 400');
-      return res.status(400).json({ error: 'query is required' });
-    }
+    if (!q) return res.status(400).json({ error: 'query is required' });
 
-    // Simple but functional search - uses LIKE patterns that work with any text
+    // websearch_to_tsquery + fallback trigram union
     const sql = `
-      select entry_id, type, title, canonical_citation, section_id, law_family, tags, summary, verified, status, effective_date,
-             (case when lower(title) like '%' || lower($1) || '%' then 1 else 0 end) as title_match,
-             (case when lower(canonical_citation) like '%' || lower($1) || '%' then 1 else 0 end) as citation_match,
-             (case when lower(summary) like '%' || lower($1) || '%' then 1 else 0 end) as summary_match
-      from kb_entries 
-      where (
-        lower(title) like '%' || lower($1) || '%' or
-        lower(canonical_citation) like '%' || lower($1) || '%' or
-        lower(summary) like '%' || lower($1) || '%'
+      with params as (
+        select 
+          websearch_to_tsquery('simple', $1) as tsq,
+          regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
+          lower($1) as q_norm,
+          split_part(lower($1), ' ', 1) as first_tok
+      ), lex as (
+        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+               k.verified, k.status, k.effective_date,
+               ts_rank_cd(k.search_vec, (select tsq from params)) as rank_score,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.title,''), (select tsq from params), 'MinWords=3, MaxWords=12') else null end as hl_title,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.summary,''), (select tsq from params), 'MinWords=6, MaxWords=18') else null end as hl_summary,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.canonical_citation,''), (select tsq from params), 'MinWords=2, MaxWords=8') else null end as hl_citation,
+               ((setweight(to_tsvector('simple', coalesce(k.title,'')),'A')) @@ (select tsq from params)) as m_title,
+               ((setweight(to_tsvector('simple', coalesce(k.canonical_citation,'')),'A')) @@ (select tsq from params)) as m_citation,
+               ((setweight(to_tsvector('simple', coalesce(k.section_id,'')),'B')) @@ (select tsq from params)) as m_section
+        from kb_entries k
+        where k.search_vec @@ (select tsq from params)
+          and ($2::text is null or k.type = $2)
+          and ($3::text is null or k.jurisdiction = $3)
+          and ($4::text is null or k.status = $4)
+          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      ), tri as (
+        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+               k.verified, k.status, k.effective_date,
+               0.15 as rank_score,
+               null::text as hl_title,
+               null::text as hl_summary,
+               null::text as hl_citation,
+               false as m_title,
+               false as m_citation,
+               false as m_section
+        from kb_entries k, params
+        where ($1 <> '') and (
+          lower(k.title) % (select q_norm from params) or
+          lower(k.canonical_citation) % (select q_norm from params) or
+          k.compact_citation like '%' || (select compact_q from params) || '%'
+        )
+          and ($2::text is null or k.type = $2)
+          and ($3::text is null or k.jurisdiction = $3)
+          and ($4::text is null or k.status = $4)
+          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      ), unioned as (
+        select * from lex
+        union all
+        select * from tri
       )
-        and ($2::text is null or type = $2)
-        and ($3::text is null or jurisdiction = $3)
-        and ($4::text is null or status = $4)
-        and ($5::text is null or (case when $5 = 'yes' then verified = true else verified is not true end))
-      order by 
-        (title_match + citation_match + summary_match) desc,
-        (case when lower(title) like lower($1) || '%' then 1 else 0 end) desc,
-        (case when verified then 1 else 0 end) desc,
-        (case when lower(status) = 'active' then 1 else 0 end) desc,
-        effective_date desc,
-        entry_id asc
+      select *,
+             -- symmetric trigram similarities for title and citation (equal weight)
+             similarity(lower(coalesce(title,'')), (select q_norm from params)) as sim_title,
+             similarity(lower(coalesce(canonical_citation,'')), (select q_norm from params)) as sim_citation,
+             similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q_norm from params)) as sim_tags,
+             (case when lower(coalesce(title,'')) like (select first_tok from params) || ' %' or lower(coalesce(title,'')) = (select first_tok from params) then 1 else 0 end) as title_starts,
+             (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
+             array_remove(array[
+               case when m_title then 'title' else null end,
+               case when m_citation then 'canonical_citation' else null end,
+               case when m_section then 'section_id' else null end
+             ], null) as matched_fields
+      from unioned
+      order by (
+                 rank_score
+                 + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)
+                 + (sim_title * 0.75)
+                 + (sim_citation * 0.75)
+                 + (sim_tags * 0.50)
+                 + (case when title_starts = 1 then 0.60 else 0 end)
+               ) desc,
+               (case when verified then 1 else 0 end) desc,
+               (case when lower(coalesce(status,'')) = 'active' then 1 else 0 end) desc,
+               coalesce(effective_date, '0001-01-01') desc,
+               length(coalesce(title,'')) asc,
+               entry_id asc
       limit $6`;
 
-    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit ];
-    console.log('🔍 SQL params:', params);
-    console.log('🔍 Executing SQL...');
-    
+    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit, Boolean(p.explain) ];
     let result = await query(sql, params);
-    console.log('🔍 SQL executed successfully, rows:', result.rows?.length || 0);
 
     // Domain-aware re-rank boosts for agency/admin queries
     const qn = q.toLowerCase();
@@ -882,9 +919,7 @@ router.get('/search', async (req, res) => {
       suggestions,
     });
   } catch (e) {
-    console.error('🔍 Search endpoint error:', e);
-    console.error('🔍 Error message:', e.message);
-    console.error('🔍 Error stack:', e.stack);
+    console.error(e);
     res.status(400).json({ success: false, error: String(e.message || e) });
   }
 });

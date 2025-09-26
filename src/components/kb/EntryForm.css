@@ -851,10 +851,7 @@
 /* Labels white in dark mode */
 .dark-mode .kb-form-label,
 .dark-mode .kb-form .kb-label,
-.dark-mode .kb-form .form-section h3,
-.dark-mode .space-y-3 .kb-form-label { 
-	color: #ffffff !important; 
-}
+.dark-mode .kb-form .form-section h3 { color: #ffffff; }
 
 /* Amendment text should be white in dark mode */
 .dark-mode .kb-form .text-gray-700 {

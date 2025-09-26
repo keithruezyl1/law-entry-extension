@@ -124,11 +124,11 @@ export const Toast: React.FC<ToastProps> = ({
         <div className={`bg-gradient-to-r ${config.bgColor} to-red-600 px-6 py-4 relative`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 ml-4">
-              <Icon className="w-5 h-5 text-white" />
+              <Icon className="w-5 h-5 text-white pl-1" />
               <h3 className="text-lg font-semibold text-white">{title}</h3>
             </div>
             <button 
-              className="text-white/80 hover:text-white flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-3"
+              className="toast-close text-white/80 hover:text-white flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 -mr-3"
               onClick={onClose}
               title="Dismiss notification"
               aria-label="Dismiss notification"
