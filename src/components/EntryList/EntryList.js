@@ -485,7 +485,19 @@ const EntryList = ({ entries, onViewEntry, onEditEntry, onDeleteEntry, onExportE
               <div className="entry-content">
                 <div className="entry-main">
                   <div className="entry-title-row">
-                    <h3 className="entry-title" onClick={() => { setEntryStack([]); setSelectedEntry(entry); }}>
+                    <h3 className="entry-title" onClick={async () => {
+                      setEntryStack([]);
+                      try {
+                        if (useServerSearch && entry && entry.entry_id) {
+                          const full = await fetchEntryById(entry.entry_id);
+                          if (full) {
+                            setSelectedEntry({ ...full, id: full.entry_id });
+                            return;
+                          }
+                        }
+                      } catch {}
+                      setSelectedEntry(entry);
+                    }}>
                       {useServerSearch && entry.hl_title ? renderHighlighted(entry.hl_title, entry.title || 'Untitled Entry') : (entry.title || 'Untitled Entry')}
                     </h3>
                     <div className="entry-badges">
