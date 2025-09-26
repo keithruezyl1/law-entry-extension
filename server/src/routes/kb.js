@@ -691,7 +691,7 @@ router.get('/search', async (req, res) => {
     const sql = `
       with params as (
         select 
-          websearch_to_tsquery('simple', $1) as tsq,
+          to_tsquery('simple', $1) as tsq,
           regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
           lower($1) as q_norm,
           split_part(lower($1), ' ', 1) as first_tok
