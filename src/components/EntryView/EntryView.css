@@ -746,10 +746,16 @@
   flex-direction: row;
   gap: 1rem;
   margin-top: 1rem;
-  overflow-x: auto;
+  overflow-x: hidden;
   padding-bottom: 0.5rem;
   scrollbar-width: thin;
   scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+/* Enable scrolling only when there are more than 3 cards */
+.legal-bases-grid:has(.legal-basis-card:nth-child(4)),
+.related-sections-grid:has(.related-section-card:nth-child(4)) {
+  overflow-x: auto;
 }
 
 .legal-bases-grid::-webkit-scrollbar,
@@ -800,10 +806,11 @@
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 1rem;
+  padding: 1.25rem;
   transition: all 0.2s ease;
   min-width: 300px;
   flex-shrink: 0;
+  min-height: 200px;
 }
 
 /* Dark citation cards */
@@ -1081,6 +1088,7 @@
   .related-section-card {
     padding: 0.75rem;
     min-width: 250px;
+    min-height: 180px;
   }
   
   .field-group {
