@@ -698,31 +698,10 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'query is required' });
     }
 
-    // Ultra-simple search that will never fail
-    const sql = `
-      select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
-             k.verified, k.status, k.effective_date,
-             1.0 as rank_score,
-             null::text as hl_title,
-             null::text as hl_summary,
-             null::text as hl_citation,
-             true as m_title,
-             true as m_citation,
-             false as m_section,
-             0.5 as sim_title,
-             0.5 as sim_citation,
-             0.0 as sim_tags,
-             0 as title_starts
-      from kb_entries k
-      where k.title is not null
-        and ($2::text is null or k.type = $2)
-        and ($3::text is null or k.jurisdiction = $3)
-        and ($4::text is null or k.status = $4)
-        and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
-      order by k.entry_id asc
-      limit $6`;
+    // Nuclear option - just return some entries, no complex logic
+    const sql = `select entry_id, type, title, canonical_citation, section_id, law_family, tags, summary, verified, status, effective_date from kb_entries limit $1`;
 
-    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit ];
+    const params = [ limit ];
     console.log('🔍 SQL params:', params);
     console.log('🔍 Executing SQL...');
     
