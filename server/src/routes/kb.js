@@ -698,10 +698,32 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'query is required' });
     }
 
-    // Nuclear option - just return some entries, no complex logic
-    const sql = `select entry_id, type, title, canonical_citation, section_id, law_family, tags, summary, verified, status, effective_date from kb_entries limit $1`;
+    // Simple but functional search - uses LIKE patterns that work with any text
+    const sql = `
+      select entry_id, type, title, canonical_citation, section_id, law_family, tags, summary, verified, status, effective_date,
+             (case when lower(title) like '%' || lower($1) || '%' then 1 else 0 end) as title_match,
+             (case when lower(canonical_citation) like '%' || lower($1) || '%' then 1 else 0 end) as citation_match,
+             (case when lower(summary) like '%' || lower($1) || '%' then 1 else 0 end) as summary_match
+      from kb_entries 
+      where (
+        lower(title) like '%' || lower($1) || '%' or
+        lower(canonical_citation) like '%' || lower($1) || '%' or
+        lower(summary) like '%' || lower($1) || '%'
+      )
+        and ($2::text is null or type = $2)
+        and ($3::text is null or jurisdiction = $3)
+        and ($4::text is null or status = $4)
+        and ($5::text is null or (case when $5 = 'yes' then verified = true else verified is not true end))
+      order by 
+        (title_match + citation_match + summary_match) desc,
+        (case when lower(title) like lower($1) || '%' then 1 else 0 end) desc,
+        (case when verified then 1 else 0 end) desc,
+        (case when lower(status) = 'active' then 1 else 0 end) desc,
+        effective_date desc,
+        entry_id asc
+      limit $6`;
 
-    const params = [ limit ];
+    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit ];
     console.log('🔍 SQL params:', params);
     console.log('🔍 Executing SQL...');
     

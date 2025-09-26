@@ -233,6 +233,22 @@
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
 }
 
+/* Toast header styling fixes */
+.dark-mode .toast-container .bg-gradient-to-r button {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.dark-mode .toast-container .bg-gradient-to-r button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Add padding to warning icon and title */
+.toast-container .bg-gradient-to-r .flex.items-center.gap-2 {
+  padding-left: 1rem;
+}
+
 /* Light mode readability for duplicate matches content */
 .toast-container .duplicate-match-item,
 .toast-container .duplicate-matches-content {
