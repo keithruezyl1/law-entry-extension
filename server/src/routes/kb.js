@@ -687,87 +687,47 @@ router.get('/search', async (req, res) => {
     const q = normalizeAndExpandQuery(originalQ);
     if (!q) return res.status(400).json({ error: 'query is required' });
 
-    // Simple text search + trigram fallback (more robust than tsquery)
+    // Simple text search (most robust approach)
     const sql = `
-      with params as (
-        select 
-          lower($1) as q_norm,
-          regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
-          split_part(lower($1), ' ', 1) as first_tok
-      ), lex as (
-        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
-               k.verified, k.status, k.effective_date,
-               0.5 as rank_score,
-               null::text as hl_title,
-               null::text as hl_summary,
-               null::text as hl_citation,
-               (lower(coalesce(k.title,'')) like '%' || (select q_norm from params) || '%') as m_title,
-               (lower(coalesce(k.canonical_citation,'')) like '%' || (select q_norm from params) || '%') as m_citation,
-               (lower(coalesce(k.section_id,'')) like '%' || (select q_norm from params) || '%') as m_section
-        from kb_entries k, params
-        where (
-          lower(coalesce(k.title,'')) like '%' || (select q_norm from params) || '%' or
-          lower(coalesce(k.canonical_citation,'')) like '%' || (select q_norm from params) || '%' or
-          lower(coalesce(k.summary,'')) like '%' || (select q_norm from params) || '%'
-        )
-          and ($2::text is null or k.type = $2)
-          and ($3::text is null or k.jurisdiction = $3)
-          and ($4::text is null or k.status = $4)
-          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
-      ), tri as (
-        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
-               k.verified, k.status, k.effective_date,
-               0.15 as rank_score,
-               null::text as hl_title,
-               null::text as hl_summary,
-               null::text as hl_citation,
-               false as m_title,
-               false as m_citation,
-               false as m_section
-        from kb_entries k, params
-        where ($1 <> '') and (
-          lower(k.title) % (select q_norm from params) or
-          lower(k.canonical_citation) % (select q_norm from params) or
-          k.compact_citation like '%' || (select compact_q from params) || '%'
-        )
-          and ($2::text is null or k.type = $2)
-          and ($3::text is null or k.jurisdiction = $3)
-          and ($4::text is null or k.status = $4)
-          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
-      ), unioned as (
-        select * from lex
-        union all
-        select * from tri
+      select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+             k.verified, k.status, k.effective_date,
+             0.5 as rank_score,
+             null::text as hl_title,
+             null::text as hl_summary,
+             null::text as hl_citation,
+             (lower(coalesce(k.title,'')) like '%' || lower($1) || '%') as m_title,
+             (lower(coalesce(k.canonical_citation,'')) like '%' || lower($1) || '%') as m_citation,
+             (lower(coalesce(k.section_id,'')) like '%' || lower($1) || '%') as m_section,
+             similarity(lower(coalesce(k.title,'')), lower($1)) as sim_title,
+             similarity(lower(coalesce(k.canonical_citation,'')), lower($1)) as sim_citation,
+             similarity(lower(array_to_string(k.tags,' ')), lower($1)) as sim_tags,
+             (case when lower(coalesce(k.title,'')) like lower($1) || '%' then 1 else 0 end) as title_starts
+      from kb_entries k
+      where (
+        lower(coalesce(k.title,'')) like '%' || lower($1) || '%' or
+        lower(coalesce(k.canonical_citation,'')) like '%' || lower($1) || '%' or
+        lower(coalesce(k.summary,'')) like '%' || lower($1) || '%'
       )
-      select *,
-             -- symmetric trigram similarities for title and citation (equal weight)
-             similarity(lower(coalesce(title,'')), (select q_norm from params)) as sim_title,
-             similarity(lower(coalesce(canonical_citation,'')), (select q_norm from params)) as sim_citation,
-             similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q_norm from params)) as sim_tags,
-             (case when lower(coalesce(title,'')) like (select first_tok from params) || ' %' or lower(coalesce(title,'')) = (select first_tok from params) then 1 else 0 end) as title_starts,
-             (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
-             array_remove(array[
-               case when m_title then 'title' else null end,
-               case when m_citation then 'canonical_citation' else null end,
-               case when m_section then 'section_id' else null end
-             ], null) as matched_fields
-      from unioned
+        and ($2::text is null or k.type = $2)
+        and ($3::text is null or k.jurisdiction = $3)
+        and ($4::text is null or k.status = $4)
+        and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
       order by (
-                 rank_score
-                 + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)
-                 + (sim_title * 0.75)
-                 + (sim_citation * 0.75)
-                 + (sim_tags * 0.50)
-                 + (case when title_starts = 1 then 0.60 else 0 end)
-               ) desc,
-               (case when verified then 1 else 0 end) desc,
-               (case when lower(coalesce(status,'')) = 'active' then 1 else 0 end) desc,
-               coalesce(effective_date, '0001-01-01') desc,
-               length(coalesce(title,'')) asc,
-               entry_id asc
+        rank_score
+        + (case when lower(coalesce(k.title,'')||' '||coalesce(k.canonical_citation,'')) = lower($1) then 1000 else 0 end)
+        + (sim_title * 0.75)
+        + (sim_citation * 0.75)
+        + (sim_tags * 0.50)
+        + (case when title_starts = 1 then 0.60 else 0 end)
+      ) desc,
+      (case when k.verified then 1 else 0 end) desc,
+      (case when lower(coalesce(k.status,'')) = 'active' then 1 else 0 end) desc,
+      coalesce(k.effective_date, '0001-01-01') desc,
+      length(coalesce(k.title,'')) asc,
+      k.entry_id asc
       limit $6`;
 
-    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit, Boolean(p.explain) ];
+    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit ];
     let result = await query(sql, params);
 
     // Domain-aware re-rank boosts for agency/admin queries
