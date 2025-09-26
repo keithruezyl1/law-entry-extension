@@ -695,16 +695,7 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
 
   // Auto-detect internal citations when external citations are loaded (e.g., after import)
   useEffect(() => {
-    console.log('🔍 LegalBasisPicker useEffect triggered:', {
-      allEntriesLength: allEntries?.length || 0,
-      itemsLength: items.length,
-      items: items.map((item: any) => ({ type: item?.type, citation: item?.citation, title: item?.title }))
-    });
-    
-    if (!allEntries || allEntries.length === 0) {
-      console.log('🔍 No allEntries available, skipping detection');
-      return;
-    }
+    if (!allEntries || allEntries.length === 0) return;
     
     // Check if we have external citations that haven't been processed yet
     const externalCitations = items.filter((item: any, index: number) => 
@@ -712,8 +703,6 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       (item.citation || item.title || item.url) &&
       !inlineMatches[index] // Only process if not already processed
     );
-    
-    console.log('🔍 External citations found:', externalCitations.length, externalCitations);
     
     if (externalCitations.length > 0) {
       console.log(`🔍 Auto-detecting internal citations for ${externalCitations.length} external citations after import/load`);
@@ -723,12 +712,10 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
       externalCitations.forEach((item: any, index: number) => {
         const actualIndex = items.findIndex((i: any) => i === item);
         if (actualIndex !== -1) {
-          console.log(`🔍 Triggering detection for index ${actualIndex}:`, item.title);
+          console.log(`🔍 Auto-detecting for new external citation at index ${actualIndex}:`, item.title);
           handleDetectExternalMatchesDebounced(actualIndex);
         }
       });
-    } else {
-      console.log('🔍 No external citations to process');
     }
   }, [allEntries]); // Only run when allEntries loads, not on every form change
 

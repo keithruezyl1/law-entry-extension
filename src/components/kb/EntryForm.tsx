@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { EntrySchema, Entry, TypeEnum, validateBusinessRules } from 'lib/civilify-kb-schemas';
 import { useNavigate, useParams } from 'react-router-dom';
 // Using regular textarea to avoid external dependency
-// import { LegalBasisPicker } from './fields/LegalBasisPicker';
+import { LegalBasisPicker } from './fields/LegalBasisPicker';
 
 import EntryPreview from './EntryPreview';
 import { EntryStepper, type Step } from './EntryStepper';
