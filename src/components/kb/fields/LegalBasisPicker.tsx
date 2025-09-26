@@ -348,18 +348,20 @@ export const LegalBasisPicker = forwardRef<any, LegalBasisPickerProps & { onActi
 
   // Build a search query from an external citation row
   const buildExternalQuery = (ext: any): string => {
-    // Prioritize citation and title over URL for better matching
+    // Prioritize citation and title, but keep query short to avoid URL length limits
     const citation = ext?.citation || '';
     const title = ext?.title || '';
-    const url = ext?.url || '';
     
-    // Build query with priority: citation first, then title, then URL
-    const parts = [];
-    if (citation) parts.push(citation);
-    if (title) parts.push(title);
-    if (url) parts.push(url);
+    // Use citation first (most specific), then title if citation is too short
+    if (citation && citation.length > 10) {
+      return citation.slice(0, 200); // Limit to 200 chars to stay well under URL limits
+    } else if (title && title.length > 5) {
+      return title.slice(0, 200);
+    } else if (citation) {
+      return citation.slice(0, 200);
+    }
     
-    return parts.join(' ').slice(0, 400);
+    return '';
   };
 
   const findSimilarEntriesForExternal = async (ext: any): Promise<EntryLite[]> => {
