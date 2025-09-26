@@ -687,26 +687,29 @@ router.get('/search', async (req, res) => {
     const q = normalizeAndExpandQuery(originalQ);
     if (!q) return res.status(400).json({ error: 'query is required' });
 
-    // websearch_to_tsquery + fallback trigram union
+    // Simple text search + trigram fallback (more robust than tsquery)
     const sql = `
       with params as (
         select 
-          to_tsquery('simple', $1) as tsq,
-          regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
           lower($1) as q_norm,
+          regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
           split_part(lower($1), ' ', 1) as first_tok
       ), lex as (
         select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
                k.verified, k.status, k.effective_date,
-               ts_rank_cd(k.search_vec, (select tsq from params)) as rank_score,
-               case when $7::boolean is true then ts_headline('simple', coalesce(k.title,''), (select tsq from params), 'MinWords=3, MaxWords=12') else null end as hl_title,
-               case when $7::boolean is true then ts_headline('simple', coalesce(k.summary,''), (select tsq from params), 'MinWords=6, MaxWords=18') else null end as hl_summary,
-               case when $7::boolean is true then ts_headline('simple', coalesce(k.canonical_citation,''), (select tsq from params), 'MinWords=2, MaxWords=8') else null end as hl_citation,
-               ((setweight(to_tsvector('simple', coalesce(k.title,'')),'A')) @@ (select tsq from params)) as m_title,
-               ((setweight(to_tsvector('simple', coalesce(k.canonical_citation,'')),'A')) @@ (select tsq from params)) as m_citation,
-               ((setweight(to_tsvector('simple', coalesce(k.section_id,'')),'B')) @@ (select tsq from params)) as m_section
-        from kb_entries k
-        where k.search_vec @@ (select tsq from params)
+               0.5 as rank_score,
+               null::text as hl_title,
+               null::text as hl_summary,
+               null::text as hl_citation,
+               (lower(coalesce(k.title,'')) like '%' || (select q_norm from params) || '%') as m_title,
+               (lower(coalesce(k.canonical_citation,'')) like '%' || (select q_norm from params) || '%') as m_citation,
+               (lower(coalesce(k.section_id,'')) like '%' || (select q_norm from params) || '%') as m_section
+        from kb_entries k, params
+        where (
+          lower(coalesce(k.title,'')) like '%' || (select q_norm from params) || '%' or
+          lower(coalesce(k.canonical_citation,'')) like '%' || (select q_norm from params) || '%' or
+          lower(coalesce(k.summary,'')) like '%' || (select q_norm from params) || '%'
+        )
           and ($2::text is null or k.type = $2)
           and ($3::text is null or k.jurisdiction = $3)
           and ($4::text is null or k.status = $4)
