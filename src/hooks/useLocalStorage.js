@@ -903,8 +903,14 @@ export const useLocalStorage = () => {
       
       // For the new workflow, we'll process the first entry and return it for form population
       const entry = list[0];
-      if (!entry || !entry.title) {
-        return { success: false, error: 'Invalid entry format - entry must have at least a title' };
+      if (!entry || typeof entry !== 'object') {
+        return { success: false, error: 'Invalid entry format' };
+      }
+      
+      // Check if entry has at least one of the required fields for a valid entry
+      const hasRequiredFields = entry.title || entry.citation || entry.entry_id || entry.url;
+      if (!hasRequiredFields) {
+        return { success: false, error: 'Entry must have at least one of: title, citation, entry_id, or url' };
       }
       
       // Check if entry already exists (optional - don't block import if API fails)

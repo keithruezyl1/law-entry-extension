@@ -574,7 +574,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
         text: entry.text || '',
         source_urls: entry.source_urls && entry.source_urls.length > 0 ? entry.source_urls : [''],
         tags: entry.tags || [],
-        last_reviewed: new Date().toISOString().slice(0, 10), // Always use today's date
+        last_reviewed: normalizeDate(entry.last_reviewed) || new Date().toISOString().slice(0, 10),
         visibility: { gli: true, cpa: true }, // Always set both GLI and CPA
         // Type-specific fields
         elements: normalizeStringArray((entry as any)?.elements),
@@ -705,7 +705,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             text: parsed.text || '',
             source_urls: parsed.source_urls && parsed.source_urls.length > 0 ? parsed.source_urls : [''],
             tags: parsed.tags || [],
-            last_reviewed: new Date().toISOString().slice(0, 10), // Always use today's date
+            last_reviewed: normalizeDate(parsed.last_reviewed) || new Date().toISOString().slice(0, 10),
             visibility: { gli: true, cpa: true },
             // Type-specific fields
             elements: normalizeStringArray(parsed?.elements),
@@ -882,7 +882,7 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             text: parsed.text || '',
             source_urls: parsed.source_urls && parsed.source_urls.length > 0 ? parsed.source_urls : [''],
             tags: parsed.tags || [],
-            last_reviewed: new Date().toISOString().slice(0, 10), // Always use today's date
+            last_reviewed: parsed.last_reviewed || new Date().toISOString().slice(0, 10),
             visibility: parsed.visibility || { gli: true, cpa: false },
             // Type-specific fields
             elements: parsed.elements || [],
@@ -1261,8 +1261,8 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
     // Build the message
     let message = '';
     if (hasSuggestions) {
-      // Use a clear, generic prompt without counts (desktop shows as two lines)
-      message = 'There are still external citations that might exist in the KB.\nAre you sure you want to ignore and not add them as internal?';
+      // Use a clear, generic prompt without counts
+      message = 'There are still external citations that might exist in the KB. Are you sure you want to ignore and not add them as internal?';
     }
     
     console.log('🔍 Internal citation suggestions result:', {
@@ -1664,43 +1664,34 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
 
 
         if (!cancelled) {
-          // If semantic search is insufficient, query backend lexical search and then fall back to simple local text search
+          // If semantic search fails or returns no results, try a fallback text search
           let resultsRaw = [];
           if (resp.success && resp.results && Array.isArray(resp.results) && resp.results.length > 0) {
             resultsRaw = resp.results;
             debugLog('🔍 Using semantic search results:', resultsRaw.length);
           } else {
-            debugLog('🔍 Semantic search failed or returned no results, trying server lexical search');
-            try {
-              const { serverSearch } = await import('../../services/kbApi');
-              const server = await serverSearch({ query: q, limit: 10, explain: false });
-              const serverRows = Array.isArray(server.results)
-                ? server.results.map(r => ({ ...r, id: r.entry_id || r.id, similarity: r.score ?? 0.5 }))
-                : [];
-              resultsRaw = serverRows;
-              debugLog('🔍 Server search results:', serverRows.length);
-            } catch (err) {
-              debugLog('🔍 Server search failed, using final local text fallback', err);
-              // Final fallback: simple local text search through existing entries
-              const searchTerm = q.toLowerCase();
-              resultsRaw = existingEntries
-                .filter(entry => {
-                  const searchableText = [
-                    entry.title,
-                    (entry as any).canonical_citation,
-                    (entry as any).section_id,
-                    (entry as any).law_family,
-                    (entry as any).summary
-                  ].filter(Boolean).join(' ').toLowerCase();
-                  return searchableText.includes(searchTerm);
-                })
-                .map(entry => ({
-                  ...entry,
-                  similarity: 0.35 // Lower default similarity for naive text matches
-                }))
-                .slice(0, 10);
-              debugLog('🔍 Fallback text search results:', resultsRaw.length);
-            }
+            debugLog('🔍 Semantic search failed or returned no results, trying fallback text search');
+
+
+            // Fallback: simple text search through existing entries
+            const searchTerm = q.toLowerCase();
+            resultsRaw = existingEntries
+              .filter(entry => {
+                const searchableText = [
+                  entry.title,
+                  (entry as any).canonical_citation,
+                  (entry as any).section_id,
+                  (entry as any).law_family,
+                  (entry as any).summary
+                ].filter(Boolean).join(' ').toLowerCase();
+                return searchableText.includes(searchTerm);
+              })
+              .map(entry => ({
+                ...entry,
+                similarity: 0.35 // Lower default similarity for naive text matches
+              }))
+              .slice(0, 10);
+            debugLog('🔍 Fallback text search results:', resultsRaw.length);
 
 
           }
@@ -2127,96 +2118,20 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
               const eCite = normalizeSearchText(e.canonical_citation || '');
               const eSection = normalizeSearchText(e.section_id || '');
               let boost = 0;
-              
-              // Require BOTH citation AND title relevance for strong matches
-              let citationScore = 0, titleScore = 0;
-              
-              // Citation scoring
-              if (exactCitationNorm) {
-                if (eCite === exactCitationNorm) citationScore = 2000;
-                else if (eTitle === exactCitationNorm) citationScore = 1500;
-                else if (eCite.startsWith(exactCitationNorm)) citationScore = 1000;
-                else if (eTitle.startsWith(exactCitationNorm)) citationScore = 800;
-                else if (eCite.includes(exactCitationNorm)) citationScore = 600;
-                else if (eTitle.includes(exactCitationNorm)) citationScore = 400;
-              }
-              
-              // Title scoring (weighted more heavily for content relevance)
-              if (exactTitleNorm) {
-                if (eTitle === exactTitleNorm) titleScore = 1500;
-                else if (eCite === exactTitleNorm) titleScore = 1000;
-                else if (eTitle.startsWith(exactTitleNorm)) titleScore = 800;
-                else if (eCite.startsWith(exactTitleNorm)) titleScore = 600;
-                else if (eTitle.includes(exactTitleNorm)) titleScore = 500;
-                else if (eCite.includes(exactTitleNorm)) titleScore = 300;
-              }
-              
-              // Section scoring (much lower priority - only for exact matches)
-              if (exactSectionNorm && exactSectionNorm.length > 2) { // Avoid single digits
-                if (eSection === exactSectionNorm) boost += 50; // Much lower
-                else if (eSection.startsWith(exactSectionNorm)) boost += 25;
-                // Remove partial section matches to avoid "Section 4" spam
-              }
-              
-              // Require meaningful content overlap, not just section numbers
-              const hasCitationRelevance = citationScore > 0;
-              const hasTitleRelevance = titleScore > 0;
-              
-              // Check for actual word overlap in titles (content similarity)
-              const titleWords = exactTitleNorm.split(' ').filter(w => w.length > 3); // Skip short words
-              const entryTitleWords = eTitle.split(' ').filter(w => w.length > 3);
-              const hasContentOverlap = titleWords.some(word => 
-                entryTitleWords.some(eword => eword.includes(word) || word.includes(eword))
-              );
-              
-              // Only boost if there's meaningful content overlap
-              if (hasCitationRelevance && hasTitleRelevance) {
-                boost += citationScore + titleScore;
-              } else if (hasTitleRelevance && hasContentOverlap) {
-                // Strong title + content match (e.g., "terrorism" concepts)
-                boost += titleScore * 1.2;
-              } else if (hasTitleRelevance && !hasCitationRelevance) {
-                // Title-only matches need content overlap
-                if (hasContentOverlap) {
-                  boost += titleScore * 0.8;
-                } else {
-                  boost += titleScore * 0.2; // Very weak if no content overlap
-                }
-              } else if (hasCitationRelevance && !hasTitleRelevance) {
-                // Citation-only matches are weak unless there's content overlap
-                if (hasContentOverlap) {
-                  boost += citationScore * 0.5;
-                } else {
-                  boost += citationScore * 0.1; // Very weak
-                }
-              }
-              
+              if (exactCitationNorm){ if (eCite===exactCitationNorm) boost+=2000; if (eTitle===exactCitationNorm) boost+=1500; if (eCite.startsWith(exactCitationNorm)) boost+=1000; if (eTitle.startsWith(exactCitationNorm)) boost+=800; if (eCite.includes(exactCitationNorm)) boost+=600; if (eTitle.includes(exactCitationNorm)) boost+=400; }
+              if (exactTitleNorm){ if (eTitle===exactTitleNorm) boost+=1000; if (eCite===exactTitleNorm) boost+=800; if (eTitle.startsWith(exactTitleNorm)) boost+=500; if (eCite.startsWith(exactTitleNorm)) boost+=400; if (eTitle.includes(exactTitleNorm)) boost+=300; if (eCite.includes(exactTitleNorm)) boost+=200; }
+              if (exactSectionNorm){ if (eSection===exactSectionNorm) boost+=800; if (eSection.startsWith(exactSectionNorm)) boost+=400; if (eSection.includes(exactSectionNorm)) boost+=200; }
               return { entry: e, score: base + boost };
-            }).filter(it => it.score >= 15); // Higher threshold for better precision
+            }).filter(it => it.score >= 10);
 
             const semanticRaw = (resp.success && Array.isArray(resp.results)) ? resp.results : [];
             const semanticScored = semanticRaw.map((r: any) => {
               let score = Number(r.similarity || r.score || 0) * 100;
               const rTitle = normalizeSearchText(r.title || '');
               const rCite = normalizeSearchText(r.canonical_citation || '');
-              
-              // Apply same content overlap logic to semantic results
-              const titleWords = exactTitleNorm.split(' ').filter(w => w.length > 3);
-              const entryTitleWords = rTitle.split(' ').filter(w => w.length > 3);
-              const hasContentOverlap = titleWords.some(word => 
-                entryTitleWords.some(eword => eword.includes(word) || word.includes(eword))
-              );
-              
-              // Only boost semantic results if there's content overlap
-              if (exactCitationNorm && (rCite===exactCitationNorm || rTitle===exactCitationNorm) && hasContentOverlap) {
-                score += 25;
-              } else if (exactTitleNorm && (rTitle===exactTitleNorm || rCite===exactTitleNorm) && hasContentOverlap) {
-                score += 20;
-              } else if (hasContentOverlap) {
-                score *= 0.8; // Keep some semantic relevance if content matches
-              } else {
-                score *= 0.1; // Heavily penalize semantic results without content overlap
-              }
+              if (exactCitationNorm && (rCite===exactCitationNorm || rTitle===exactCitationNorm)) score += 25;
+              else if (exactTitleNorm && (rTitle===exactTitleNorm || rCite===exactTitleNorm)) score += 20;
+              else score *= 0.5;
               return { entry: r, score };
             });
 
@@ -2224,16 +2139,11 @@ export default function EntryFormTS({ entry, existingEntries = [], onSave, onCan
             for (const it of localScored){ const id = it.entry.entry_id || it.entry.id || it.entry.title; const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 }; merged[id] = { entry: it.entry, local: Math.max(prev.local, it.score), semantic: prev.semantic }; }
             for (const it of semanticScored){ const id = it.entry.entry_id || it.entry.id || it.entry.title; const prev = merged[id] || { entry: it.entry, local: 0, semantic: 0 }; merged[id] = { entry: it.entry, local: prev.local, semantic: Math.max(prev.semantic, it.score) }; }
 
-            const SEM_THRESHOLD = 80; // Much higher threshold
-            const LOC_THRESHOLD = 25; // Much higher threshold
+            const SEM_THRESHOLD = 50;
+            const LOC_THRESHOLD = 10;
             const reRanked = Object.values(merged)
-              .filter(m => {
-                // Require strong local matches OR very strong semantic matches with content overlap
-                const hasStrongLocal = m.local >= LOC_THRESHOLD;
-                const hasStrongSemantic = m.semantic >= SEM_THRESHOLD && m.local >= 15;
-                return hasStrongLocal || hasStrongSemantic;
-              })
-              .sort((a, b) => (b.local * 3 + b.semantic) - (a.local * 3 + a.semantic)) // Favor local matches more
+              .filter(m => (m.local >= LOC_THRESHOLD) || (m.semantic >= SEM_THRESHOLD && m.local >= 8))
+              .sort((a, b) => (b.local * 2 + b.semantic) - (a.local * 2 + a.semantic))
               .slice(0, 5)
               .map(m => m.entry);
 
