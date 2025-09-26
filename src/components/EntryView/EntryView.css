@@ -742,43 +742,14 @@
 /* Relations Display */
 .legal-bases-grid,
 .related-sections-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 0.5rem;
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e0 transparent;
 }
 
-.legal-bases-grid::-webkit-scrollbar,
-.related-sections-grid::-webkit-scrollbar {
-  height: 6px;
-}
-
-.legal-bases-grid::-webkit-scrollbar-track,
-.related-sections-grid::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.legal-bases-grid::-webkit-scrollbar-thumb,
-.related-sections-grid::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 3px;
-}
-
-.legal-bases-grid::-webkit-scrollbar-thumb:hover,
-.related-sections-grid::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
-}
-
-/* Ensure cards maintain their width and don't shrink */
 .legal-basis-card,
 .related-section-card {
-  flex: 0 0 300px;
-  min-width: 300px;
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 8px;
@@ -1054,15 +1025,13 @@
   
   .legal-bases-grid,
   .related-sections-grid {
+    grid-template-columns: 1fr;
     gap: 0.75rem;
-    /* Keep horizontal scroll on mobile too */
   }
   
   .legal-basis-card,
   .related-section-card {
     padding: 0.75rem;
-    flex: 0 0 280px;
-    min-width: 280px;
   }
   
   .field-group {
