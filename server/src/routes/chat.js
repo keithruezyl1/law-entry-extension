@@ -29,12 +29,15 @@ function normalizeQuestion(raw) {
   let q = String(raw || '');
   // Lowercase and collapse whitespace/punctuation
   q = q.toLowerCase().replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  // Normalize possessives like "sheriff's" → "sheriff"
+  q = q.replace(/\b([a-z0-9]+)['’]s\b/g, '$1');
   const replacements = [
     [/\bsec\b/g, 'section'],
     [/\broc\b/g, 'rules of court'],
     [/\br\.\s*c\b/g, 'rules of court'],
     [/\bwarrantless arrest\b/g, 'rule 113 section 5'],
     [/\bbail\b/g, 'bail rule 114'],
+    [/\bsheriff\s*s?\s*return\b/g, 'sheriff return'],
   ];
   for (const [re, sub] of replacements) q = q.replace(re, sub);
   return q;
@@ -511,6 +514,24 @@ router.post('/', async (req, res) => {
       lexsim: m.lexsim,
       finalScore: m.finalScore,
       fts_rank: m.ftsRank,
+      // External source URLs directly attached to the entry
+      source_urls: Array.isArray(m.source_urls) ? m.source_urls.slice(0, 10) : [],
+      // External relations (from legal_bases / related_sections)
+      external_relations: [
+        ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
+        ...(Array.isArray(m.related_sections) ? m.related_sections : []),
+      ]
+      .filter((r) => r && r.type === 'external')
+      .map((r) => ({ citation: r.citation || '', title: r.title || '', url: r.url || '', note: r.note || '' }))
+      .slice(0, 10),
+      // Internal relations (entry_ids only)
+      internal_relations: [
+        ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
+        ...(Array.isArray(m.related_sections) ? m.related_sections : []),
+      ]
+      .filter((r) => r && r.type === 'internal' && r.entry_id)
+      .map((r) => r.entry_id)
+      .slice(0, 20),
     }));
     // Observability logs (non-sensitive)
     try {
