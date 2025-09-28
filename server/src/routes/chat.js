@@ -146,7 +146,7 @@ function buildPrompt(question, matches) {
     const body = sliceContext(m, question);
     return `${header}\n${cite}\n${body}`;
   }).join('\n\n');
-  return `You are a legal assistant for Philippine law. Use ONLY the provided context. If the context does not contain the answer, reply strictly with: "I don't know."\n\nRules:\n- Quote short phrases when possible.\n- Do not infer beyond the quoted text or fields provided.\n- If multiple sources conflict, prefer exact rule/section/art number matches.\n- Include a short parenthetical citation at the end of each paragraph like (Rule 114 Sec. 20) or (RPC Art. 308).\n\nContext:\n${context}\n\nQuestion: ${question}`;
+  return `You are a legal assistant for Philippine law. Answer ONLY using the provided context. If nothing in the context relates to the question, reply strictly with: "I don't know."\n\nRules:\n- Prefer quoting short phrases and then paraphrase concisely.\n- Do not invent facts beyond quoted text or fields.\n- If multiple sources conflict, prefer exact rule/section/art matches.\n- If the user asks "what is X", synthesize a one‑sentence definition or description from the context (start with "X is …"), using quotations when helpful.\n- Include a short parenthetical citation at the end of each paragraph like (Rule 114 Sec. 20) or (RPC Art. 308).\n\nContext:\n${context}\n\nQuestion: ${question}`;
 }
 
 router.post('/', async (req, res) => {
