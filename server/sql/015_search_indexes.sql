@@ -32,3 +32,4 @@ CREATE INDEX IF NOT EXISTS law_entries_jurisdiction_type
 
 
 
+

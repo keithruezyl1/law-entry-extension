@@ -32,3 +32,4 @@ FOR EACH ROW EXECUTE FUNCTION law_entries_search_vec_refresh();
 
 
 
+
