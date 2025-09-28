@@ -2,7 +2,26 @@ import { Router } from 'express';
 import OpenAI from 'openai';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
-import buildEmbeddingText from '../embedding-builder.js';
+
+// Lightweight in-memory cache for embeddings (LRU-ish)
+const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 5 * 60 * 1000);
+const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 200);
+const embedCache = new Map(); // key -> { vec:number[], exp:number }
+
+async function getCachedEmbedding(text) {
+  const key = `emb:${text}`;
+  const now = Date.now();
+  const hit = embedCache.get(key);
+  if (hit && hit.exp > now) return hit.vec;
+  const vec = await embedText(text);
+  const exp = now + EMBED_CACHE_TTL_MS;
+  embedCache.set(key, { vec, exp });
+  if (embedCache.size > EMBED_CACHE_MAX) {
+    const firstKey = embedCache.keys().next().value;
+    embedCache.delete(firstKey);
+  }
+  return vec;
+}
 
 // Normalize the user question to improve lexical and semantic matching
 function normalizeQuestion(raw) {
@@ -64,18 +83,56 @@ function sliceContext(entry, question) {
     if (steps.length) add('Checklist', steps);
   }
 
-  // Short excerpt from text around the first keyword
+  // Short excerpt from text around the best keyword windows
   const text = String(entry.text || '');
-  const firstWord = String(question || '').split(/\s+/)[0] || '';
-  if (text) {
-    const idx = text.toLowerCase().indexOf(firstWord.toLowerCase());
-    const start = Math.max(0, (idx >= 0 ? idx : 0) - 160);
-    const end = Math.min(text.length, (idx >= 0 ? idx : 0) + 320);
-    const snippet = text.slice(start, end).trim();
-    if (snippet) add('Text', snippet);
+  // Prefer an FTS-provided snippet if available
+  if (entry.fts_snippet) {
+    add('Text', String(entry.fts_snippet));
+  } else {
+    const kw = keywordWindowSnippet(text, String(question || ''));
+    if (kw) add('Text', kw);
   }
   if (entry.summary) add('Summary', entry.summary);
   return out.join('\n');
+}
+
+// Build up to two keyword-centered windows (fallback when FTS snippet is unavailable)
+const STOPWORDS = new Set(['the','a','an','of','and','or','to','for','in','on','at','by','with','from','is','are','was','were','be','been','it','this','that','these','those']);
+function keywordWindowSnippet(text, q) {
+  const content = String(text || '');
+  if (!content) return '';
+  const tokens = String(q || '').toLowerCase().split(/\s+/).filter(Boolean).filter(t => !STOPWORDS.has(t) && t.length > 2);
+  if (!tokens.length) return content.slice(0, 320);
+  const spans = [];
+  const lower = content.toLowerCase();
+  const HALF = 280;
+  for (const t of tokens.slice(0, 6)) {
+    let idx = 0;
+    while (true) {
+      const found = lower.indexOf(t, idx);
+      if (found === -1) break;
+      const start = Math.max(0, found - HALF);
+      const end = Math.min(content.length, found + HALF);
+      const windowText = lower.slice(start, end);
+      let score = 0;
+      for (const tt of tokens) if (windowText.includes(tt)) score++;
+      spans.push({ start, end, score });
+      idx = found + t.length;
+      if (spans.length > 64) break;
+    }
+    if (spans.length > 128) break;
+  }
+  if (!spans.length) return content.slice(0, 320);
+  spans.sort((a,b)=>b.score-a.score);
+  const chosen = [];
+  for (const s of spans) {
+    if (chosen.length >= 2) break;
+    const overlaps = chosen.some(t => Math.max(0, Math.min(s.end, t.end) - Math.max(s.start, t.start)) > 100);
+    if (!overlaps) chosen.push(s);
+  }
+  chosen.sort((a,b)=>a.start-b.start);
+  const parts = chosen.map(w => content.slice(w.start, w.end).trim());
+  return parts.join(' … ');
 }
 
 const router = Router();
@@ -89,7 +146,7 @@ function buildPrompt(question, matches) {
     const body = sliceContext(m, question);
     return `${header}\n${cite}\n${body}`;
   }).join('\n\n');
-  return `You are a legal assistant for Philippine law. Use ONLY the provided context. If the context does not contain the answer, reply strictly with: "I don't know."\n\nWhen you cite, include the short citation in parentheses like (Rule 114 Sec. 20) or (RPC Art. 308).\n\nContext:\n${context}\n\nQuestion: ${question}`;
+  return `You are a legal assistant for Philippine law. Use ONLY the provided context. If the context does not contain the answer, reply strictly with: "I don't know."\n\nRules:\n- Quote short phrases when possible.\n- Do not infer beyond the quoted text or fields provided.\n- If multiple sources conflict, prefer exact rule/section/art number matches.\n- Include a short parenthetical citation at the end of each paragraph like (Rule 114 Sec. 20) or (RPC Art. 308).\n\nContext:\n${context}\n\nQuestion: ${question}`;
 }
 
 router.post('/', async (req, res) => {
@@ -99,23 +156,57 @@ router.post('/', async (req, res) => {
     // Normalize question for better matching
     const normQ = normalizeQuestion(question);
 
-    // Semantic retrieval (pgvector)
-    const qEmbedding = await embedText(normQ);
-    const qEmbeddingLiteral = `[${qEmbedding.join(',')}]`;
-    const topK = Number(process.env.CHAT_TOP_K || 12);
-    const simThreshold = Number(process.env.CHAT_SIM_THRESHOLD || 0.20);
-    const semRes = await query(
-      `select *, 1 - (embedding <=> $1::vector) as similarity
-         from kb_entries
-        where embedding is not null
-        order by embedding <=> $1::vector
-        limit $2`,
-      [qEmbeddingLiteral, topK]
-    );
-    let semantic = semRes.rows || [];
+    // Dynamic retrieval knobs based on query specificity
+    const hasRule = /(\brule\b|\br\b)\s*\d+/.test(normQ);
+    const hasSec = /(\bsection\b|\bsec\b)\s*\d+/.test(normQ);
+    const hasArt = /(\bart(\.|icle)?\b)\s*\d+/.test(normQ);
+    const tokenCount = normQ.split(/\s+/).filter(Boolean).length;
+    let topK = Number(process.env.CHAT_TOP_K || 12);
+    let simThreshold = Number(process.env.CHAT_SIM_THRESHOLD || 0.20);
+    if ((hasRule && hasSec) || hasArt) {
+      topK = Math.min(topK, 8);
+      simThreshold = Math.max(simThreshold, 0.24);
+    } else if (tokenCount <= 3) {
+      topK = Math.max(topK, 16);
+      simThreshold = Math.min(simThreshold, 0.18);
+    }
+
+    // Semantic retrieval (pgvector) – dual: normalized and raw
+    try {
+      const probes = Number(process.env.CHAT_IVF_PROBES || (tokenCount <= 3 ? 10 : 8));
+      await query(`SET ivfflat.probes = ${probes}`);
+    } catch {}
+    const [embNorm, embRaw] = await Promise.all([
+      getCachedEmbedding(normQ),
+      getCachedEmbedding(question),
+    ]);
+    const embLitNorm = `[${embNorm.join(',')}]`;
+    const embLitRaw = `[${embRaw.join(',')}]`;
+    const [semResNorm, semResRaw] = await Promise.all([
+      query(
+        `select *, 1 - (embedding <=> $1::vector) as similarity
+           from kb_entries
+          where embedding is not null
+          order by embedding <=> $1::vector
+          limit $2`,
+        [embLitNorm, topK]
+      ),
+      query(
+        `select *, 1 - (embedding <=> $1::vector) as similarity
+           from kb_entries
+          where embedding is not null
+          order by embedding <=> $1::vector
+          limit $2`,
+        [embLitRaw, topK]
+      ),
+    ]);
+    const semantic = semResNorm.rows || [];
+    const semanticRaw = semResRaw.rows || [];
+    let bestSim = 0;
+    if (semantic.length) bestSim = Math.max(bestSim, Number(semantic[0].similarity) || 0);
+    if (semanticRaw.length) bestSim = Math.max(bestSim, Number(semanticRaw[0].similarity) || 0);
 
     // Trigram lexical (pg_trgm) if semantic is weak
-    const bestSim = semantic.length ? (Number(semantic[0].similarity) || 0) : 0;
     const useLexical = bestSim < simThreshold;
     let lexical = [];
     if (useLexical) {
@@ -131,6 +222,45 @@ router.post('/', async (req, res) => {
       );
       lexical = lexRes.rows || [];
     }
+    // Also lexical for raw question (merge later) if lexical is in use
+    let lexicalRaw = [];
+    if (useLexical) {
+      const lexRes2 = await query(
+        `select entry_id, type, title, canonical_citation, summary, text, tags,
+                rule_no, section_no, rights_scope,
+                greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
+           from kb_entries
+          where (title % $1::text or canonical_citation % $1::text or text % $1::text)
+          order by lexsim desc
+          limit 24`,
+        [question.toLowerCase()]
+      );
+      lexicalRaw = lexRes2.rows || [];
+    }
+
+    // Regex fast-path exact identifier matches
+    const direct = [];
+    try {
+      const ruleMatch = normQ.match(/\brule\s*(\d+)/);
+      const secMatch = normQ.match(/\bsection\s*(\d+)/);
+      const artMatch = normQ.match(/\bart(?:\.|icle)?\s*(\d+)/);
+      if ((ruleMatch && secMatch) || artMatch) {
+        if (ruleMatch && secMatch) {
+          const res = await query(
+            `select * from kb_entries where lower(rule_no) like $1 and lower(section_no) like $2 limit 8`,
+            [`%rule ${ruleMatch[1]}%`, `%${secMatch[1]}%`]
+          );
+          direct.push(...(res.rows || []));
+        }
+        if (artMatch) {
+          const res = await query(
+            `select * from kb_entries where lower(canonical_citation) like $1 or lower(title) like $1 limit 8`,
+            [`%art%${artMatch[1]}%`]
+          );
+          direct.push(...(res.rows || []));
+        }
+      }
+    } catch {}
 
     // Full-text (tsvector) search: compute ts_rank_cd and add to candidate set
     const allowFts = String(process.env.CHAT_USE_FTS || 'true').toLowerCase() !== 'false';
@@ -140,7 +270,8 @@ router.post('/', async (req, res) => {
         const ftsRes = await query(
           `select entry_id, type, title, canonical_citation, summary, text, tags,
                   rule_no, section_no, rights_scope,
-                  ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank
+                  ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank,
+                  ts_headline('english', text, plainto_tsquery('english', $1), 'MaxFragments=2, MinWords=5, MaxWords=30') as fts_snippet
              from kb_entries
             where fts @@ plainto_tsquery('english', $1)
             order by fts_rank desc
@@ -154,15 +285,50 @@ router.post('/', async (req, res) => {
         fts = [];
       }
     }
+    // Also FTS for raw question (merge later)
+    let ftsRaw = [];
+    if (allowFts) {
+      try {
+        const ftsRes2 = await query(
+          `select entry_id, type, title, canonical_citation, summary, text, tags,
+                  rule_no, section_no, rights_scope,
+                  ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank,
+                  ts_headline('english', text, plainto_tsquery('english', $1), 'MaxFragments=2, MinWords=5, MaxWords=30') as fts_snippet
+             from kb_entries
+            where fts @@ plainto_tsquery('english', $1)
+            order by fts_rank desc
+            limit 24`,
+          [question.toLowerCase()]
+        );
+        ftsRaw = ftsRes2.rows || [];
+      } catch {}
+    }
 
     // Merge and compute composite score
     const byId = new Map();
     for (const m of semantic) byId.set(m.entry_id, { doc: m, vectorSim: Number(m.similarity) || 0, lexsim: 0 });
+    for (const m of semanticRaw) {
+      const prev = byId.get(m.entry_id);
+      const vs = Number(m.similarity) || 0;
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, vectorSim: Math.max(prev.vectorSim, vs) });
+      else byId.set(m.entry_id, { doc: m, vectorSim: vs, lexsim: 0 });
+    }
     for (const m of lexical) {
       const prev = byId.get(m.entry_id);
       const lexsim = Number(m.lexsim) || 0;
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim) });
       else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim });
+    }
+    for (const m of lexicalRaw) {
+      const prev = byId.get(m.entry_id);
+      const lexsim = Number(m.lexsim) || 0;
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim) });
+      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim });
+    }
+    for (const m of direct) {
+      const prev = byId.get(m.entry_id);
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, directBoost: 0.1 });
+      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim: 0, directBoost: 0.1 });
     }
     for (const m of fts) {
       const prev = byId.get(m.entry_id);
@@ -170,17 +336,55 @@ router.post('/', async (req, res) => {
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, ftsRank: Math.max(prev.ftsRank || 0, ftsRank) });
       else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim: 0, ftsRank });
     }
+    for (const m of ftsRaw) {
+      const prev = byId.get(m.entry_id);
+      const ftsRank = Number(m.fts_rank) || 0;
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, ftsRank: Math.max(prev.ftsRank || 0, ftsRank) });
+      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim: 0, ftsRank });
+    }
     const composite = [];
-    for (const { doc, vectorSim, lexsim, ftsRank } of byId.values()) {
+    for (const { doc, vectorSim, lexsim, ftsRank, directBoost } of byId.values()) {
       // Normalize fts rank into ~0..1 range with a simple squashing; adjust weight lower than vector/lex
       const ftsNorm = Math.min(1, (Number(ftsRank) || 0) / 2);
-      const finalScore = (vectorSim >= simThreshold)
+      let finalScore = (vectorSim >= simThreshold)
         ? (0.65 * vectorSim + 0.25 * (lexsim || 0) + 0.10 * ftsNorm)
         : (0.35 * vectorSim + 0.45 * (lexsim || 0) + 0.20 * ftsNorm);
+      // Per-type micro-bonuses based on query hints
+      const docType = String(doc.type || '').toLowerCase();
+      const ql = normQ;
+      if ((/elements|penalt|defense/.test(ql)) && (docType === 'statute_section' || docType === 'city_ordinance_section')) finalScore += 0.03;
+      if ((/rule|section|form|time limit/.test(ql)) && docType === 'rule_of_court') finalScore += 0.03;
+      if ((/rights|arrest|counsel|privacy|minors|gbv/.test(ql)) && docType === 'rights_advisory') finalScore += 0.03;
+      if (directBoost) finalScore += directBoost;
       composite.push({ ...doc, vectorSim, lexsim, ftsRank, finalScore });
     }
     composite.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
     let matches = composite.slice(0, topK);
+
+    // Confidence gating: if too weak, return I don't know without LLM
+    const maxLex = matches.reduce((m, x) => Math.max(m, Number(x.lexsim) || 0), 0);
+    const maxVec = matches.reduce((m, x) => Math.max(m, Number(x.vectorSim) || 0), 0);
+    const maxFts = matches.reduce((m, x) => Math.max(m, Number(x.ftsRank) || 0), 0);
+    const conf = 0.6 * maxVec + 0.3 * maxLex + 0.1 * Math.min(1, maxFts / 2);
+    const confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.22);
+    if (!matches.length || conf < confThreshold) {
+      const sources = matches.map((m) => ({
+        entry_id: m.entry_id,
+        type: m.type,
+        title: m.title,
+        canonical_citation: m.canonical_citation,
+        summary: m.summary,
+        tags: Array.isArray(m.tags) ? m.tags : [],
+        rule_no: m.rule_no,
+        section_no: m.section_no,
+        rights_scope: m.rights_scope,
+        similarity: m.vectorSim ?? m.similarity,
+        lexsim: m.lexsim,
+        finalScore: m.finalScore,
+        fts_rank: m.ftsRank,
+      }));
+      return res.json({ answer: "I don't know.", sources });
+    }
 
     // Optional reranker using a cheaper model; guarded by env flag
     const useReranker = String(process.env.CHAT_USE_RERANKER || '').toLowerCase() === 'true';
