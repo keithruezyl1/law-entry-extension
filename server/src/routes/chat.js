@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import OpenAI from 'openai';
+import { rerankCandidates } from '../utils/reranker.js';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
 
@@ -461,35 +462,12 @@ router.post('/', async (req, res) => {
       return res.json({ answer: "I don't know.", sources });
     }
 
-    // Optional reranker using a cheaper model; guarded by env flag
+    // Optional reranker module (modular, cached, confidence-aware)
     const useReranker = String(process.env.CHAT_USE_RERANKER || '').toLowerCase() === 'true';
-    const rerankModel = process.env.CHAT_RERANK_MODEL || 'gpt-4o-mini';
     if (useReranker && matches.length > 2) {
-      const items = matches.map((m, i) => ({
-        id: m.entry_id,
-        idx: i,
-        title: m.title,
-        citation: m.canonical_citation,
-        snippet: sliceContext(m, normQ).slice(0, 700),
-      }));
-
-      const instructions = `Score each item from 0 to 100 for how well it answers the question strictly from its snippet. Return JSON array of {id, score}. Question: ${question}`;
-      try {
-        const msg = [
-          { role: 'system', content: 'You are a precise reranker. Respond only with valid JSON.' },
-          { role: 'user', content: instructions + '\n\nItems:\n' + JSON.stringify(items) },
-        ];
-        const rr = await openai.chat.completions.create({ model: rerankModel, messages: msg, temperature: 0 });
-        const text = rr.choices?.[0]?.message?.content || '[]';
-        let parsed = [];
-        try { parsed = JSON.parse(text); } catch {}
-        const byIdScore = new Map(parsed.map((r) => [r.id, Number(r.score) || 0]));
-        matches = matches
-          .map((m) => ({ ...m, rrScore: byIdScore.get(m.entry_id) || 0 }))
-          .sort((a, b) => (b.rrScore || 0) - (a.rrScore || 0))
-          .slice(0, Math.min(topK, 8));
-      } catch (e) {
-        console.warn('[chat] reranker failed:', String(e?.message || e));
+      const reranked = await rerankCandidates({ query: question, candidates: matches, confidence: conf });
+      if (Array.isArray(reranked) && reranked.length) {
+        matches = reranked;
       }
     }
 
