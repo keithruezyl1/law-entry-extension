@@ -89,13 +89,8 @@ function sliceContext(entry, question) {
 
   // Short excerpt from text around the best keyword windows
   const text = String(entry.text || '');
-  // Prefer an FTS-provided snippet if available
-  if (entry.fts_snippet) {
-    add('Text', String(entry.fts_snippet));
-  } else {
-    const kw = keywordWindowSnippet(text, String(question || ''));
-    if (kw) add('Text', kw);
-  }
+  const kw = keywordWindowSnippet(text, String(question || ''));
+  if (kw) add('Text', kw);
   if (entry.summary) add('Summary', entry.summary);
   return out.join('\n');
 }
@@ -269,10 +264,10 @@ router.post('/', async (req, res) => {
       ),
       query(
         `select *, 1 - (embedding <=> $1::vector) as similarity
-           from kb_entries
+       from kb_entries
           where embedding is not null
-          order by embedding <=> $1::vector
-          limit $2`,
+       order by embedding <=> $1::vector
+       limit $2`,
         [embLitRaw, topK]
       ),
     ]);
@@ -338,47 +333,9 @@ router.post('/', async (req, res) => {
       }
     } catch {}
 
-    // Full-text (tsvector) search: compute ts_rank_cd and add to candidate set
-    const allowFts = String(process.env.CHAT_USE_FTS || 'true').toLowerCase() !== 'false';
-    let fts = [];
-    if (allowFts) {
-      try {
-        const ftsRes = await query(
-          `select entry_id, type, title, canonical_citation, summary, text, tags,
-                  rule_no, section_no, rights_scope,
-                  ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank,
-                  ts_headline('english', text, plainto_tsquery('english', $1), 'MaxFragments=2, MinWords=5, MaxWords=30') as fts_snippet
-             from kb_entries
-            where fts @@ plainto_tsquery('english', $1)
-            order by fts_rank desc
-            limit 24`,
-          [normQ]
-        );
-        fts = ftsRes.rows || [];
-      } catch (err) {
-        // Gracefully disable FTS if the column or extension is unavailable
-        console.warn('[chat] FTS unavailable; continuing without it:', String(err?.code || err?.message || err));
-        fts = [];
-      }
-    }
-    // Also FTS for raw question (merge later)
-    let ftsRaw = [];
-    if (allowFts) {
-      try {
-        const ftsRes2 = await query(
-          `select entry_id, type, title, canonical_citation, summary, text, tags,
-                  rule_no, section_no, rights_scope,
-                  ts_rank_cd(fts, plainto_tsquery('english', $1)) as fts_rank,
-                  ts_headline('english', text, plainto_tsquery('english', $1), 'MaxFragments=2, MinWords=5, MaxWords=30') as fts_snippet
-             from kb_entries
-            where fts @@ plainto_tsquery('english', $1)
-            order by fts_rank desc
-            limit 24`,
-          [question.toLowerCase()]
-        );
-        ftsRaw = ftsRes2.rows || [];
-      } catch {}
-    }
+    // FTS disabled due to environment constraints
+    const fts = [];
+    const ftsRaw = [];
 
     // Merge and compute composite score
     const byId = new Map();
@@ -421,7 +378,7 @@ router.post('/', async (req, res) => {
     const composite = [];
     for (const { doc, vectorSim, lexsim, ftsRank, directBoost } of byId.values()) {
       // Normalize fts rank into ~0..1 range with a simple squashing; adjust weight lower than vector/lex
-      const ftsNorm = Math.min(1, (Number(ftsRank) || 0) / 2);
+      const ftsNorm = 0;
       let finalScore = (vectorSim >= simThreshold)
         ? (0.65 * vectorSim + 0.25 * (lexsim || 0) + 0.10 * ftsNorm)
         : (0.35 * vectorSim + 0.45 * (lexsim || 0) + 0.20 * ftsNorm);
