@@ -232,13 +232,13 @@ router.post('/', async (req, res) => {
     const hasSec = /(\bsection\b|\bsec\b)\s*\d+/.test(normQ);
     const hasArt = /(\bart(\.|icle)?\b)\s*\d+/.test(normQ);
     const tokenCount = normQ.split(/\s+/).filter(Boolean).length;
-    let topK = Number(process.env.CHAT_TOP_K || 12);
+    let topK = Number(process.env.CHAT_TOP_K || 10);
     let simThreshold = Number(process.env.CHAT_SIM_THRESHOLD || 0.20);
     if ((hasRule && hasSec) || hasArt) {
       topK = Math.min(topK, 8);
       simThreshold = Math.max(simThreshold, 0.24);
     } else if (tokenCount <= 3) {
-      topK = Math.max(topK, 16);
+      topK = Math.max(topK);
       simThreshold = Math.min(simThreshold, 0.18);
     }
 
@@ -333,9 +333,7 @@ router.post('/', async (req, res) => {
       }
     } catch {}
 
-    // FTS disabled due to environment constraints
-    const fts = [];
-    const ftsRaw = [];
+    // FTS removed
 
     // Merge and compute composite score
     const byId = new Map();
@@ -363,25 +361,13 @@ router.post('/', async (req, res) => {
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, directBoost: 0.1 });
       else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim: 0, directBoost: 0.1 });
     }
-    for (const m of fts) {
-      const prev = byId.get(m.entry_id);
-      const ftsRank = Number(m.fts_rank) || 0;
-      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, ftsRank: Math.max(prev.ftsRank || 0, ftsRank) });
-      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim: 0, ftsRank });
-    }
-    for (const m of ftsRaw) {
-      const prev = byId.get(m.entry_id);
-      const ftsRank = Number(m.fts_rank) || 0;
-      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, ftsRank: Math.max(prev.ftsRank || 0, ftsRank) });
-      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim: 0, ftsRank });
-    }
+    // (FTS merge removed)
     const composite = [];
-    for (const { doc, vectorSim, lexsim, ftsRank, directBoost } of byId.values()) {
-      // Normalize fts rank into ~0..1 range with a simple squashing; adjust weight lower than vector/lex
-      const ftsNorm = 0;
+    for (const { doc, vectorSim, lexsim, directBoost } of byId.values()) {
+      // (FTS weighting removed)
       let finalScore = (vectorSim >= simThreshold)
-        ? (0.65 * vectorSim + 0.25 * (lexsim || 0) + 0.10 * ftsNorm)
-        : (0.35 * vectorSim + 0.45 * (lexsim || 0) + 0.20 * ftsNorm);
+        ? (0.65 * vectorSim + 0.25 * (lexsim || 0))
+        : (0.35 * vectorSim + 0.45 * (lexsim || 0));
       // Per-type micro-bonuses based on query hints
       const docType = String(doc.type || '').toLowerCase();
       const ql = normQ;
@@ -389,7 +375,7 @@ router.post('/', async (req, res) => {
       if ((/rule|section|form|time limit/.test(ql)) && docType === 'rule_of_court') finalScore += 0.03;
       if ((/rights|arrest|counsel|privacy|minors|gbv/.test(ql)) && docType === 'rights_advisory') finalScore += 0.03;
       if (directBoost) finalScore += directBoost;
-      composite.push({ ...doc, vectorSim, lexsim, ftsRank, finalScore });
+      composite.push({ ...doc, vectorSim, lexsim, finalScore });
     }
     composite.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
     let matches = composite.slice(0, topK);
@@ -397,8 +383,8 @@ router.post('/', async (req, res) => {
     // Confidence gating: if too weak, return I don't know without LLM
     const maxLex = matches.reduce((m, x) => Math.max(m, Number(x.lexsim) || 0), 0);
     const maxVec = matches.reduce((m, x) => Math.max(m, Number(x.vectorSim) || 0), 0);
-    const maxFts = matches.reduce((m, x) => Math.max(m, Number(x.ftsRank) || 0), 0);
-    const conf = 0.6 * maxVec + 0.3 * maxLex + 0.1 * Math.min(1, maxFts / 2);
+    // (FTS confidence component removed)
+    const conf = 0.6 * maxVec + 0.4 * maxLex;
     const confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.22);
     if (!matches.length || conf < confThreshold) {
       const sources = matches.map((m) => ({
@@ -414,7 +400,6 @@ router.post('/', async (req, res) => {
         similarity: m.vectorSim ?? m.similarity,
         lexsim: m.lexsim,
         finalScore: m.finalScore,
-        fts_rank: m.ftsRank,
       }));
       return res.json({ answer: "I don't know.", sources });
     }
@@ -454,7 +439,6 @@ router.post('/', async (req, res) => {
       similarity: m.vectorSim ?? m.similarity,
       lexsim: m.lexsim,
       finalScore: m.finalScore,
-      fts_rank: m.ftsRank,
       // External source URLs directly attached to the entry
       source_urls: Array.isArray(m.source_urls) ? m.source_urls.slice(0, 10) : [],
       // External relations (from legal_bases / related_sections)
@@ -482,7 +466,7 @@ router.post('/', async (req, res) => {
         bestSim,
         usedLexical: useLexical,
         topKReturned: matches.length,
-        top1: best ? { entry_id: best.entry_id, vectorSim: best.vectorSim, lexsim: best.lexsim, ftsRank: best.ftsRank, finalScore: best.finalScore } : null,
+        top1: best ? { entry_id: best.entry_id, vectorSim: best.vectorSim, lexsim: best.lexsim, finalScore: best.finalScore } : null,
       }));
     } catch {}
     res.json({ answer, sources });
