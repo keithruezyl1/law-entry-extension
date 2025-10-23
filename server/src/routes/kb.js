@@ -693,33 +693,37 @@ router.get('/search', async (req, res) => {
           regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
           lower($1) as q_norm,
           split_part(lower($1), ' ', 1) as first_tok
+      ),
+      scored as (
+        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+               k.verified, k.status, k.effective_date,
+               -- Trigram similarities
+               similarity(lower(coalesce(k.title,'')), p.q_norm) as sim_title,
+               similarity(lower(coalesce(k.canonical_citation,'')), p.q_norm) as sim_citation,
+               similarity(lower(coalesce(k.summary,'')), p.q_norm) as sim_summary,
+               similarity(lower(coalesce((k.tags)::text,'')), p.q_norm) as sim_tags,
+               -- Boolean matches
+               (lower(k.title) % p.q_norm) as match_title,
+               (lower(k.canonical_citation) % p.q_norm) as match_citation,
+               (lower(k.summary) % p.q_norm) as match_summary,
+               (k.compact_citation like '%' || p.compact_q || '%') as match_compact,
+               -- Exact matches
+               (case when lower(coalesce(k.title,'')) like p.first_tok || ' %' or lower(coalesce(k.title,'')) = p.first_tok then 1 else 0 end) as title_starts,
+               (case when lower(coalesce(k.title,'')||' '||coalesce(k.canonical_citation,'')) = p.q_norm then 1 else 0 end) as exact_match
+        from kb_entries k, params p
+        where ($1 <> '') and (
+          lower(k.title) % p.q_norm or
+          lower(k.canonical_citation) % p.q_norm or
+          lower(k.summary) % p.q_norm or
+          k.compact_citation like '%' || p.compact_q || '%'
+        )
+          and ($2::text is null or k.type = $2)
+          and ($3::text is null or k.jurisdiction = $3)
+          and ($4::text is null or k.status = $4)
+          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
       )
-      select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
-             k.verified, k.status, k.effective_date,
-             -- Trigram similarities
-             similarity(lower(coalesce(k.title,'')), p.q_norm) as sim_title,
-             similarity(lower(coalesce(k.canonical_citation,'')), p.q_norm) as sim_citation,
-             similarity(lower(coalesce(k.summary,'')), p.q_norm) as sim_summary,
-             similarity(lower(coalesce((k.tags)::text,'')), p.q_norm) as sim_tags,
-             -- Boolean matches
-             (lower(k.title) % p.q_norm) as match_title,
-             (lower(k.canonical_citation) % p.q_norm) as match_citation,
-             (lower(k.summary) % p.q_norm) as match_summary,
-             (k.compact_citation like '%' || p.compact_q || '%') as match_compact,
-             -- Exact matches
-             (case when lower(coalesce(k.title,'')) like p.first_tok || ' %' or lower(coalesce(k.title,'')) = p.first_tok then 1 else 0 end) as title_starts,
-             (case when lower(coalesce(k.title,'')||' '||coalesce(k.canonical_citation,'')) = p.q_norm then 1 else 0 end) as exact_match
-      from kb_entries k, params p
-      where ($1 <> '') and (
-        lower(k.title) % p.q_norm or
-        lower(k.canonical_citation) % p.q_norm or
-        lower(k.summary) % p.q_norm or
-        k.compact_citation like '%' || p.compact_q || '%'
-      )
-        and ($2::text is null or k.type = $2)
-        and ($3::text is null or k.jurisdiction = $3)
-        and ($4::text is null or k.status = $4)
-        and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      select *
+      from scored
       order by (
                  -- Scoring: exact match = 1000, then weighted similarities
                  (case when exact_match = 1 then 1000 else 0 end)
