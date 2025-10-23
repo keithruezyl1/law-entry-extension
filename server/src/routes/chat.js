@@ -4,6 +4,7 @@ import { rerankCandidates } from '../utils/reranker.js';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
 import { generateStructuredQuery } from '../utils/structured-query-generator.js';
+import { classifyQuery, handleMetaQuery, handleListQuery, handleFollowUpQuery } from '../utils/query-classifier.js';
 
 // Lightweight in-memory cache for embeddings (LRU-ish)
 const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 5 * 60 * 1000);
@@ -223,16 +224,54 @@ ${question}
 
 router.post('/', async (req, res) => {
   try {
-    const { question } = req.body || {};
+    const { question, context } = req.body || {}; // context = previous query/answer for follow-ups
     if (!question || !String(question).trim()) return res.status(400).json({ error: 'question is required' });
-
+    
+    // ===== QUERY CLASSIFICATION =====
+    const classification = classifyQuery(question);
+    console.log('[chat] query classified:', JSON.stringify(classification));
+    
+    // Handle meta queries (about Villy itself)
+    if (classification.handler === 'meta') {
+      const metaResponse = handleMetaQuery(question);
+      if (metaResponse.skipRAG) {
+        return res.json(metaResponse);
+      }
+    }
+    
+    // Handle list queries (enumerate laws/statutes)
+    if (classification.handler === 'list') {
+      const listResponse = await handleListQuery(question, query);
+      if (listResponse.skipRAG) {
+        return res.json(listResponse);
+      }
+    }
+    
+    // Handle follow-up queries (conversational context)
+    let enhancedQuestion = question;
+    if (classification.handler === 'followUp' && context) {
+      const followUpResult = handleFollowUpQuery(question, context);
+      if (followUpResult.isListQuery) {
+        // Re-classify as list query
+        const listResponse = await handleListQuery(followUpResult.enhancedQuery, query);
+        if (listResponse.skipRAG) {
+          return res.json(listResponse);
+        }
+      }
+      enhancedQuestion = followUpResult.enhancedQuery;
+      console.log('[chat] follow-up enhanced:', enhancedQuestion);
+    }
+    
+    // Use enhanced question for rest of pipeline
+    const questionToProcess = enhancedQuestion;
+    
     // ===== STRUCTURED QUERY GENERATION (SQG) =====
     const useSQG = String(process.env.CHAT_USE_SQG || 'true').toLowerCase() === 'true';
     let structuredQuery = null;
     
     if (useSQG) {
       try {
-        structuredQuery = await generateStructuredQuery(question);
+        structuredQuery = await generateStructuredQuery(questionToProcess);
       } catch (e) {
         console.warn('[chat] SQG failed, continuing without:', String(e?.message || e));
       }
@@ -241,7 +280,7 @@ router.post('/', async (req, res) => {
     // Normalize question for better matching (keep original normalization as fallback)
     const normQ = structuredQuery?.normalized_question 
       ? structuredQuery.normalized_question.toLowerCase() 
-      : normalizeQuestion(question);
+      : normalizeQuestion(questionToProcess);
 
     // Dynamic retrieval knobs based on query specificity + SQG insights
     const hasRule = /(\brule\b|\br\b)\s*\d+/.test(normQ);
