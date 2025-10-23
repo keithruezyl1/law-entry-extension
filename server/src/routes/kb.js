@@ -704,7 +704,7 @@ router.get('/search', async (req, res) => {
                ((setweight(to_tsvector('simple', coalesce(k.title,'')),'A')) @@ (select tsq from params)) as m_title,
                ((setweight(to_tsvector('simple', coalesce(k.canonical_citation,'')),'A')) @@ (select tsq from params)) as m_citation,
                ((setweight(to_tsvector('simple', coalesce(k.section_id,'')),'B')) @@ (select tsq from params)) as m_section
-        from kb_entries k
+        from kb_entries k, params
         where k.search_vec @@ (select tsq from params)
           and ($2::text is null or k.type = $2)
           and ($3::text is null or k.jurisdiction = $3)
@@ -735,19 +735,19 @@ router.get('/search', async (req, res) => {
         union all
         select * from tri
       )
-      select *,
+      select u.*,
              -- symmetric trigram similarities for title and citation (equal weight)
-             similarity(lower(coalesce(title,'')), (select q_norm from params)) as sim_title,
-             similarity(lower(coalesce(canonical_citation,'')), (select q_norm from params)) as sim_citation,
-              similarity(lower(coalesce((tags)::text,'')), (select q_norm from params)) as sim_tags,
-             (case when lower(coalesce(title,'')) like (select first_tok from params) || ' %' or lower(coalesce(title,'')) = (select first_tok from params) then 1 else 0 end) as title_starts,
-             (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
+             similarity(lower(coalesce(u.title,'')), p.q_norm) as sim_title,
+             similarity(lower(coalesce(u.canonical_citation,'')), p.q_norm) as sim_citation,
+             similarity(lower(coalesce((u.tags)::text,'')), p.q_norm) as sim_tags,
+             (case when lower(coalesce(u.title,'')) like p.first_tok || ' %' or lower(coalesce(u.title,'')) = p.first_tok then 1 else 0 end) as title_starts,
+             (case when lower(coalesce(u.title,'')||' '||coalesce(u.canonical_citation,'')) = p.q_norm then 1000 else 0 end) as exact_pin,
              array_remove(array[
-               case when m_title then 'title' else null end,
-               case when m_citation then 'canonical_citation' else null end,
-               case when m_section then 'section_id' else null end
+               case when u.m_title then 'title' else null end,
+               case when u.m_citation then 'canonical_citation' else null end,
+               case when u.m_section then 'section_id' else null end
              ], null) as matched_fields
-      from unioned
+      from unioned u, params p
       order by (
                  rank_score
                  + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)
