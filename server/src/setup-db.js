@@ -31,10 +31,10 @@ async function setupDatabase() {
       join(__dirname, '../sql/005_simple_passwords.sql'),
       join(__dirname, '../sql/006_kb_entries_extend.sql'),
       join(__dirname, '../sql/012_trgm_lexical.sql'),
-      // FTS search columns and indexes
-      join(__dirname, '../sql/014_search_columns.sql'),
-      join(__dirname, '../sql/015_search_indexes.sql'),
-      join(__dirname, '../sql/016_search_triggers.sql'),
+      // Computed columns and trigram indexes (FTS removed due to maintenance_work_mem constraints)
+      join(__dirname, '../sql/014_search_columns.sql'),    // compact_citation, ra/bp/gr numbers
+      join(__dirname, '../sql/015_search_indexes.sql'),    // GIN trigram indexes
+      join(__dirname, '../sql/016_search_triggers.sql'),   // Auto-update computed columns
       // Idempotent post-initial migrations
       join(__dirname, '../sql/007_add_created_by_name.sql'),
       join(__dirname, '../sql/008_add_verified.sql'),
