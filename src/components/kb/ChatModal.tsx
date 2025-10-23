@@ -59,16 +59,7 @@ export default function ChatModal({ isOpen, onClose }: Props) {
     setMessages((prev) => [...prev, userMsg]);
     setQuestion('');
 
-    // Get last assistant message for context (follow-up queries)
-    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
-    const lastUser = [...messages].reverse().find(m => m.role === 'user');
-    const context = (lastAssistant && lastUser) ? {
-      question: lastUser.content,
-      answer: lastAssistant.content,
-      sources: sources,
-    } : undefined;
-
-    const resp = await askChat(q, context);
+    const resp = await askChat(q);
     if (resp.error) setError(resp.error);
     const assistantMsg: Message = {
       id: `${Date.now() + 1}`,

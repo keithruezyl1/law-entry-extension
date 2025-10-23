@@ -686,47 +686,74 @@ router.get('/search', async (req, res) => {
     const q = normalizeAndExpandQuery(originalQ);
     if (!q) return res.status(400).json({ error: 'query is required' });
 
-    // Trigram-only search (FTS removed due to maintenance_work_mem constraints)
+    // websearch_to_tsquery + fallback trigram union
     const sql = `
       with params as (
         select 
+          websearch_to_tsquery('simple', $1) as tsq,
           regexp_replace(lower($1), '\\s+', '', 'g') as compact_q,
           lower($1) as q_norm,
           split_part(lower($1), ' ', 1) as first_tok
+      ), lex as (
+        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+               k.verified, k.status, k.effective_date,
+               ts_rank_cd(k.search_vec, (select tsq from params)) as rank_score,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.title,''), (select tsq from params), 'MinWords=3, MaxWords=12') else null end as hl_title,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.summary,''), (select tsq from params), 'MinWords=6, MaxWords=18') else null end as hl_summary,
+               case when $7::boolean is true then ts_headline('simple', coalesce(k.canonical_citation,''), (select tsq from params), 'MinWords=2, MaxWords=8') else null end as hl_citation,
+               ((setweight(to_tsvector('simple', coalesce(k.title,'')),'A')) @@ (select tsq from params)) as m_title,
+               ((setweight(to_tsvector('simple', coalesce(k.canonical_citation,'')),'A')) @@ (select tsq from params)) as m_citation,
+               ((setweight(to_tsvector('simple', coalesce(k.section_id,'')),'B')) @@ (select tsq from params)) as m_section
+        from kb_entries k
+        where k.search_vec @@ (select tsq from params)
+          and ($2::text is null or k.type = $2)
+          and ($3::text is null or k.jurisdiction = $3)
+          and ($4::text is null or k.status = $4)
+          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      ), tri as (
+        select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
+               k.verified, k.status, k.effective_date,
+               0.15 as rank_score,
+               null::text as hl_title,
+               null::text as hl_summary,
+               null::text as hl_citation,
+               false as m_title,
+               false as m_citation,
+               false as m_section
+        from kb_entries k, params
+        where ($1 <> '') and (
+          lower(k.title) % (select q_norm from params) or
+          lower(k.canonical_citation) % (select q_norm from params) or
+          k.compact_citation like '%' || (select compact_q from params) || '%'
+        )
+          and ($2::text is null or k.type = $2)
+          and ($3::text is null or k.jurisdiction = $3)
+          and ($4::text is null or k.status = $4)
+          and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      ), unioned as (
+        select * from lex
+        union all
+        select * from tri
       )
-      select k.entry_id, k.type, k.title, k.canonical_citation, k.section_id, k.law_family, k.tags, k.summary,
-             k.verified, k.status, k.effective_date,
-             -- Trigram similarities
-             similarity(lower(coalesce(k.title,'')), (select q_norm from params)) as sim_title,
-             similarity(lower(coalesce(k.canonical_citation,'')), (select q_norm from params)) as sim_citation,
-             similarity(lower(coalesce(k.summary,'')), (select q_norm from params)) as sim_summary,
-             similarity(lower(coalesce((k.tags)::text,'')), (select q_norm from params)) as sim_tags,
-             -- Boolean matches
-             (lower(k.title) % (select q_norm from params)) as match_title,
-             (lower(k.canonical_citation) % (select q_norm from params)) as match_citation,
-             (lower(k.summary) % (select q_norm from params)) as match_summary,
-             (k.compact_citation like '%' || (select compact_q from params) || '%') as match_compact,
-             -- Exact matches
-             (case when lower(coalesce(k.title,'')) like (select first_tok from params) || ' %' or lower(coalesce(k.title,'')) = (select first_tok from params) then 1 else 0 end) as title_starts,
-             (case when lower(coalesce(k.title,'')||' '||coalesce(k.canonical_citation,'')) = (select q_norm from params) then 1 else 0 end) as exact_match
-      from kb_entries k, params
-      where ($1 <> '') and (
-        lower(k.title) % (select q_norm from params) or
-        lower(k.canonical_citation) % (select q_norm from params) or
-        lower(k.summary) % (select q_norm from params) or
-        k.compact_citation like '%' || (select compact_q from params) || '%'
-      )
-        and ($2::text is null or k.type = $2)
-        and ($3::text is null or k.jurisdiction = $3)
-        and ($4::text is null or k.status = $4)
-        and ($5::text is null or (case when $5 = 'yes' then k.verified = true else k.verified is not true end))
+      select *,
+             -- symmetric trigram similarities for title and citation (equal weight)
+             similarity(lower(coalesce(title,'')), (select q_norm from params)) as sim_title,
+             similarity(lower(coalesce(canonical_citation,'')), (select q_norm from params)) as sim_citation,
+             similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q_norm from params)) as sim_tags,
+             (case when lower(coalesce(title,'')) like (select first_tok from params) || ' %' or lower(coalesce(title,'')) = (select first_tok from params) then 1 else 0 end) as title_starts,
+             (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
+             array_remove(array[
+               case when m_title then 'title' else null end,
+               case when m_citation then 'canonical_citation' else null end,
+               case when m_section then 'section_id' else null end
+             ], null) as matched_fields
+      from unioned
       order by (
-                 -- Scoring: exact match = 1000, then weighted similarities
-                 (case when exact_match = 1 then 1000 else 0 end)
-                 + (sim_title * 1.0)
-                 + (sim_citation * 0.8)
-                 + (sim_summary * 0.5)
-                 + (sim_tags * 0.4)
+                 rank_score
+                 + (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end)
+                 + (sim_title * 0.75)
+                 + (sim_citation * 0.75)
+                 + (sim_tags * 0.50)
                  + (case when title_starts = 1 then 0.60 else 0 end)
                ) desc,
                (case when verified then 1 else 0 end) desc,
@@ -785,11 +812,8 @@ router.get('/search', async (req, res) => {
       return { ...r, __boost: extra };
     })
     .sort((a, b) => {
-      // Compute score from trigram similarities + exact match
-      const scoreA = (a.exact_match ? 1000 : 0) + (a.sim_title || 0) + (a.sim_citation || 0) * 0.8 + (a.sim_summary || 0) * 0.5;
-      const scoreB = (b.exact_match ? 1000 : 0) + (b.sim_title || 0) + (b.sim_citation || 0) * 0.8 + (b.sim_summary || 0) * 0.5;
-      const sa = scoreA + (a.__boost || 0);
-      const sb = scoreB + (b.__boost || 0);
+      const sa = (a.rank_score || 0) + (a.exact_pin || 0) + (a.__boost || 0);
+      const sb = (b.rank_score || 0) + (b.exact_pin || 0) + (b.__boost || 0);
       if (sb !== sa) return sb - sa;
       const av = a.verified === true ? 1 : 0; const bv = b.verified === true ? 1 : 0; if (bv !== av) return bv - av;
       const aActive = String(a.status || '').toLowerCase() === 'active' ? 1 : 0; const bActive = String(b.status || '').toLowerCase() === 'active' ? 1 : 0; if (bActive !== aActive) return bActive - aActive;
@@ -813,16 +837,13 @@ router.get('/search', async (req, res) => {
         const softSql = `
           select entry_id, type, title, canonical_citation, section_id, law_family, tags, summary,
                  verified, status, effective_date,
-                 0.05 as sim_title,
-                 0.0 as sim_citation,
-                 0.0 as sim_summary,
-                 0.0 as sim_tags,
-                 false as match_title,
-                 false as match_citation,
-                 false as match_summary,
-                 false as match_compact,
-                 0 as title_starts,
-                 0 as exact_match
+                 0.05 as rank_score,
+                 null::text as hl_title,
+                 null::text as hl_summary,
+                 null::text as hl_citation,
+                 false as m_title,
+                 false as m_citation,
+                 false as m_section
           from kb_entries
           where ${likeClauses}
           limit $${likeParams.length + 1}
@@ -874,7 +895,7 @@ router.get('/search', async (req, res) => {
              from kb_entries
              union all
              select entry_id, type, title, canonical_citation,
-                    similarity(lower(coalesce((tags)::text,'')), (select q from params)) as score
+                    similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q from params)) as score
              from kb_entries
            ) s
            where score > 0
