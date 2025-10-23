@@ -739,7 +739,7 @@ router.get('/search', async (req, res) => {
              -- symmetric trigram similarities for title and citation (equal weight)
              similarity(lower(coalesce(title,'')), (select q_norm from params)) as sim_title,
              similarity(lower(coalesce(canonical_citation,'')), (select q_norm from params)) as sim_citation,
-             similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q_norm from params)) as sim_tags,
+              similarity(lower(coalesce((tags)::text,'')), (select q_norm from params)) as sim_tags,
              (case when lower(coalesce(title,'')) like (select first_tok from params) || ' %' or lower(coalesce(title,'')) = (select first_tok from params) then 1 else 0 end) as title_starts,
              (case when lower(coalesce(title,'')||' '||coalesce(canonical_citation,'')) = (select q_norm from params) then 1000 else 0 end) as exact_pin,
              array_remove(array[
@@ -895,7 +895,7 @@ router.get('/search', async (req, res) => {
              from kb_entries
              union all
              select entry_id, type, title, canonical_citation,
-                    similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q from params)) as score
+                     similarity(lower(coalesce((tags)::text,'')), (select q from params)) as score
              from kb_entries
            ) s
            where score > 0
