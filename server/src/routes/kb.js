@@ -740,7 +740,7 @@ router.get('/search', async (req, res) => {
                entry_id asc
       limit $6`;
 
-    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit, Boolean(p.explain) ];
+    const params = [ q, p.type || null, p.jurisdiction || null, p.status || null, p.verified || null, limit ];
     let result = await query(sql, params);
 
     // Domain-aware re-rank boosts for agency/admin queries

@@ -5,14 +5,15 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Trigram indexes for lexical matching (supports % operator and similarity())
+-- Using lower() only (unaccent causes IMMUTABLE issues)
 CREATE INDEX IF NOT EXISTS kb_entries_title_trgm
-  ON kb_entries USING gin (lower(unaccent(title)) gin_trgm_ops);
+  ON kb_entries USING gin (lower(title) gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS kb_entries_citation_trgm
-  ON kb_entries USING gin (lower(unaccent(canonical_citation)) gin_trgm_ops);
+  ON kb_entries USING gin (lower(canonical_citation) gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS kb_entries_summary_trgm
-  ON kb_entries USING gin (lower(unaccent(summary)) gin_trgm_ops);
+  ON kb_entries USING gin (lower(summary) gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS kb_entries_compact_cit_trgm
   ON kb_entries USING gin (compact_citation gin_trgm_ops);
