@@ -700,7 +700,7 @@ router.get('/search', async (req, res) => {
              similarity(lower(coalesce(k.title,'')), (select q_norm from params)) as sim_title,
              similarity(lower(coalesce(k.canonical_citation,'')), (select q_norm from params)) as sim_citation,
              similarity(lower(coalesce(k.summary,'')), (select q_norm from params)) as sim_summary,
-             similarity(lower(coalesce(array_to_string(k.tags,' '),'')), (select q_norm from params)) as sim_tags,
+             similarity(lower(coalesce((k.tags)::text,'')), (select q_norm from params)) as sim_tags,
              -- Boolean matches
              (lower(k.title) % (select q_norm from params)) as match_title,
              (lower(k.canonical_citation) % (select q_norm from params)) as match_citation,
@@ -874,7 +874,7 @@ router.get('/search', async (req, res) => {
              from kb_entries
              union all
              select entry_id, type, title, canonical_citation,
-                    similarity(lower(coalesce(array_to_string(tags,' '),'')), (select q from params)) as score
+                    similarity(lower(coalesce((tags)::text,'')), (select q from params)) as score
              from kb_entries
            ) s
            where score > 0
