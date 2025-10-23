@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { rerankCandidates } from '../utils/reranker.js';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
+import { generateStructuredQuery } from '../utils/structured-query-generator.js';
 
 // Lightweight in-memory cache for embeddings (LRU-ish)
 const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 5 * 60 * 1000);
@@ -224,31 +225,62 @@ router.post('/', async (req, res) => {
   try {
     const { question } = req.body || {};
     if (!question || !String(question).trim()) return res.status(400).json({ error: 'question is required' });
-    // Normalize question for better matching
-    const normQ = normalizeQuestion(question);
 
-    // Dynamic retrieval knobs based on query specificity
+    // ===== STRUCTURED QUERY GENERATION (SQG) =====
+    const useSQG = String(process.env.CHAT_USE_SQG || 'true').toLowerCase() === 'true';
+    let structuredQuery = null;
+    
+    if (useSQG) {
+      try {
+        structuredQuery = await generateStructuredQuery(question);
+      } catch (e) {
+        console.warn('[chat] SQG failed, continuing without:', String(e?.message || e));
+      }
+    }
+    
+    // Normalize question for better matching (keep original normalization as fallback)
+    const normQ = structuredQuery?.normalized_question 
+      ? structuredQuery.normalized_question.toLowerCase() 
+      : normalizeQuestion(question);
+
+    // Dynamic retrieval knobs based on query specificity + SQG insights
     const hasRule = /(\brule\b|\br\b)\s*\d+/.test(normQ);
     const hasSec = /(\bsection\b|\bsec\b)\s*\d+/.test(normQ);
     const hasArt = /(\bart(\.|icle)?\b)\s*\d+/.test(normQ);
     const tokenCount = normQ.split(/\s+/).filter(Boolean).length;
     let topK = Number(process.env.CHAT_TOP_K || 10);
     let simThreshold = Number(process.env.CHAT_SIM_THRESHOLD || 0.20);
-    if ((hasRule && hasSec) || hasArt) {
+    
+    // Use SQG statute references for more precise tuning
+    const hasStatuteRefs = structuredQuery?.statutes_referenced?.length > 0;
+    const isHighUrgency = structuredQuery?.urgency === 'high';
+    
+    if ((hasRule && hasSec) || hasArt || hasStatuteRefs) {
       topK = Math.min(topK, 8);
       simThreshold = Math.max(simThreshold, 0.24);
     } else if (tokenCount <= 3) {
       topK = Math.max(topK);
       simThreshold = Math.min(simThreshold, 0.18);
     }
+    
+    // High urgency queries (bail, warrants) get more candidates
+    if (isHighUrgency) {
+      topK = Math.max(topK, 12);
+    }
 
-    // Semantic retrieval (pgvector) – dual: normalized and raw
+    // Semantic retrieval (pgvector) – dual: normalized and raw + query expansions
     try {
       const probes = Number(process.env.CHAT_IVF_PROBES || (tokenCount <= 3 ? 10 : 8));
       await query(`SET ivfflat.probes = ${probes}`);
     } catch {}
+    
+    // Build embedding texts with query expansions
+    const normQWithExpansions = structuredQuery?.query_expansions?.length > 0
+      ? `${normQ} ${structuredQuery.query_expansions.join(' ')}`
+      : normQ;
+    
     const [embNorm, embRaw] = await Promise.all([
-      getCachedEmbedding(normQ),
+      getCachedEmbedding(normQWithExpansions),
       getCachedEmbedding(question),
     ]);
     const embLitNorm = `[${embNorm.join(',')}]`;
@@ -277,10 +309,12 @@ router.post('/', async (req, res) => {
     if (semantic.length) bestSim = Math.max(bestSim, Number(semantic[0].similarity) || 0);
     if (semanticRaw.length) bestSim = Math.max(bestSim, Number(semanticRaw[0].similarity) || 0);
 
-    // Trigram lexical (pg_trgm) if semantic is weak
+    // Trigram lexical (pg_trgm) if semantic is weak, enhanced with SQG keywords
     const useLexical = bestSim < simThreshold;
     let lexical = [];
+    let lexicalKeywords = [];
     if (useLexical) {
+      // Primary normalized query search
       const lexRes = await query(
         `select entry_id, type, title, canonical_citation, summary, text, tags,
                 rule_no, section_no, rights_scope,
@@ -292,6 +326,22 @@ router.post('/', async (req, res) => {
         [normQ]
       );
       lexical = lexRes.rows || [];
+      
+      // Additional keyword-based search from SQG
+      if (structuredQuery?.keywords?.length > 0) {
+        const keywordQuery = structuredQuery.keywords.join(' ');
+        const lexResKw = await query(
+          `select entry_id, type, title, canonical_citation, summary, text, tags,
+                  rule_no, section_no, rights_scope,
+                  greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
+             from kb_entries
+            where (title % $1::text or canonical_citation % $1::text or text % $1::text)
+            order by lexsim desc
+            limit 16`,
+          [keywordQuery]
+        );
+        lexicalKeywords = lexResKw.rows || [];
+      }
     }
     // Also lexical for raw question (merge later) if lexical is in use
     let lexicalRaw = [];
@@ -309,7 +359,7 @@ router.post('/', async (req, res) => {
       lexicalRaw = lexRes2.rows || [];
     }
 
-    // Regex fast-path exact identifier matches
+    // Regex fast-path exact identifier matches, enhanced with SQG statute references
     const direct = [];
     try {
       const ruleMatch = normQ.match(/\brule\s*(\d+)/);
@@ -327,6 +377,22 @@ router.post('/', async (req, res) => {
           const res = await query(
             `select * from kb_entries where lower(canonical_citation) like $1 or lower(title) like $1 limit 8`,
             [`%art%${artMatch[1]}%`]
+          );
+          direct.push(...(res.rows || []));
+        }
+      }
+      
+      // Use SQG statute references for additional direct matching
+      if (structuredQuery?.statutes_referenced?.length > 0) {
+        for (const statute of structuredQuery.statutes_referenced.slice(0, 3)) {
+          const statuteLower = statute.toLowerCase();
+          const res = await query(
+            `select * from kb_entries 
+             where lower(canonical_citation) like $1 
+                or lower(title) like $1 
+                or (lower(rule_no) like $1 and lower(section_no) like $1)
+             limit 6`,
+            [`%${statuteLower}%`]
           );
           direct.push(...(res.rows || []));
         }
@@ -356,6 +422,12 @@ router.post('/', async (req, res) => {
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim) });
       else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim });
     }
+    for (const m of lexicalKeywords) {
+      const prev = byId.get(m.entry_id);
+      const lexsim = Number(m.lexsim) || 0;
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim), keywordBoost: 0.05 });
+      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim, keywordBoost: 0.05 });
+    }
     for (const m of direct) {
       const prev = byId.get(m.entry_id);
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, directBoost: 0.1 });
@@ -363,18 +435,47 @@ router.post('/', async (req, res) => {
     }
     // (FTS merge removed)
     const composite = [];
-    for (const { doc, vectorSim, lexsim, directBoost } of byId.values()) {
+    for (const { doc, vectorSim, lexsim, directBoost, keywordBoost } of byId.values()) {
       // (FTS weighting removed)
       let finalScore = (vectorSim >= simThreshold)
         ? (0.65 * vectorSim + 0.25 * (lexsim || 0))
         : (0.35 * vectorSim + 0.45 * (lexsim || 0));
-      // Per-type micro-bonuses based on query hints
+      
+      // Per-type micro-bonuses based on query hints + SQG legal topics
       const docType = String(doc.type || '').toLowerCase();
       const ql = normQ;
       if ((/elements|penalt|defense/.test(ql)) && (docType === 'statute_section' || docType === 'city_ordinance_section')) finalScore += 0.03;
       if ((/rule|section|form|time limit/.test(ql)) && docType === 'rule_of_court') finalScore += 0.03;
       if ((/rights|arrest|counsel|privacy|minors|gbv/.test(ql)) && docType === 'rights_advisory') finalScore += 0.03;
+      
+      // SQG-based legal topic matching
+      if (structuredQuery?.legal_topics?.length > 0) {
+        const docTags = Array.isArray(doc.tags) ? doc.tags.map(t => String(t).toLowerCase()) : [];
+        const docText = `${String(doc.title || '')} ${String(doc.summary || '')} ${String(doc.text || '')}`.toLowerCase();
+        for (const topic of structuredQuery.legal_topics) {
+          const topicLower = topic.toLowerCase();
+          if (docTags.some(t => t.includes(topicLower)) || docText.includes(topicLower)) {
+            finalScore += 0.04;
+            break; // Only add once per document
+          }
+        }
+      }
+      
+      // Apply SQG-based boosts
       if (directBoost) finalScore += directBoost;
+      if (keywordBoost) finalScore += keywordBoost;
+      
+      // Statute reference exact match gets extra boost
+      if (hasStatuteRefs && doc.canonical_citation) {
+        const citeLower = String(doc.canonical_citation).toLowerCase();
+        for (const statute of structuredQuery.statutes_referenced || []) {
+          if (citeLower.includes(statute.toLowerCase())) {
+            finalScore += 0.08;
+            break;
+          }
+        }
+      }
+      
       composite.push({ ...doc, vectorSim, lexsim, finalScore });
     }
     composite.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
@@ -466,6 +567,11 @@ router.post('/', async (req, res) => {
         bestSim,
         usedLexical: useLexical,
         topKReturned: matches.length,
+        usedSQG: !!structuredQuery,
+        sqgStatutes: structuredQuery?.statutes_referenced?.length || 0,
+        sqgKeywords: structuredQuery?.keywords?.length || 0,
+        sqgTopics: structuredQuery?.legal_topics?.length || 0,
+        sqgUrgency: structuredQuery?.urgency || 'n/a',
         top1: best ? { entry_id: best.entry_id, vectorSim: best.vectorSim, lexsim: best.lexsim, finalScore: best.finalScore } : null,
       }));
     } catch {}
