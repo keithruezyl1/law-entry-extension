@@ -525,9 +525,13 @@ router.post('/', async (req, res) => {
     // Confidence gating: if too weak, return I don't know without LLM
     const maxLex = matches.reduce((m, x) => Math.max(m, Number(x.lexsim) || 0), 0);
     const maxVec = matches.reduce((m, x) => Math.max(m, Number(x.vectorSim) || 0), 0);
-    // (FTS confidence component removed)
-    const conf = 0.6 * maxVec + 0.4 * maxLex;
-    const confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.22);
+    const maxFinal = matches.reduce((m, x) => Math.max(m, Number(x.finalScore) || 0), 0);
+    
+    // Use the best of: vector similarity, lexical similarity, or final score
+    // This is more lenient and reduces false "I don't know" responses
+    const conf = Math.max(maxVec, maxLex, maxFinal * 0.8);
+    const confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.18);
+    
     if (!matches.length || conf < confThreshold) {
       const sources = matches.map((m) => ({
         entry_id: m.entry_id,

@@ -133,7 +133,10 @@ END $$;
 -- Optional: Analyze table to update statistics for query planner
 ANALYZE kb_entries;
 
-RAISE NOTICE '';
-RAISE NOTICE '✓ Migration 017 complete: HNSW index ready';
-RAISE NOTICE '';
-
+-- Final status message
+DO $$
+BEGIN
+  RAISE NOTICE '';
+  RAISE NOTICE '✓ Migration 017 complete: HNSW index ready';
+  RAISE NOTICE '';
+END $$;
