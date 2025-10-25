@@ -30,10 +30,29 @@ async function getCachedEmbedding(text) {
 function normalizeQuestion(raw) {
   if (!raw) return '';
   let q = String(raw || '');
+  
+  // First: Normalize compound words BEFORE removing punctuation
+  // This preserves important legal terms
+  const compoundWords = [
+    [/\banti[\s-]?hazing\b/gi, 'antihazing'],
+    [/\banti[\s-]?harassment\b/gi, 'antiharassment'],
+    [/\banti[\s-]?discrimination\b/gi, 'antidiscrimination'],
+    [/\banti[\s-]?violence\b/gi, 'antiviolence'],
+    [/\bco[\s-]?accused\b/gi, 'coaccused'],
+    [/\bco[\s-]?conspirator\b/gi, 'coconspirator'],
+    [/\bre[\s-]?arrest\b/gi, 'rearrest'],
+    [/\bpre[\s-]?trial\b/gi, 'pretrial'],
+    [/\bpost[\s-]?conviction\b/gi, 'postconviction'],
+  ];
+  for (const [re, sub] of compoundWords) q = q.replace(re, sub);
+  
   // Lowercase and collapse whitespace/punctuation
   q = q.toLowerCase().replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  
   // Normalize possessives like "sheriff's" → "sheriff"
-  q = q.replace(/\b([a-z0-9]+)['’]s\b/g, '$1');
+  q = q.replace(/\b([a-z0-9]+)['']s\b/g, '$1');
+  
+  // Legal term expansions
   const replacements = [
     [/\bsec\b/g, 'section'],
     [/\broc\b/g, 'rules of court'],
@@ -294,35 +313,39 @@ router.post('/', async (req, res) => {
     const metadataParams = [];
     
     if (useMetadataFiltering && structuredQuery) {
-      const filters = [];
+      const topicFilters = [];
+      const typeFilters = [];
       
-      // Filter by legal topics if SQG identified them
-      if (structuredQuery.legal_topics?.length > 0) {
-        // Match topics in tags or text (fuzzy match)
+      // Filter by legal topics if SQG identified them (only if we have strong confidence)
+      const minTopics = Number(process.env.CHAT_METADATA_MIN_TOPICS || 2);
+      if (structuredQuery.legal_topics?.length >= minTopics) {
+        // Only apply topic filtering if we have enough topics (high confidence)
         const topicPatterns = structuredQuery.legal_topics.map(t => `%${t.toLowerCase()}%`);
         if (topicPatterns.length === 1) {
-          filters.push(`(lower(tags::text) LIKE $${metadataParams.length + 3} OR lower(text) LIKE $${metadataParams.length + 3})`);
+          topicFilters.push(`(lower(tags::text) LIKE $${metadataParams.length + 3} OR lower(text) LIKE $${metadataParams.length + 3} OR lower(title) LIKE $${metadataParams.length + 3})`);
           metadataParams.push(topicPatterns[0]);
         } else if (topicPatterns.length > 1) {
           const conditions = topicPatterns.map((_, idx) => 
-            `(lower(tags::text) LIKE $${metadataParams.length + 3 + idx} OR lower(text) LIKE $${metadataParams.length + 3 + idx})`
+            `(lower(tags::text) LIKE $${metadataParams.length + 3 + idx} OR lower(text) LIKE $${metadataParams.length + 3 + idx} OR lower(title) LIKE $${metadataParams.length + 3 + idx})`
           );
-          filters.push(`(${conditions.join(' OR ')})`);
+          topicFilters.push(`(${conditions.join(' OR ')})`);
           metadataParams.push(...topicPatterns);
         }
       }
       
-      // Filter by entry type if query hints at a specific type
-      if (/rule|section|form|time limit/.test(normQ)) {
-        filters.push(`type = 'rule_of_court'`);
-      } else if (/elements|penalty|defense|crime|offense/.test(normQ)) {
-        filters.push(`(type = 'statute_section' OR type = 'city_ordinance_section')`);
-      } else if (/rights|arrest|counsel|privacy|minors|gbv/.test(normQ)) {
-        filters.push(`type = 'rights_advisory'`);
+      // Filter by entry type if query hints at a specific type (less aggressive)
+      if (/\b(rule|rules of court|roc)\b/i.test(normQ)) {
+        typeFilters.push(`type = 'rule_of_court'`);
+      } else if (/\b(elements|penalty|penalties|defense|defenses|crime|criminal|offense)\b/i.test(normQ)) {
+        typeFilters.push(`(type = 'statute_section' OR type = 'city_ordinance_section')`);
+      } else if (/\b(rights|arrest|counsel|privacy|minors|gbv)\b/i.test(normQ)) {
+        typeFilters.push(`type = 'rights_advisory'`);
       }
       
-      if (filters.length > 0) {
-        metadataWhereClause = `embedding is not null AND (${filters.join(' OR ')})`;
+      // Combine filters: topic OR type (not AND) - more lenient
+      const allFilters = [...topicFilters, ...typeFilters];
+      if (allFilters.length > 0) {
+        metadataWhereClause = `embedding is not null AND (${allFilters.join(' OR ')})`;
       }
     }
     

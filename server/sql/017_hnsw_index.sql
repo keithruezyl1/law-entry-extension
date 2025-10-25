@@ -60,8 +60,8 @@ BEGIN
       RAISE NOTICE 'PostgreSQL will now automatically choose between IVFFlat and HNSW per query.';
       
     EXCEPTION WHEN OTHERS THEN
-      RAISE WARNING 'HNSW index creation failed: %. Continuing without HNSW.', SQLERRM;
-      RAISE NOTICE 'This is likely because:';
+      RAISE WARNING 'HNSW index creation failed: %', SQLERRM;
+      RAISE NOTICE 'Continuing without HNSW. This is likely because:';
       RAISE NOTICE '1. pgvector version < 0.5.0 (HNSW requires 0.5.0+)';
       RAISE NOTICE '2. Insufficient memory (HNSW needs ~5 MB for 355 entries)';
       RAISE NOTICE 'IVFFlat index will continue to work normally.';
