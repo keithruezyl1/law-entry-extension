@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import OpenAI from 'openai';
 import { rerankCandidates } from '../utils/reranker.js';
+import { rerankWithCrossEncoder } from '../utils/cross-encoder-reranker.js';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
 import { generateStructuredQuery } from '../utils/structured-query-generator.js';
@@ -285,22 +286,62 @@ router.post('/', async (req, res) => {
     ]);
     const embLitNorm = `[${embNorm.join(',')}]`;
     const embLitRaw = `[${embRaw.join(',')}]`;
+    
+    // ===== METADATA FILTERING (NEW) =====
+    // Build WHERE clause based on SQG outputs for better precision
+    const useMetadataFiltering = String(process.env.CHAT_USE_METADATA_FILTERING || 'true').toLowerCase() === 'true';
+    let metadataWhereClause = 'embedding is not null';
+    const metadataParams = [];
+    
+    if (useMetadataFiltering && structuredQuery) {
+      const filters = [];
+      
+      // Filter by legal topics if SQG identified them
+      if (structuredQuery.legal_topics?.length > 0) {
+        // Match topics in tags or text (fuzzy match)
+        const topicPatterns = structuredQuery.legal_topics.map(t => `%${t.toLowerCase()}%`);
+        if (topicPatterns.length === 1) {
+          filters.push(`(lower(tags::text) LIKE $${metadataParams.length + 3} OR lower(text) LIKE $${metadataParams.length + 3})`);
+          metadataParams.push(topicPatterns[0]);
+        } else if (topicPatterns.length > 1) {
+          const conditions = topicPatterns.map((_, idx) => 
+            `(lower(tags::text) LIKE $${metadataParams.length + 3 + idx} OR lower(text) LIKE $${metadataParams.length + 3 + idx})`
+          );
+          filters.push(`(${conditions.join(' OR ')})`);
+          metadataParams.push(...topicPatterns);
+        }
+      }
+      
+      // Filter by entry type if query hints at a specific type
+      if (/rule|section|form|time limit/.test(normQ)) {
+        filters.push(`type = 'rule_of_court'`);
+      } else if (/elements|penalty|defense|crime|offense/.test(normQ)) {
+        filters.push(`(type = 'statute_section' OR type = 'city_ordinance_section')`);
+      } else if (/rights|arrest|counsel|privacy|minors|gbv/.test(normQ)) {
+        filters.push(`type = 'rights_advisory'`);
+      }
+      
+      if (filters.length > 0) {
+        metadataWhereClause = `embedding is not null AND (${filters.join(' OR ')})`;
+      }
+    }
+    
     const [semResNorm, semResRaw] = await Promise.all([
       query(
         `select *, 1 - (embedding <=> $1::vector) as similarity
            from kb_entries
-          where embedding is not null
+          where ${metadataWhereClause}
           order by embedding <=> $1::vector
           limit $2`,
-        [embLitNorm, topK]
+        [embLitNorm, topK, ...metadataParams]
       ),
       query(
         `select *, 1 - (embedding <=> $1::vector) as similarity
        from kb_entries
-          where embedding is not null
+          where ${metadataWhereClause}
        order by embedding <=> $1::vector
        limit $2`,
-        [embLitRaw, topK]
+        [embLitRaw, topK, ...metadataParams]
       ),
     ]);
     const semantic = semResNorm.rows || [];
@@ -505,12 +546,36 @@ router.post('/', async (req, res) => {
       return res.json({ answer: "I don't know.", sources });
     }
 
-    // Optional reranker module (modular, cached, confidence-aware)
-    const useReranker = String(process.env.CHAT_USE_RERANKER || '').toLowerCase() === 'true';
-    if (useReranker && matches.length > 2) {
-      const reranked = await rerankCandidates({ query: question, candidates: matches, confidence: conf });
-      if (Array.isArray(reranked) && reranked.length) {
-        matches = reranked;
+    // Optional reranking: Cross-Encoder (fast, local) or LLM-based (slower, API)
+    const rerankMode = String(process.env.CHAT_RERANK_MODE || 'none').toLowerCase(); // 'cross-encoder', 'llm', 'none'
+    
+    if (rerankMode !== 'none' && matches.length > 2) {
+      try {
+        let reranked = null;
+        
+        if (rerankMode === 'cross-encoder') {
+          // Try cross-encoder first (fast, local, accurate)
+          reranked = await rerankWithCrossEncoder({ query: question, candidates: matches, confidence: conf });
+        } else if (rerankMode === 'llm') {
+          // Use LLM-based reranking (slower, but more flexible)
+          reranked = await rerankCandidates({ query: question, candidates: matches, confidence: conf });
+        } else if (rerankMode === 'hybrid') {
+          // Hybrid: Try cross-encoder first, fallback to LLM if it fails
+          reranked = await rerankWithCrossEncoder({ query: question, candidates: matches, confidence: conf });
+          if (!reranked || reranked.length === 0) {
+            console.log('[rerank] Cross-encoder returned empty, falling back to LLM reranker');
+            reranked = await rerankCandidates({ query: question, candidates: matches, confidence: conf });
+          }
+        }
+        
+        // Apply reranked results if successful
+        if (Array.isArray(reranked) && reranked.length > 0) {
+          matches = reranked;
+          console.log('[rerank] Applied', rerankMode, 'reranking, new top1:', matches[0]?.entry_id);
+        }
+      } catch (e) {
+        console.warn('[rerank] Reranking failed, using original order:', String(e?.message || e));
+        // Continue with original matches
       }
     }
 
@@ -568,6 +633,8 @@ router.post('/', async (req, res) => {
         usedLexical: useLexical,
         topKReturned: matches.length,
         usedSQG: !!structuredQuery,
+        usedMetadataFiltering: useMetadataFiltering && metadataParams.length > 0,
+        metadataFiltersApplied: metadataParams.length,
         sqgStatutes: structuredQuery?.statutes_referenced?.length || 0,
         sqgKeywords: structuredQuery?.keywords?.length || 0,
         sqgTopics: structuredQuery?.legal_topics?.length || 0,

@@ -35,6 +35,7 @@ async function setupDatabase() {
       join(__dirname, '../sql/014_search_columns.sql'),    // compact_citation, ra/bp/gr numbers
       join(__dirname, '../sql/015_search_indexes.sql'),    // GIN trigram indexes
       join(__dirname, '../sql/016_search_triggers.sql'),   // Auto-update computed columns
+      join(__dirname, '../sql/017_hnsw_index.sql'),        // HNSW index for improved recall
       // Idempotent post-initial migrations
       join(__dirname, '../sql/007_add_created_by_name.sql'),
       join(__dirname, '../sql/008_add_verified.sql'),
