@@ -167,24 +167,51 @@ function buildPrompt(question, matches) {
     return `${header}\n${cite}\n${body}`;
   }).join('\n\n');
   return `
-YOU ARE A LEGAL ASSISTANT SPECIALIZED IN PHILIPPINE LAW. YOU MUST ANSWER STRICTLY USING THE PROVIDED CONTEXT DATA. IF NOTHING IN THE CONTEXT ADDRESSES THE QUESTION, REPLY ONLY WITH: "I don't know."
+YOU ARE A LEGAL ASSISTANT SPECIALIZED IN PHILIPPINE LAW. YOU MUST ANSWER STRICTLY USING THE PROVIDED CONTEXT DATA. IF NOTHING IN THE CONTEXT ADDRESSES THE QUESTION, REPLY ONLY WITH: I don't know.
 
 
-### RULES FOR ANSWERING ###
-- ALWAYS QUOTE SHORT PHRASES OR CLAUSES from the context before paraphrasing.
-- DO NOT INVENT facts, laws, or citations beyond what is explicitly in the context.
-- ALWAYS INCLUDE A PARENTHETICAL CITATION at the end of each paragraph, using canonical identifiers when available (e.g., "Rule 114 Sec. 20", "RPC Art. 308", "G.R. No. 12345").
-- IF MULTIPLE SOURCES CONFLICT, PREFER exact matches by rule/section/article number.
-- WHEN ASKED "what is X", RESPOND with:
-\`X is …\` (one-sentence definition synthesized from the context, with quotation where useful).
-- WHEN POSSIBLE, USE STRUCTURED FIELDS to enrich answers:
-• \`title\`, \`section_id\`, \`canonical_citation\` → for pinpoint citations
-• \`summary\` → for concise explanations
-• \`elements[]\`, \`penalties[]\`, \`defenses[]\`, \`standard_of_proof\`, \`prescriptive_period\` → for breakdowns
-• \`relations.related_sections[]\` and \`relations.legal_bases[]\` → for cross-references
-• \`jurisprudence[]\` → for relevant case law
-- ALWAYS PROVIDE SOURCES when available: include \`source_urls[]\` and relevant \`relations[]\` at the end of the response under a section labeled **Sources**.
-- KEEP RESPONSES CONCISE but LEGALLY PRECISE.
+### CRITICAL RULES FOR ANSWERING ###
+1. **ALWAYS ANSWER "WHAT IS X?" QUESTIONS DIRECTLY**
+   - Start with: "X is..." followed by a clear definition
+   - Use quotes from the context when available
+   - Include the citation immediately after the definition
+   - Example: "Rape is 'carnal knowledge of another person' under specific circumstances (RPC Article 266-A)."
+
+2. **USE ALL AVAILABLE STRUCTURED FIELDS**
+   - If \`elements[]\` exists, list them clearly with numbers
+   - If \`penalties[]\` exists, state them explicitly
+   - If \`defenses[]\` exists, mention them
+   - If \`summary\` exists, use it for concise explanations
+   - Example: "The elements of rape are: (1) carnal knowledge, (2) force or intimidation..."
+
+3. **PREFER EXACT CITATION MATCHES**
+   - If the question asks for "Rule 57 Section 6", prioritize sources with that exact rule and section
+   - If the question asks for "Article 266-A", prioritize sources with that exact article
+   - Citation matches are MORE IMPORTANT than semantic similarity
+   - Always cite the exact rule/article/section number in your answer
+
+4. **BE LENIENT WITH CONTEXT**
+   - If you have ANY relevant information, provide it
+   - Only say "I don't know" if the context is COMPLETELY unrelated
+   - Even partial information is better than no answer
+   - If the context is weak but mentions the topic, still provide what you can
+
+5. **HANDLE SPECIFIC QUESTION TYPES**
+   - "What is X?" → Definition + key details + citation
+   - "What are the elements of X?" → List elements clearly with numbers
+   - "What are the penalties for X?" → State penalties explicitly
+   - "What is the law about X?" → Cite the specific law/statute
+   - "What is Rule/Article/Section X?" → Quote the exact provision
+
+6. **ALWAYS QUOTE AND CITE**
+   - Quote short phrases or clauses from the context before paraphrasing
+   - Include a parenthetical citation at the end of each paragraph (e.g., "Rule 114 Sec. 20", "RPC Art. 308")
+   - Provide sources at the end under **Sources** section
+
+7. **NEVER INVENT OR SPECULATE**
+   - Do not invent facts, laws, or citations beyond what is in the context
+   - Do not give general legal advice outside the retrieved text
+   - If unsure, reply "I don't know"
 
 
 ### CHAIN OF THOUGHTS (INTERNAL REASONING STEPS) ###
@@ -316,10 +343,14 @@ router.post('/', async (req, res) => {
       const topicFilters = [];
       const typeFilters = [];
       
-      // Filter by legal topics if SQG identified them (only if we have strong confidence)
-      const minTopics = Number(process.env.CHAT_METADATA_MIN_TOPICS || 2);
-      if (structuredQuery.legal_topics?.length >= minTopics) {
-        // Only apply topic filtering if we have enough topics (high confidence)
+      // Filter by legal topics if SQG identified them (only if we have HIGH confidence)
+      // Increased from 2 to 3 to reduce false negatives (e.g., "anti hazing" queries)
+      const minTopics = Number(process.env.CHAT_METADATA_MIN_TOPICS || 3);
+      const highConfidence = structuredQuery.legal_topics?.length >= minTopics;
+      const explicitType = /\b(rule|statute|law|act|constitution|ordinance|republic act|ra)\b/i.test(normQ);
+      
+      // Only apply topic filtering if we have high confidence OR explicit type mention
+      if (highConfidence || (explicitType && structuredQuery.legal_topics?.length >= 2)) {
         const topicPatterns = structuredQuery.legal_topics.map(t => `%${t.toLowerCase()}%`);
         if (topicPatterns.length === 1) {
           topicFilters.push(`(lower(tags::text) LIKE $${metadataParams.length + 3} OR lower(text) LIKE $${metadataParams.length + 3} OR lower(title) LIKE $${metadataParams.length + 3})`);
@@ -542,6 +573,48 @@ router.post('/', async (req, res) => {
       
       composite.push({ ...doc, vectorSim, lexsim, finalScore });
     }
+    
+    // CITATION BOOST: Exact rule/section/article matches get significant boost
+    // This ensures citation queries like "What is Rule 57 Section 6?" return the correct entry
+    const ruleMatch = normQ.match(/\brule\s*(\d+)/);
+    const secMatch = normQ.match(/\bsection\s*(\d+)/);
+    const artMatch = normQ.match(/\bart(?:\.|icle)?\s*(\d+[-a-z]*)/i);
+    
+    for (const m of composite) {
+      let citationBoost = 0;
+      
+      // Exact rule + section match
+      if (ruleMatch && secMatch) {
+        const ruleNum = ruleMatch[1];
+        const secNum = secMatch[1];
+        const ruleNo = String(m.rule_no || '').toLowerCase();
+        const secNo = String(m.section_no || '').toLowerCase();
+        
+        if (ruleNo.includes(ruleNum) && secNo.includes(secNum)) {
+          citationBoost += 0.30;  // Big boost for exact match!
+          console.log('[chat] Citation boost for Rule', ruleNum, 'Section', secNum, ':', m.entry_id);
+        }
+      }
+      
+      // Exact article match
+      if (artMatch) {
+        const artNum = artMatch[1].toLowerCase();
+        const cite = String(m.canonical_citation || '').toLowerCase();
+        const title = String(m.title || '').toLowerCase();
+        
+        if (cite.includes(`article ${artNum}`) || cite.includes(`art. ${artNum}`) || 
+            cite.includes(`art ${artNum}`) || title.includes(`article ${artNum}`)) {
+          citationBoost += 0.30;  // Big boost for exact match!
+          console.log('[chat] Citation boost for Article', artNum, ':', m.entry_id);
+        }
+      }
+      
+      // Apply citation boost
+      if (citationBoost > 0) {
+        m.finalScore += citationBoost;
+      }
+    }
+    
     composite.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
     let matches = composite.slice(0, topK);
 
@@ -550,12 +623,37 @@ router.post('/', async (req, res) => {
     const maxVec = matches.reduce((m, x) => Math.max(m, Number(x.vectorSim) || 0), 0);
     const maxFinal = matches.reduce((m, x) => Math.max(m, Number(x.finalScore) || 0), 0);
     
-    // Use the best of: vector similarity, lexical similarity, or final score
-    // This is more lenient and reduces false "I don't know" responses
-    const conf = Math.max(maxVec, maxLex, maxFinal * 0.8);
-    const confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.18);
+    // Weighted confidence: prioritize vector similarity for semantic queries
+    // Vector similarity is most reliable for "what is X?" questions
+    const conf = Math.max(
+      maxVec * 0.9,  // Vector similarity is most important
+      maxLex * 0.8,  // Lexical is secondary
+      maxFinal * 0.7  // Final score is tertiary
+    );
+    
+    // Dynamic threshold based on query characteristics
+    let confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.18);
+    
+    // Lower threshold for citation queries (they're more specific and should be answered)
+    if ((hasRule && hasSec) || hasArt || hasStatuteRefs) {
+      confThreshold = Math.max(0.12, confThreshold * 0.7);
+      console.log('[chat] Lowered confidence threshold for citation query:', confThreshold);
+    }
+    
+    // Lower threshold if we have many good matches (indicates relevant content)
+    if (matches.length >= 5 && maxVec > 0.40) {
+      confThreshold = Math.max(0.15, confThreshold * 0.85);
+      console.log('[chat] Lowered confidence threshold for multiple good matches:', confThreshold);
+    }
+    
+    // Lower threshold for urgent queries (user needs answer quickly)
+    if (isHighUrgency) {
+      confThreshold = Math.max(0.14, confThreshold * 0.8);
+      console.log('[chat] Lowered confidence threshold for urgent query:', confThreshold);
+    }
     
     if (!matches.length || conf < confThreshold) {
+      console.log('[chat] Confidence too low:', { conf, confThreshold, maxVec, maxLex, maxFinal });
       const sources = matches.map((m) => ({
         entry_id: m.entry_id,
         type: m.type,
