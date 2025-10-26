@@ -340,7 +340,12 @@ router.post('/', async (req, res) => {
     const hasStatuteRefs = structuredQuery?.statutes_referenced?.length > 0;
     const isHighUrgency = structuredQuery?.urgency === 'high';
     
-    if ((hasRule && hasSec) || hasArt || hasStatuteRefs) {
+    // CRITICAL FIX: Article queries need MORE candidates, not fewer!
+    // Many constitutional articles have low embedding similarity and need higher recall
+    if (hasArt) {
+      topK = Math.max(topK, 20);  // Increase for article queries
+      console.log('[chat] Increased topK to', topK, 'for article query');
+    } else if ((hasRule && hasSec) || hasStatuteRefs) {
       topK = Math.min(topK, 8);
       simThreshold = Math.max(simThreshold, 0.24);
     } else if (tokenCount <= 3) {
@@ -510,6 +515,29 @@ router.post('/', async (req, res) => {
       );
       lexicalRaw = lexRes2.rows || [];
     }
+    
+    // CRITICAL FIX: Add lexical fallback for article queries
+    // Vector search often misses specific constitutional articles
+    let lexicalArticle = [];
+    if (hasArt) {
+      const artMatch = normQ.match(/\bart(?:icle)?\s+(\d+|[ivxlcdm]+)(?:\s|$)/i);
+      if (artMatch) {
+        const artNum = artMatch[1];
+        console.log('[chat] Adding lexical search for article', artNum);
+        const lexResArt = await query(
+          `select entry_id, type, title, canonical_citation, summary, text, tags,
+                  rule_no, section_no, rights_scope,
+                  greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(entry_id, $1::text)) as lexsim
+             from kb_entries
+            where (lower(canonical_citation) LIKE $2 OR lower(entry_id) LIKE $2 OR lower(title) LIKE $2)
+            order by lexsim desc
+            limit 10`,
+          [`article ${artNum}`, `%article%${artNum}%`]
+        );
+        lexicalArticle = lexResArt.rows || [];
+        console.log('[chat] Lexical article search found', lexicalArticle.length, 'entries');
+      }
+    }
 
     // Regex fast-path exact identifier matches, enhanced with SQG statute references
     const direct = [];
@@ -580,6 +608,13 @@ router.post('/', async (req, res) => {
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim), keywordBoost: 0.05 });
       else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim, keywordBoost: 0.05 });
     }
+    // Merge lexical article search results with high boost
+    for (const m of lexicalArticle) {
+      const prev = byId.get(m.entry_id);
+      const lexsim = Number(m.lexsim) || 0;
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim), articleBoost: 0.15 });
+      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim, articleBoost: 0.15 });
+    }
     for (const m of direct) {
       const prev = byId.get(m.entry_id);
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, directBoost: 0.1 });
@@ -587,7 +622,7 @@ router.post('/', async (req, res) => {
     }
     // (FTS merge removed)
     const composite = [];
-    for (const { doc, vectorSim, lexsim, directBoost, keywordBoost } of byId.values()) {
+    for (const { doc, vectorSim, lexsim, directBoost, keywordBoost, articleBoost } of byId.values()) {
       // (FTS weighting removed)
       let finalScore = (vectorSim >= simThreshold)
         ? (0.65 * vectorSim + 0.25 * (lexsim || 0))
@@ -616,6 +651,7 @@ router.post('/', async (req, res) => {
       // Apply SQG-based boosts
       if (directBoost) finalScore += directBoost;
       if (keywordBoost) finalScore += keywordBoost;
+      if (articleBoost) finalScore += articleBoost;
       
       // Statute reference exact match gets extra boost
       if (hasStatuteRefs && doc.canonical_citation) {
