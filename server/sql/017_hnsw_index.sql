@@ -108,12 +108,12 @@ BEGIN
   END IF;
   
   -- Print status
-  RAISE NOTICE '';
+  RAISE NOTICE '================================================';
   RAISE NOTICE '=== Vector Index Status ===';
   RAISE NOTICE 'Entries with embeddings: %', entry_count;
   RAISE NOTICE 'IVFFlat index: %', ivfflat_status;
   RAISE NOTICE 'HNSW index: %', hnsw_status;
-  RAISE NOTICE '';
+  RAISE NOTICE '================================================';
   
   IF ivfflat_exists AND hnsw_exists THEN
     RAISE NOTICE 'Dual-index mode enabled! PostgreSQL will choose the best index per query:';
@@ -124,7 +124,7 @@ BEGIN
   ELSE
     RAISE WARNING 'No vector indexes found! Vector search will be slow.';
   END IF;
-  RAISE NOTICE '';
+  RAISE NOTICE '================================================';
 END $$;
 
 -- Set optimal HNSW query parameters (if HNSW index was created)
@@ -151,7 +151,7 @@ ANALYZE kb_entries;
 -- Final status message
 DO $$
 BEGIN
-  RAISE NOTICE '';
+  RAISE NOTICE '================================================';
   RAISE NOTICE '✓ Migration 017 complete: HNSW index ready';
-  RAISE NOTICE '';
+  RAISE NOTICE '================================================';
 END $$;
