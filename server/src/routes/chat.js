@@ -251,6 +251,13 @@ function buildPrompt(question, matches) {
       - If context mentions a related motion/procedure (e.g., "summary judgment"), use that information
       - Provide what you can, even if it's general procedural guidance
       - Better to give partial guidance than "I don't know" for urgent procedural queries
+    
+    10. **HANDLE GENERIC/BROAD QUERIES**
+      - If the user asks a very general question like "pre-trial motion" or "motion to quash"
+      - Even if the context is generic (e.g., "Trial" rules), extract relevant information
+      - Explain what the motion is, when it's filed, and cite the relevant rule
+      - Example: "pre-trial motion" + Rule 119 context → Explain pre-trial conference, when it happens, cite Rule 119
+      - Don't say "I don't know" just because the context isn't perfectly specific
 
 
     ### CHAIN OF THOUGHTS (INTERNAL REASONING STEPS) ###
@@ -409,8 +416,16 @@ router.post('/', async (req, res) => {
       // Force metadata filtering for explicit rights queries (even if low topic count)
       const isExplicitRightsQuery = /\b(rights of|right to|rights for|what are.*rights)\b/i.test(normQ);
       
+      // Disable metadata filtering for harassment queries (they often get over-filtered)
+      const isHarassmentQuery = /\b(harassment|antiharassment|anti[\s-]?harassment)\b/i.test(normQ);
+      
+      if (isHarassmentQuery) {
+        console.log('[chat] Skipping metadata filtering for harassment query');
+      }
+      
       // Only apply topic filtering if we have high confidence OR explicit type mention OR explicit rights query
-      if (highConfidence || (explicitType && structuredQuery.legal_topics?.length >= 2) || isExplicitRightsQuery) {
+      // BUT skip filtering for harassment queries
+      if (!isHarassmentQuery && (highConfidence || (explicitType && structuredQuery.legal_topics?.length >= 2) || isExplicitRightsQuery)) {
         const topicPatterns = structuredQuery.legal_topics.map(t => `%${t.toLowerCase()}%`);
         if (topicPatterns.length === 1) {
           topicFilters.push(`(lower(tags::text) LIKE $${metadataParams.length + 3} OR lower(text) LIKE $${metadataParams.length + 3} OR lower(title) LIKE $${metadataParams.length + 3})`);
