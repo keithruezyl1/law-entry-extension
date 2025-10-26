@@ -608,12 +608,14 @@ router.post('/', async (req, res) => {
       if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim), keywordBoost: 0.05 });
       else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim, keywordBoost: 0.05 });
     }
-    // Merge lexical article search results with high boost
+    // Merge lexical article search results with VERY high boost
+    // This ensures article-specific entries rank high even with low vector similarity
     for (const m of lexicalArticle) {
       const prev = byId.get(m.entry_id);
       const lexsim = Number(m.lexsim) || 0;
-      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim), articleBoost: 0.15 });
-      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim, articleBoost: 0.15 });
+      // Increased boost from 0.15 to 0.35 to ensure article entries rank in top 5
+      if (prev) byId.set(m.entry_id, { ...prev, doc: { ...prev.doc, ...m }, lexsim: Math.max(prev.lexsim, lexsim), articleBoost: 0.35 });
+      else byId.set(m.entry_id, { doc: m, vectorSim: 0, lexsim, articleBoost: 0.35 });
     }
     for (const m of direct) {
       const prev = byId.get(m.entry_id);
@@ -902,10 +904,16 @@ router.post('/', async (req, res) => {
     }
 
     // Optional reranking: Cross-Encoder (fast, local) or LLM-based (slower, API)
-    // Skip reranking if we have exact citation matches - trust the citation boost
+    // Skip reranking if we have exact citation matches OR article queries with lexical matches
+    // Reranking often demotes the correct article entry
+    const hasArticleQuery = hasArt && lexicalArticle.length > 0;
     const rerankMode = String(process.env.CHAT_RERANK_MODE || 'none').toLowerCase(); // 'cross-encoder', 'llm', 'none'
     
-    if (rerankMode !== 'none' && matches.length > 2 && !hasExactCitationMatch) {
+    if (hasArticleQuery) {
+      console.log('[rerank] Skipping reranking for article query with lexical matches');
+    }
+    
+    if (rerankMode !== 'none' && matches.length > 2 && !hasExactCitationMatch && !hasArticleQuery) {
       try {
         let reranked = null;
         
