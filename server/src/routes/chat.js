@@ -35,13 +35,14 @@ function normalizeQuestion(raw) {
   // This preserves important legal terms
   const compoundWords = [
     [/\banti[\s-]?hazing\b/gi, 'antihazing'],
-    [/\banti[\s-]?harassment\b/gi, 'antiharassment'],
+    [/\banti[\s-]?harassment\b/gi, 'sexual harassment'],  // Expand to most common form
+    [/\bsexual[\s-]?harassment\b/gi, 'sexual harassment'],
     [/\banti[\s-]?discrimination\b/gi, 'antidiscrimination'],
     [/\banti[\s-]?violence\b/gi, 'antiviolence'],
-    [/\bco[\s-]?accused\b/gi, 'coaccused'],
+    [/\bco[\s-]?accused\b/gi, 'co accused'],  // Keep hyphen for better matching
     [/\bco[\s-]?conspirator\b/gi, 'coconspirator'],
     [/\bre[\s-]?arrest\b/gi, 'rearrest'],
-    [/\bpre[\s-]?trial\b/gi, 'pretrial'],
+    [/\bpre[\s-]?trial\b/gi, 'pre trial'],  // Keep space for better matching
     [/\bpost[\s-]?conviction\b/gi, 'postconviction'],
   ];
   for (const [re, sub] of compoundWords) q = q.replace(re, sub);
@@ -108,6 +109,23 @@ function sliceContext(entry, question) {
     if (steps.length) add('Checklist', steps);
   }
 
+  // Special handling for "rights" queries - prioritize rights-related fields
+  const isRightsQuery = /\b(rights|right to|rights of|protections|entitled)\b/i.test(String(question || ''));
+  if (isRightsQuery) {
+    // Add rights-specific fields if available
+    if (entry.rights_scope) add('Rights Scope', entry.rights_scope);
+    if (entry.advice_points) add('Advice Points', entry.advice_points);
+    if (entry.rights_callouts) add('Rights Callouts', entry.rights_callouts);
+    
+    // For rights queries, include more of the full text if it mentions "rights"
+    const text = String(entry.text || '');
+    if (text && /\b(rights|right to|entitled|protection|guarantee)\b/i.test(text)) {
+      // For rights queries, show more context (up to 1000 chars instead of 320)
+      const kw = keywordWindowSnippet(text, String(question || ''), 1000);
+      if (kw) add('Full Text', kw);
+    }
+  }
+  
   // Short excerpt from text around the best keyword windows
   const text = String(entry.text || '');
   const kw = keywordWindowSnippet(text, String(question || ''));
@@ -118,14 +136,14 @@ function sliceContext(entry, question) {
 
 // Build up to two keyword-centered windows (fallback when FTS snippet is unavailable)
 const STOPWORDS = new Set(['the','a','an','of','and','or','to','for','in','on','at','by','with','from','is','are','was','were','be','been','it','this','that','these','those']);
-function keywordWindowSnippet(text, q) {
+function keywordWindowSnippet(text, q, maxLength = 320) {
   const content = String(text || '');
   if (!content) return '';
   const tokens = String(q || '').toLowerCase().split(/\s+/).filter(Boolean).filter(t => !STOPWORDS.has(t) && t.length > 2);
-  if (!tokens.length) return content.slice(0, 320);
+  if (!tokens.length) return content.slice(0, maxLength);
   const spans = [];
   const lower = content.toLowerCase();
-  const HALF = 280;
+  const HALF = Math.floor(maxLength / 2);
   for (const t of tokens.slice(0, 6)) {
     let idx = 0;
     while (true) {
@@ -142,7 +160,7 @@ function keywordWindowSnippet(text, q) {
     }
     if (spans.length > 128) break;
   }
-  if (!spans.length) return content.slice(0, 320);
+  if (!spans.length) return content.slice(0, maxLength);
   spans.sort((a,b)=>b.score-a.score);
   const chosen = [];
   for (const s of spans) {
@@ -212,6 +230,14 @@ YOU ARE A LEGAL ASSISTANT SPECIALIZED IN PHILIPPINE LAW. YOU MUST ANSWER STRICTL
    - Do not invent facts, laws, or citations beyond what is in the context
    - Do not give general legal advice outside the retrieved text
    - If unsure, reply "I don't know"
+
+8. **HANDLE "RIGHTS OF X" QUESTIONS SPECIALLY**
+   - "What are the rights of X?" → Look for rights, protections, entitlements
+   - Check constitutional provisions (Bill of Rights, Article III)
+   - Check specific laws protecting that group
+   - Even if the entry doesn't explicitly say "rights of X", extract relevant protections
+   - Example: "rights of co-accused" → Extract from Article III Section 14 about accused persons' rights
+   - Example: "rights of arrested persons" → Extract from Miranda rights, RA 7438
 
 
 ### CHAIN OF THOUGHTS (INTERNAL REASONING STEPS) ###
@@ -652,8 +678,45 @@ router.post('/', async (req, res) => {
       console.log('[chat] Lowered confidence threshold for urgent query:', confThreshold);
     }
     
+    // VERY LOW threshold for queries with metadata filtering but low similarity
+    // This helps "harassment" queries that get over-filtered
+    if (useMetadataFiltering && metadataParams.length > 0 && maxVec < 0.45) {
+      confThreshold = Math.max(0.10, confThreshold * 0.6);
+      console.log('[chat] Lowered confidence threshold for filtered low-similarity query:', confThreshold);
+    }
+    
+    // Lower threshold for "rights of X" queries (often have good context but moderate scores)
+    if (/\b(rights of|right to|rights for)\b/i.test(normQ)) {
+      confThreshold = Math.max(0.12, confThreshold * 0.7);
+      console.log('[chat] Lowered confidence threshold for rights query:', confThreshold);
+    }
+    
     if (!matches.length || conf < confThreshold) {
       console.log('[chat] Confidence too low:', { conf, confThreshold, maxVec, maxLex, maxFinal });
+      
+      // Special fallback for threat/violence scenarios
+      if (/\b(threatening|threat|threaten|hurt|harm|violence|violent|attack|assault)\b/i.test(normQ)) {
+        console.log('[chat] Threat scenario detected, providing general safety advice');
+        const sources = matches.slice(0, 3).map((m) => ({
+          entry_id: m.entry_id,
+          type: m.type,
+          title: m.title,
+          canonical_citation: m.canonical_citation,
+        }));
+        return res.json({
+          answer: "If someone is threatening you, you should:\n\n" +
+            "1. **Document everything**: Save messages, emails, voicemails, or write down details (date, time, what was said, witnesses)\n" +
+            "2. **Report to police immediately** if you feel you're in immediate danger\n" +
+            "3. **Consider filing for a Protection Order**:\n" +
+            "   - If it's domestic violence → File under RA 9262 (Anti-Violence Against Women and Children Act)\n" +
+            "   - If it's harassment/stalking → File under RA 11313 (Safe Spaces Act)\n" +
+            "4. **Seek legal advice** from the Public Attorney's Office (PAO) or a private lawyer\n" +
+            "5. **For immediate danger, call emergency services**: PNP hotline 117 or 911\n\n" +
+            "Note: This is general safety advice. For legal guidance specific to your situation, consult with a lawyer.",
+          sources
+        });
+      }
+      
       const sources = matches.map((m) => ({
         entry_id: m.entry_id,
         type: m.type,
