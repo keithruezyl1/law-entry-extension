@@ -77,6 +77,8 @@ DECLARE
   ivfflat_exists boolean;
   hnsw_exists boolean;
   entry_count integer;
+  ivfflat_status text;
+  hnsw_status text;
 BEGIN
   -- Check which indexes exist
   SELECT EXISTS (
@@ -92,12 +94,25 @@ BEGIN
   -- Count entries
   SELECT COUNT(*) FROM kb_entries WHERE embedding IS NOT NULL INTO entry_count;
   
+  -- Build status strings
+  IF ivfflat_exists THEN
+    ivfflat_status := '✓ Active';
+  ELSE
+    ivfflat_status := '✗ Missing';
+  END IF;
+  
+  IF hnsw_exists THEN
+    hnsw_status := '✓ Active';
+  ELSE
+    hnsw_status := '✗ Not available';
+  END IF;
+  
   -- Print status
   RAISE NOTICE '';
   RAISE NOTICE '=== Vector Index Status ===';
   RAISE NOTICE 'Entries with embeddings: %', entry_count;
-  RAISE NOTICE 'IVFFlat index: %', CASE WHEN ivfflat_exists THEN '✓ Active' ELSE '✗ Missing' END;
-  RAISE NOTICE 'HNSW index: %', CASE WHEN hnsw_exists THEN '✓ Active' ELSE '✗ Not available' END;
+  RAISE NOTICE 'IVFFlat index: %', ivfflat_status;
+  RAISE NOTICE 'HNSW index: %', hnsw_status;
   RAISE NOTICE '';
   
   IF ivfflat_exists AND hnsw_exists THEN
