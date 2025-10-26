@@ -650,21 +650,24 @@ router.post('/', async (req, res) => {
         const title = String(m.title || '').toLowerCase();
         const entryId = String(m.entry_id || '').toLowerCase();
         
-        // Check if article number matches
-        const hasArticleMatch = cite.includes(`article ${artNum}`) || 
-                                cite.includes(`art. ${artNum}`) || 
-                                cite.includes(`art ${artNum}`) || 
-                                title.includes(`article ${artNum}`);
+        // Check if article number matches EXACTLY (not as part of another number)
+        // Use word boundaries to avoid matching "Article 1" in "Article 13"
+        const artRegex = new RegExp(`\\barticle\\s+${artNum}\\b|\\bart\\.\\s+${artNum}\\b|\\bart\\s+${artNum}\\b`, 'i');
+        const hasArticleMatch = artRegex.test(cite) || artRegex.test(title) || artRegex.test(entryId);
         
         if (hasArticleMatch) {
           // Apply boost only if source context matches
           let sourceMatches = true;
           
           if (isConstitutionQuery) {
-            // Only boost if it's a constitutional provision
-            sourceMatches = entryId.includes('const') || 
-                           cite.includes('constitution') || 
-                           title.includes('constitution');
+            // Only boost if it's a constitutional provision AND specifically from Article sections
+            // Not generic "rights" entries
+            sourceMatches = (entryId.includes('const') || 
+                            cite.includes('constitution') || 
+                            title.includes('constitution')) &&
+                           // Additional check: ensure it's a specific constitutional article, not a generic rights entry
+                           !entryId.includes('rights-constitutionalrights') &&
+                           !entryId.includes('rights-billof');
           } else if (isRPCQuery) {
             // Only boost if it's from RPC
             sourceMatches = entryId.includes('rpc') || 
