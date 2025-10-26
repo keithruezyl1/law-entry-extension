@@ -60,7 +60,7 @@ BEGIN
       RAISE NOTICE 'PostgreSQL will now automatically choose between IVFFlat and HNSW per query.';
       
     EXCEPTION WHEN OTHERS THEN
-      RAISE WARNING 'HNSW index creation failed: ' || SQLERRM;
+      RAISE WARNING 'HNSW index creation failed: %', SQLERRM;
       RAISE NOTICE 'Continuing without HNSW. This is likely because:';
       RAISE NOTICE '1. pgvector version < 0.5.0 (HNSW requires 0.5.0+)';
       RAISE NOTICE '2. Insufficient memory (HNSW needs ~5 MB for 355 entries)';
@@ -138,7 +138,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'kb_entries_embedding_hnsw') THEN
     EXECUTE 'SET hnsw.ef_search = 40';
-    RAISE NOTICE 'HNSW query parameter set: ef_search = 40 (95%+ recall)';
+    RAISE NOTICE 'HNSW query parameter set: ef_search = 40 (95%%+ recall)';
   END IF;
 EXCEPTION WHEN OTHERS THEN
   -- Silently ignore if HNSW is not available
