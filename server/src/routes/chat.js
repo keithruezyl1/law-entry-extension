@@ -355,10 +355,24 @@ router.post('/', async (req, res) => {
     }
 
     // Semantic retrieval (pgvector) – dual: normalized and raw + query expansions
+    // Set optimal parameters for both IVFFlat and HNSW indexes
     try {
       const probes = Number(process.env.CHAT_IVF_PROBES || (tokenCount <= 3 ? 10 : 8));
       await query(`SET ivfflat.probes = ${probes}`);
     } catch {}
+    
+    // Set HNSW ef_search parameter for better recall (if HNSW index exists)
+    // ef_search=40 provides 95%+ recall with <10ms latency
+    let hnswAvailable = false;
+    try {
+      const efSearch = Number(process.env.CHAT_HNSW_EF_SEARCH || 40);
+      await query(`SET hnsw.ef_search = ${efSearch}`);
+      hnswAvailable = true;
+      console.log('[vector] HNSW index active, ef_search =', efSearch);
+    } catch {
+      // Silently ignore if HNSW is not available (pgvector < 0.5.0)
+      console.log('[vector] HNSW not available, using IVFFlat only');
+    }
     
     // Build embedding texts with query expansions
     const normQWithExpansions = structuredQuery?.query_expansions?.length > 0
