@@ -425,7 +425,9 @@ router.post('/', async (req, res) => {
         typeFilters.push(`type = 'rule_of_court'`);
       } else if (/\b(elements|penalty|penalties|defense|defenses|crime|criminal|offense)\b/i.test(normQ)) {
         typeFilters.push(`(type = 'statute_section' OR type = 'city_ordinance_section')`);
-      } else if (/\b(rights|arrest|counsel|privacy|minors|gbv)\b/i.test(normQ)) {
+      } else if (/\b(rights of|rights for|what are.*rights|arrest|counsel|privacy|minors|gbv)\b/i.test(normQ)) {
+        // Only filter to rights_advisory if it's explicitly about "rights of X"
+        // Don't filter for single word "harassment" which might be in statutes
         typeFilters.push(`type = 'rights_advisory'`);
       }
       
@@ -635,7 +637,9 @@ router.post('/', async (req, res) => {
     const ruleMatch = normQ.match(/\brule\s*(\d+)/);
     const secMatch = normQ.match(/\bsection\s*(\d+)/);
     // Support both Arabic (1, 2, 3) and Roman numerals (I, II, III, IV, V, etc.)
-    const artMatch = normQ.match(/\bart(?:\.|icle)?\s*(\d+|[ivxlcdm]+)[-a-z]*/i);
+    // For Constitution: Article 1, Article I, Article II, etc. (simple numbers/numerals only)
+    // For RPC: Article 266-A (with suffix) - handled separately
+    const artMatch = normQ.match(/\bart(?:\.|icle)?\s+(\d+|[ivxlcdm]+)(?:\s|$|,|\.|\?)/i);
     
     // Helper function: Convert Roman numeral to Arabic
     function romanToArabic(roman) {
