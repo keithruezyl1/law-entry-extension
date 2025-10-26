@@ -220,6 +220,8 @@ YOU ARE A LEGAL ASSISTANT SPECIALIZED IN PHILIPPINE LAW. YOU MUST ANSWER STRICTL
    - "What are the penalties for X?" → State penalties explicitly
    - "What is the law about X?" → Cite the specific law/statute
    - "What is Rule/Article/Section X?" → Quote the exact provision
+   - "How do I file/What's the procedure for X?" → List steps from the context, cite the rule
+   - "I need to file a motion" → Extract procedure, requirements, deadlines from context
 
 6. **ALWAYS QUOTE AND CITE**
    - Quote short phrases or clauses from the context before paraphrasing
@@ -232,12 +234,23 @@ YOU ARE A LEGAL ASSISTANT SPECIALIZED IN PHILIPPINE LAW. YOU MUST ANSWER STRICTL
    - If unsure, reply "I don't know"
 
 8. **HANDLE "RIGHTS OF X" QUESTIONS SPECIALLY**
-   - "What are the rights of X?" → Look for rights, protections, entitlements
+   - "What are my rights?" or "What are the rights of X?" → Look for rights, protections, entitlements
+   - If the context mentions "Bill of Rights" or constitutional provisions, LIST THEM ALL
    - Check constitutional provisions (Bill of Rights, Article III)
    - Check specific laws protecting that group
    - Even if the entry doesn't explicitly say "rights of X", extract relevant protections
+   - Example: "What are my rights?" + Bill of Rights context → List all basic constitutional rights
    - Example: "rights of co-accused" → Extract from Article III Section 14 about accused persons' rights
    - Example: "rights of arrested persons" → Extract from Miranda rights, RA 7438
+   - If the context is a general "Bill of Rights" entry, provide a comprehensive overview
+
+9. **HANDLE URGENT/PROCEDURAL QUESTIONS WITH FLEXIBILITY**
+   - If the user asks "I need to file a motion today" or "What's the procedure?"
+   - Look for ANY relevant procedural information in the context, even if not a perfect match
+   - Extract: filing requirements, deadlines, forms, steps, prerequisites
+   - If context mentions a related motion/procedure (e.g., "summary judgment"), use that information
+   - Provide what you can, even if it's general procedural guidance
+   - Better to give partial guidance than "I don't know" for urgent procedural queries
 
 
 ### CHAIN OF THOUGHTS (INTERNAL REASONING STEPS) ###
@@ -606,6 +619,12 @@ router.post('/', async (req, res) => {
     const secMatch = normQ.match(/\bsection\s*(\d+)/);
     const artMatch = normQ.match(/\bart(?:\.|icle)?\s*(\d+[-a-z]*)/i);
     
+    // Detect source context for article queries
+    const isConstitutionQuery = /\b(constitution|constitutional)\b/i.test(normQ);
+    const isRPCQuery = /\b(rpc|revised penal code|penal code)\b/i.test(normQ);
+    
+    let hasExactCitationMatch = false;  // Track if we found an exact match
+    
     for (const m of composite) {
       let citationBoost = 0;
       
@@ -617,21 +636,48 @@ router.post('/', async (req, res) => {
         const secNo = String(m.section_no || '').toLowerCase();
         
         if (ruleNo.includes(ruleNum) && secNo.includes(secNum)) {
-          citationBoost += 0.30;  // Big boost for exact match!
+          citationBoost += 0.50;  // Big boost for exact match! (increased from 0.30)
+          hasExactCitationMatch = true;
+          m.exactCitationMatch = true;  // Flag for reranking logic
           console.log('[chat] Citation boost for Rule', ruleNum, 'Section', secNum, ':', m.entry_id);
         }
       }
       
-      // Exact article match
+      // Exact article match (with source context checking)
       if (artMatch) {
         const artNum = artMatch[1].toLowerCase();
         const cite = String(m.canonical_citation || '').toLowerCase();
         const title = String(m.title || '').toLowerCase();
+        const entryId = String(m.entry_id || '').toLowerCase();
         
-        if (cite.includes(`article ${artNum}`) || cite.includes(`art. ${artNum}`) || 
-            cite.includes(`art ${artNum}`) || title.includes(`article ${artNum}`)) {
-          citationBoost += 0.30;  // Big boost for exact match!
-          console.log('[chat] Citation boost for Article', artNum, ':', m.entry_id);
+        // Check if article number matches
+        const hasArticleMatch = cite.includes(`article ${artNum}`) || 
+                                cite.includes(`art. ${artNum}`) || 
+                                cite.includes(`art ${artNum}`) || 
+                                title.includes(`article ${artNum}`);
+        
+        if (hasArticleMatch) {
+          // Apply boost only if source context matches
+          let sourceMatches = true;
+          
+          if (isConstitutionQuery) {
+            // Only boost if it's a constitutional provision
+            sourceMatches = entryId.includes('const') || 
+                           cite.includes('constitution') || 
+                           title.includes('constitution');
+          } else if (isRPCQuery) {
+            // Only boost if it's from RPC
+            sourceMatches = entryId.includes('rpc') || 
+                           cite.includes('revised penal code') || 
+                           title.includes('revised penal code');
+          }
+          
+          if (sourceMatches) {
+            citationBoost += 0.50;  // Big boost for exact match! (increased from 0.30)
+            hasExactCitationMatch = true;
+            m.exactCitationMatch = true;  // Flag for reranking logic
+            console.log('[chat] Citation boost for Article', artNum, ':', m.entry_id);
+          }
         }
       }
       
@@ -660,22 +706,36 @@ router.post('/', async (req, res) => {
     // Dynamic threshold based on query characteristics
     let confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.18);
     
+    // Detect procedural queries early (needed for threshold logic below)
+    const isProceduralQuery = /\b(motion|file|filing|procedure|how to|what is the process)\b/i.test(normQ);
+    
     // Lower threshold for citation queries (they're more specific and should be answered)
     if ((hasRule && hasSec) || hasArt || hasStatuteRefs) {
       confThreshold = Math.max(0.12, confThreshold * 0.7);
       console.log('[chat] Lowered confidence threshold for citation query:', confThreshold);
     }
     
-    // Lower threshold if we have many good matches (indicates relevant content)
-    if (matches.length >= 5 && maxVec > 0.40) {
-      confThreshold = Math.max(0.15, confThreshold * 0.85);
-      console.log('[chat] Lowered confidence threshold for multiple good matches:', confThreshold);
+    // Lower threshold for urgent queries (user needs answer quickly)
+    // For procedural queries (motion, file, procedure), be even more lenient
+    if (isHighUrgency) {
+      if (isProceduralQuery) {
+        confThreshold = Math.max(0.10, confThreshold * 0.6);
+        console.log('[chat] Lowered confidence threshold for urgent procedural query:', confThreshold);
+      } else {
+        confThreshold = Math.max(0.14, confThreshold * 0.8);
+        console.log('[chat] Lowered confidence threshold for urgent query:', confThreshold);
+      }
+    } else if (isProceduralQuery && maxVec > 0.40) {
+      // Even non-urgent procedural queries with decent similarity should pass
+      confThreshold = Math.max(0.10, confThreshold * 0.6);
+      console.log('[chat] Lowered confidence threshold for procedural query:', confThreshold);
     }
     
-    // Lower threshold for urgent queries (user needs answer quickly)
-    if (isHighUrgency) {
-      confThreshold = Math.max(0.14, confThreshold * 0.8);
-      console.log('[chat] Lowered confidence threshold for urgent query:', confThreshold);
+    // Lower threshold if we have many good matches (indicates relevant content)
+    // But not if we already lowered it for procedural queries
+    if (matches.length >= 5 && maxVec > 0.40 && !isProceduralQuery) {
+      confThreshold = Math.max(0.15, confThreshold * 0.85);
+      console.log('[chat] Lowered confidence threshold for multiple good matches:', confThreshold);
     }
     
     // VERY LOW threshold for queries with metadata filtering but low similarity
@@ -691,32 +751,32 @@ router.post('/', async (req, res) => {
       console.log('[chat] Lowered confidence threshold for rights query:', confThreshold);
     }
     
+    // Special fallback for threat/violence scenarios (check BEFORE confidence gating)
+    // These queries often have very low similarity because we may not have specific threat entries
+    if (/\b(threatening|threat|threaten|hurt|harm|violence|violent|attack|assault)\b/i.test(normQ) && maxVec < 0.35) {
+      console.log('[chat] Threat scenario detected with low similarity, providing general safety advice');
+      const sources = matches.slice(0, 3).map((m) => ({
+        entry_id: m.entry_id,
+        type: m.type,
+        title: m.title,
+        canonical_citation: m.canonical_citation,
+      }));
+      return res.json({
+        answer: "If someone is threatening you, you should:\n\n" +
+          "1. **Document everything**: Save messages, emails, voicemails, or write down details (date, time, what was said, witnesses)\n" +
+          "2. **Report to police immediately** if you feel you're in immediate danger\n" +
+          "3. **Consider filing for a Protection Order**:\n" +
+          "   - If it's domestic violence → File under RA 9262 (Anti-Violence Against Women and Children Act)\n" +
+          "   - If it's harassment/stalking → File under RA 11313 (Safe Spaces Act)\n" +
+          "4. **Seek legal advice** from the Public Attorney's Office (PAO) or a private lawyer\n" +
+          "5. **For immediate danger, call emergency services**: PNP hotline 117 or 911\n\n" +
+          "Note: This is general safety advice. For legal guidance specific to your situation, consult with a lawyer.",
+        sources
+      });
+    }
+    
     if (!matches.length || conf < confThreshold) {
       console.log('[chat] Confidence too low:', { conf, confThreshold, maxVec, maxLex, maxFinal });
-      
-      // Special fallback for threat/violence scenarios
-      if (/\b(threatening|threat|threaten|hurt|harm|violence|violent|attack|assault)\b/i.test(normQ)) {
-        console.log('[chat] Threat scenario detected, providing general safety advice');
-        const sources = matches.slice(0, 3).map((m) => ({
-          entry_id: m.entry_id,
-          type: m.type,
-          title: m.title,
-          canonical_citation: m.canonical_citation,
-        }));
-        return res.json({
-          answer: "If someone is threatening you, you should:\n\n" +
-            "1. **Document everything**: Save messages, emails, voicemails, or write down details (date, time, what was said, witnesses)\n" +
-            "2. **Report to police immediately** if you feel you're in immediate danger\n" +
-            "3. **Consider filing for a Protection Order**:\n" +
-            "   - If it's domestic violence → File under RA 9262 (Anti-Violence Against Women and Children Act)\n" +
-            "   - If it's harassment/stalking → File under RA 11313 (Safe Spaces Act)\n" +
-            "4. **Seek legal advice** from the Public Attorney's Office (PAO) or a private lawyer\n" +
-            "5. **For immediate danger, call emergency services**: PNP hotline 117 or 911\n\n" +
-            "Note: This is general safety advice. For legal guidance specific to your situation, consult with a lawyer.",
-          sources
-        });
-      }
-      
       const sources = matches.map((m) => ({
         entry_id: m.entry_id,
         type: m.type,
@@ -735,9 +795,10 @@ router.post('/', async (req, res) => {
     }
 
     // Optional reranking: Cross-Encoder (fast, local) or LLM-based (slower, API)
+    // Skip reranking if we have exact citation matches - trust the citation boost
     const rerankMode = String(process.env.CHAT_RERANK_MODE || 'none').toLowerCase(); // 'cross-encoder', 'llm', 'none'
     
-    if (rerankMode !== 'none' && matches.length > 2) {
+    if (rerankMode !== 'none' && matches.length > 2 && !hasExactCitationMatch) {
       try {
         let reranked = null;
         
@@ -765,6 +826,8 @@ router.post('/', async (req, res) => {
         console.warn('[rerank] Reranking failed, using original order:', String(e?.message || e));
         // Continue with original matches
       }
+    } else if (hasExactCitationMatch) {
+      console.log('[rerank] Skipping reranking for exact citation match query');
     }
 
     // Build prompt and call Chat Completion
