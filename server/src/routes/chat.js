@@ -524,12 +524,29 @@ router.post('/', async (req, res) => {
       if (artMatch) {
         const artNum = artMatch[1];
         console.log('[chat] Adding lexical search for article', artNum);
+        
+        // Detect source context from query
+        const isConstitutionQuery = /\b(constitution|constitutional)\b/i.test(normQ);
+        const isRPCQuery = /\b(rpc|revised penal code|penal code)\b/i.test(normQ);
+        
+        // Build WHERE clause based on source context
+        let whereClause = `(lower(canonical_citation) LIKE $2 OR lower(entry_id) LIKE $2 OR lower(title) LIKE $2)`;
+        if (isConstitutionQuery) {
+          // For constitution queries, only match constitutional entries
+          whereClause += ` AND (lower(entry_id) LIKE '%const%' OR lower(canonical_citation) LIKE '%constitution%')`;
+          console.log('[chat] Filtering lexical search to constitutional articles only');
+        } else if (isRPCQuery) {
+          // For RPC queries, only match RPC entries
+          whereClause += ` AND (lower(entry_id) LIKE '%rpc%' OR lower(canonical_citation) LIKE '%revised penal code%')`;
+          console.log('[chat] Filtering lexical search to RPC articles only');
+        }
+        
         const lexResArt = await query(
           `select entry_id, type, title, canonical_citation, summary, text, tags,
                   rule_no, section_no, rights_scope,
                   greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(entry_id, $1::text)) as lexsim
              from kb_entries
-            where (lower(canonical_citation) LIKE $2 OR lower(entry_id) LIKE $2 OR lower(title) LIKE $2)
+            where ${whereClause}
             order by lexsim desc
             limit 10`,
           [`article ${artNum}`, `%article%${artNum}%`]
