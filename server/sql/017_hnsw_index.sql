@@ -56,11 +56,11 @@ BEGIN
         WITH (m = 16, ef_construction = 64)
       ';
       
-      RAISE NOTICE '✓ HNSW index created successfully!';
+      RAISE NOTICE 'HNSW index created successfully!';
       RAISE NOTICE 'PostgreSQL will now automatically choose between IVFFlat and HNSW per query.';
       
     EXCEPTION WHEN OTHERS THEN
-      RAISE WARNING 'HNSW index creation failed: %', SQLERRM;
+      RAISE WARNING 'HNSW index creation failed: %', (SQLERRM);
       RAISE NOTICE 'Continuing without HNSW. This is likely because:';
       RAISE NOTICE '1. pgvector version < 0.5.0 (HNSW requires 0.5.0+)';
       RAISE NOTICE '2. Insufficient memory (HNSW needs ~5 MB for 355 entries)';
@@ -96,15 +96,15 @@ BEGIN
   
   -- Build status strings
   IF ivfflat_exists THEN
-    ivfflat_status := '✓ Active';
+    ivfflat_status := 'Active';
   ELSE
-    ivfflat_status := '✗ Missing';
+    ivfflat_status := 'Missing';
   END IF;
   
   IF hnsw_exists THEN
-    hnsw_status := '✓ Active';
+    hnsw_status := 'Active';
   ELSE
-    hnsw_status := '✗ Not available';
+    hnsw_status := 'Not available';
   END IF;
   
   -- Print status
@@ -152,6 +152,6 @@ ANALYZE kb_entries;
 DO $$
 BEGIN
   RAISE NOTICE '================================================';
-  RAISE NOTICE '✓ Migration 017 complete: HNSW index ready';
+  RAISE NOTICE 'Migration 017 complete: HNSW index ready';
   RAISE NOTICE '================================================';
 END $$;
