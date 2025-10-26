@@ -35,11 +35,11 @@ function normalizeQuestion(raw) {
   // This preserves important legal terms
   const compoundWords = [
     [/\banti[\s-]?hazing\b/gi, 'antihazing'],
-    [/\banti[\s-]?harassment\b/gi, 'sexual harassment'],  // Expand to most common form
+    [/\banti[\s-]?harassment\b/gi, 'antiharassment'],  // Normalize to single word (not "sexual harassment")
     [/\bsexual[\s-]?harassment\b/gi, 'sexual harassment'],
     [/\banti[\s-]?discrimination\b/gi, 'antidiscrimination'],
     [/\banti[\s-]?violence\b/gi, 'antiviolence'],
-    [/\bco[\s-]?accused\b/gi, 'co accused'],  // Keep hyphen for better matching
+    [/\bco[\s-]?accused\b/gi, 'co accused'],  // Keep space for better matching
     [/\bco[\s-]?conspirator\b/gi, 'coconspirator'],
     [/\bre[\s-]?arrest\b/gi, 'rearrest'],
     [/\bpre[\s-]?trial\b/gi, 'pre trial'],  // Keep space for better matching
@@ -388,8 +388,11 @@ router.post('/', async (req, res) => {
       const highConfidence = structuredQuery.legal_topics?.length >= minTopics;
       const explicitType = /\b(rule|statute|law|act|constitution|ordinance|republic act|ra)\b/i.test(normQ);
       
-      // Only apply topic filtering if we have high confidence OR explicit type mention
-      if (highConfidence || (explicitType && structuredQuery.legal_topics?.length >= 2)) {
+      // Force metadata filtering for explicit rights queries (even if low topic count)
+      const isExplicitRightsQuery = /\b(rights of|right to|rights for|what are.*rights)\b/i.test(normQ);
+      
+      // Only apply topic filtering if we have high confidence OR explicit type mention OR explicit rights query
+      if (highConfidence || (explicitType && structuredQuery.legal_topics?.length >= 2) || isExplicitRightsQuery) {
         const topicPatterns = structuredQuery.legal_topics.map(t => `%${t.toLowerCase()}%`);
         if (topicPatterns.length === 1) {
           topicFilters.push(`(lower(tags::text) LIKE $${metadataParams.length + 3} OR lower(text) LIKE $${metadataParams.length + 3} OR lower(title) LIKE $${metadataParams.length + 3})`);
@@ -617,7 +620,29 @@ router.post('/', async (req, res) => {
     // This ensures citation queries like "What is Rule 57 Section 6?" return the correct entry
     const ruleMatch = normQ.match(/\brule\s*(\d+)/);
     const secMatch = normQ.match(/\bsection\s*(\d+)/);
-    const artMatch = normQ.match(/\bart(?:\.|icle)?\s*(\d+[-a-z]*)/i);
+    // Support both Arabic (1, 2, 3) and Roman numerals (I, II, III, IV, V, etc.)
+    const artMatch = normQ.match(/\bart(?:\.|icle)?\s*(\d+|[ivxlcdm]+)[-a-z]*/i);
+    
+    // Helper function: Convert Roman numeral to Arabic
+    function romanToArabic(roman) {
+      const map = { i:1, v:5, x:10, l:50, c:100, d:500, m:1000 };
+      return roman.toLowerCase().split('').reduce((acc, char, i, arr) => {
+        const curr = map[char];
+        const next = map[arr[i + 1]];
+        return next && curr < next ? acc - curr : acc + curr;
+      }, 0);
+    }
+    
+    // Helper function: Convert Arabic to Roman numeral (for 1-20)
+    function arabicToRoman(num) {
+      const map = {
+        1: 'i', 2: 'ii', 3: 'iii', 4: 'iv', 5: 'v',
+        6: 'vi', 7: 'vii', 8: 'viii', 9: 'ix', 10: 'x',
+        11: 'xi', 12: 'xii', 13: 'xiii', 14: 'xiv', 15: 'xv',
+        16: 'xvi', 17: 'xvii', 18: 'xviii', 19: 'xix', 20: 'xx'
+      };
+      return map[num] || num.toString();
+    }
     
     // Detect source context for article queries
     const isConstitutionQuery = /\b(constitution|constitutional)\b/i.test(normQ);
@@ -650,10 +675,34 @@ router.post('/', async (req, res) => {
         const title = String(m.title || '').toLowerCase();
         const entryId = String(m.entry_id || '').toLowerCase();
         
-        // Check if article number matches EXACTLY (not as part of another number)
+        // Convert between Roman and Arabic numerals for matching
+        let artNumArabic = artNum;
+        let artNumRoman = artNum;
+        
+        if (/^[ivxlcdm]+$/i.test(artNum)) {
+          // It's a Roman numeral, convert to Arabic
+          artNumArabic = String(romanToArabic(artNum));
+          artNumRoman = artNum.toLowerCase();
+        } else if (/^\d+$/.test(artNum)) {
+          // It's Arabic, also generate Roman equivalent
+          artNumArabic = artNum;
+          const numVal = parseInt(artNum);
+          if (numVal <= 20) {
+            artNumRoman = arabicToRoman(numVal);
+          }
+        }
+        
+        // Check if article number matches EXACTLY (try both Arabic and Roman formats)
         // Use word boundaries to avoid matching "Article 1" in "Article 13"
-        const artRegex = new RegExp(`\\barticle\\s+${artNum}\\b|\\bart\\.\\s+${artNum}\\b|\\bart\\s+${artNum}\\b`, 'i');
-        const hasArticleMatch = artRegex.test(cite) || artRegex.test(title) || artRegex.test(entryId);
+        const artRegexArabic = new RegExp(`\\barticle\\s+${artNumArabic}\\b|\\bart\\.\\s+${artNumArabic}\\b|\\bart\\s+${artNumArabic}\\b`, 'i');
+        const artRegexRoman = new RegExp(`\\barticle\\s+${artNumRoman}\\b|\\bart\\.\\s+${artNumRoman}\\b|\\bart\\s+${artNumRoman}\\b`, 'i');
+        
+        const hasArticleMatch = artRegexArabic.test(cite) || 
+                               artRegexArabic.test(title) || 
+                               artRegexArabic.test(entryId) ||
+                               artRegexRoman.test(cite) ||
+                               artRegexRoman.test(title) ||
+                               artRegexRoman.test(entryId);
         
         if (hasArticleMatch) {
           // Apply boost only if source context matches
@@ -679,7 +728,7 @@ router.post('/', async (req, res) => {
             citationBoost += 0.50;  // Big boost for exact match! (increased from 0.30)
             hasExactCitationMatch = true;
             m.exactCitationMatch = true;  // Flag for reranking logic
-            console.log('[chat] Citation boost for Article', artNum, ':', m.entry_id);
+            console.log('[chat] Citation boost for Article', artNumArabic, '(Roman:', artNumRoman, ') :', m.entry_id);
           }
         }
       }
@@ -710,7 +759,8 @@ router.post('/', async (req, res) => {
     let confThreshold = Number(process.env.CHAT_CONF_THRESHOLD || 0.18);
     
     // Detect procedural queries early (needed for threshold logic below)
-    const isProceduralQuery = /\b(motion|file|filing|procedure|how to|what is the process)\b/i.test(normQ);
+    // Added "appeal" to catch appeal-related queries
+    const isProceduralQuery = /\b(motion|file|filing|procedure|how to|what is the process|appeal)\b/i.test(normQ);
     
     // Lower threshold for citation queries (they're more specific and should be answered)
     if ((hasRule && hasSec) || hasArt || hasStatuteRefs) {
@@ -719,18 +769,18 @@ router.post('/', async (req, res) => {
     }
     
     // Lower threshold for urgent queries (user needs answer quickly)
-    // For procedural queries (motion, file, procedure), be even more lenient
+    // For procedural queries (motion, file, procedure, appeal), be even more lenient
     if (isHighUrgency) {
       if (isProceduralQuery) {
-        confThreshold = Math.max(0.10, confThreshold * 0.6);
+        confThreshold = Math.max(0.08, confThreshold * 0.5);  // Lowered from 0.10 to 0.08
         console.log('[chat] Lowered confidence threshold for urgent procedural query:', confThreshold);
       } else {
         confThreshold = Math.max(0.14, confThreshold * 0.8);
         console.log('[chat] Lowered confidence threshold for urgent query:', confThreshold);
       }
-    } else if (isProceduralQuery && maxVec > 0.40) {
+    } else if (isProceduralQuery && maxVec > 0.35) {  // Lowered from 0.40 to 0.35
       // Even non-urgent procedural queries with decent similarity should pass
-      confThreshold = Math.max(0.10, confThreshold * 0.6);
+      confThreshold = Math.max(0.08, confThreshold * 0.5);  // Lowered from 0.10 to 0.08
       console.log('[chat] Lowered confidence threshold for procedural query:', confThreshold);
     }
     
