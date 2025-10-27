@@ -258,6 +258,24 @@ function buildPrompt(question, matches) {
       - Explain what the motion is, when it's filed, and cite the relevant rule
       - Example: "pre-trial motion" + Rule 119 context → Explain pre-trial conference, when it happens, cite Rule 119
       - Don't say "I don't know" just because the context isn't perfectly specific
+    
+    11. **HANDLE DEFINITIONAL QUERIES FOR STATUTES/CODES**
+      - If asked "What is the Revised Penal Code?" or "What is RA 8749?"
+      - Use ANY related entries from that statute to explain what it covers
+      - Example: "What is the RPC?" + RPC Article 266-A context → "The Revised Penal Code (RPC) is the criminal code of the Philippines. It defines various crimes and their penalties. For example, Article 266-A defines rape..."
+      - Example: "What is RA 8749?" + smoke belching provision → "RA 8749 is the Philippine Clean Air Act of 1999. It aims to achieve and maintain healthy air quality. Section 46 prohibits smoke belching..."
+      - Provide a general overview based on the available entries, even if you don't have a dedicated "overview" entry
+    
+    12. **EXTRACT INFORMATION FROM RELATED ENTRIES**
+      - If the exact article/section isn't in the context, but related ones are:
+      - Example: Asked "Article 336" but have "Article 340" → Say "I don't know about Article 336 specifically, but Article 340 (nearby provision) covers..."
+      - This helps users understand the general area of law even if the exact provision is missing
+    
+    13. **HANDLE MISSING ENTRIES GRACEFULLY**
+      - If the context has SOME relevant information but not the exact thing asked:
+      - Acknowledge what you DO have: "I don't have specific information about [X], but I can tell you about [related Y]..."
+      - Example: "What is harassment?" + sexual harassment context → "I don't have a general definition of harassment, but sexual harassment is defined as..."
+      - This is better than a flat "I don't know" when you have related information
 
 
     ### CHAIN OF THOUGHTS (INTERNAL REASONING STEPS) ###
@@ -568,6 +586,53 @@ router.post('/', async (req, res) => {
         );
         lexicalArticle = lexResArt.rows || [];
         console.log('[chat] Lexical article search found', lexicalArticle.length, 'entries');
+        
+        // If no exact match found, try to find nearby articles (for missing entries)
+        // This helps provide context even when the exact article isn't in the KB
+        if (lexicalArticle.length === 0 && /^\d+$/.test(artNum)) {
+          const articleNum = parseInt(artNum);
+          const nearbyArticles = [];
+          
+          // Search for articles within ±5 of the requested article
+          for (let offset of [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]) {
+            const nearbyNum = articleNum + offset;
+            if (nearbyNum > 0) {
+              nearbyArticles.push(`%article%${nearbyNum}%`);
+            }
+          }
+          
+          if (nearbyArticles.length > 0) {
+            const nearbyWhereClause = nearbyArticles.map((_, i) => 
+              `(lower(canonical_citation) LIKE $${i + 2} OR lower(entry_id) LIKE $${i + 2} OR lower(title) LIKE $${i + 2})`
+            ).join(' OR ');
+            
+            let fullWhereClause = `(${nearbyWhereClause})`;
+            if (isRPCQuery) {
+              fullWhereClause += ` AND (lower(entry_id) LIKE '%rpc%' OR lower(canonical_citation) LIKE '%revised penal code%')`;
+            } else if (isConstitutionQuery) {
+              fullWhereClause += ` AND (lower(entry_id) LIKE '%const%' OR lower(canonical_citation) LIKE '%constitution%')`;
+            }
+            
+            try {
+              const nearbyRes = await query(
+                `select entry_id, type, title, canonical_citation, summary, text, tags,
+                        rule_no, section_no, rights_scope,
+                        greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(entry_id, $1::text)) as lexsim
+                   from kb_entries
+                  where ${fullWhereClause}
+                  order by lexsim desc
+                  limit 5`,
+                [`article ${artNum}`, ...nearbyArticles]
+              );
+              lexicalArticle = nearbyRes.rows || [];
+              if (lexicalArticle.length > 0) {
+                console.log('[chat] Found', lexicalArticle.length, 'nearby articles for missing Article', artNum);
+              }
+            } catch (err) {
+              console.error('[chat] Error searching for nearby articles:', err.message);
+            }
+          }
+        }
       }
     }
 
@@ -850,6 +915,9 @@ router.post('/', async (req, res) => {
     // Added "appeal" to catch appeal-related queries
     const isProceduralQuery = /\b(motion|file|filing|procedure|how to|what is the process|appeal)\b/i.test(normQ);
     
+    // Detect "what is X?" definitional queries - these should be more lenient
+    const isDefinitionalQuery = /\b(what is|what are|define|definition of|tell me about|explain)\b/i.test(normQ);
+    
     // Lower threshold for citation queries (they're more specific and should be answered)
     if ((hasRule && hasSec) || hasArt || hasStatuteRefs) {
       confThreshold = Math.max(0.12, confThreshold * 0.7);
@@ -866,7 +934,7 @@ router.post('/', async (req, res) => {
         confThreshold = Math.max(0.14, confThreshold * 0.8);
         console.log('[chat] Lowered confidence threshold for urgent query:', confThreshold);
       }
-    } else if (isProceduralQuery && maxVec > 0.35) {  // Lowered from 0.40 to 0.35
+    } else if (isProceduralQuery && maxVec > 0.30) {  // Lowered from 0.35 to 0.30
       // Even non-urgent procedural queries with decent similarity should pass
       confThreshold = Math.max(0.08, confThreshold * 0.5);  // Lowered from 0.10 to 0.08
       console.log('[chat] Lowered confidence threshold for procedural query:', confThreshold);
@@ -890,6 +958,21 @@ router.post('/', async (req, res) => {
     if (/\b(rights of|right to|rights for)\b/i.test(normQ)) {
       confThreshold = Math.max(0.12, confThreshold * 0.7);
       console.log('[chat] Lowered confidence threshold for rights query:', confThreshold);
+    }
+    
+    // Lower threshold for definitional queries with moderate similarity
+    // "What is X?" queries should be answered if we have relevant content
+    if (isDefinitionalQuery && maxVec > 0.35) {
+      confThreshold = Math.max(0.10, confThreshold * 0.6);
+      console.log('[chat] Lowered confidence threshold for definitional query:', confThreshold);
+    }
+    
+    // Special handling for generic statute queries (e.g., "What is the Revised Penal Code?")
+    // These often have moderate similarity to many entries
+    if (/\b(revised penal code|rules of court|constitution|civil code|labor code)\b/i.test(normQ) && 
+        !hasArt && !hasRule && matches.length >= 3) {
+      confThreshold = Math.max(0.10, confThreshold * 0.6);
+      console.log('[chat] Lowered confidence threshold for generic statute query:', confThreshold);
     }
     
     // Special fallback for threat/violence scenarios (check BEFORE confidence gating)
