@@ -135,16 +135,17 @@ export async function rerankWithCrossEncoder({ query, candidates, confidence }) 
         origScore: Number(c.finalScore) || 0,
       }));
       
-      // Run cross-encoder inference (batch)
-      const results = await Promise.all(
-        pairs.map(async (pair) => {
-          const output = await reranker(pair.text);
-          // Model outputs [{label: 'LABEL_0', score: 0.85}, {label: 'LABEL_1', score: 0.15}]
-          // LABEL_1 = relevant, LABEL_0 = not relevant
-          const relevantScore = output.find(o => o.label === 'LABEL_1')?.score || 0;
-          return { entry_id: pair.entry_id, score: relevantScore };
-        })
-      );
+      // Run cross-encoder inference (optimized batch processing)
+      const texts = pairs.map(pair => pair.text);
+      const outputs = await reranker(texts, { batch_size: 8 }); // Batch processing
+      
+      const results = pairs.map((pair, i) => {
+        const output = Array.isArray(outputs) ? outputs[i] : outputs;
+        // Model outputs [{label: 'LABEL_0', score: 0.85}, {label: 'LABEL_1', score: 0.15}]
+        // LABEL_1 = relevant, LABEL_0 = not relevant
+        const relevantScore = output.find(o => o.label === 'LABEL_1')?.score || 0;
+        return { entry_id: pair.entry_id, score: relevantScore };
+      });
       
       // Normalize scores to 0-1
       const scores = results.map(r => r.score);

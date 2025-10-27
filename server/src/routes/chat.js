@@ -8,116 +8,48 @@ import { generateStructuredQuery } from '../utils/structured-query-generator.js'
 import performanceMonitor from '../utils/performance-monitor.js';
 
 // Enhanced in-memory cache for embeddings (LRU-ish)
-const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 2 * 60 * 60 * 1000); // 2 hours (increased for conversational)
-const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 5000); // 5000 entries (increased for conversational)
+const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 30 * 60 * 1000); // 30 minutes (was 5)
+const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 1000); // 1000 entries (was 200)
 const embedCache = new Map(); // key -> { vec:number[], exp:number }
-
-// Conversational optimization: Cache common legal terms
-const COMMON_LEGAL_TERMS = [
-  'bail', 'rape', 'theft', 'murder', 'assault', 'fraud', 'estafa', 'robbery',
-  'motion', 'appeal', 'warrant', 'arrest', 'trial', 'conviction', 'sentence',
-  'rights', 'counsel', 'evidence', 'witness', 'jury', 'judge', 'court',
-  'criminal', 'civil', 'penalty', 'fine', 'imprisonment', 'probation'
-];
-
-// Pre-compute embeddings for common terms (conversational optimization)
-const precomputedEmbeddings = new Map();
 
 // Response cache for LLM generation
 const RESPONSE_CACHE_TTL_MS = Number(process.env.CHAT_RESPONSE_TTL_MS || 60 * 60 * 1000); // 1 hour
 const RESPONSE_CACHE_MAX = Number(process.env.CHAT_RESPONSE_CACHE_MAX || 500); // 500 entries
 const responseCache = new Map(); // key -> { answer:string, sources:array, exp:number }
 
-// Initialize pre-computed embeddings for common terms
-async function initializePrecomputedEmbeddings() {
-  if (precomputedEmbeddings.size > 0) return; // Already initialized
-  
-  console.log('[embedding] Pre-computing embeddings for common legal terms...');
-  const startTime = Date.now();
-  
-  try {
-    // Pre-compute embeddings for common legal terms in parallel
-    const embeddingPromises = COMMON_LEGAL_TERMS.map(async (term) => {
-      const vec = await embedText(term);
-      precomputedEmbeddings.set(term, vec);
-      embedCache.set(`emb:${term}`, { vec, exp: Date.now() + EMBED_CACHE_TTL_MS });
-    });
-    
-    await Promise.all(embeddingPromises);
-    const duration = Date.now() - startTime;
-    console.log(`[embedding] Pre-computed ${COMMON_LEGAL_TERMS.length} embeddings in ${duration}ms`);
-  } catch (error) {
-    console.warn('[embedding] Failed to pre-compute embeddings:', error.message);
-  }
-}
-
 async function getCachedEmbedding(text) {
   const key = `emb:${text}`;
   const now = Date.now();
-  
-  // Check cache first
   const hit = embedCache.get(key);
   if (hit && hit.exp > now) return hit.vec;
-  
-  // Check pre-computed embeddings for single terms
-  const normalizedText = text.toLowerCase().trim();
-  if (precomputedEmbeddings.has(normalizedText)) {
-    const vec = precomputedEmbeddings.get(normalizedText);
-    embedCache.set(key, { vec, exp: now + EMBED_CACHE_TTL_MS });
-    return vec;
-  }
-  
-  // Generate new embedding
   const vec = await embedText(text);
   const exp = now + EMBED_CACHE_TTL_MS;
   embedCache.set(key, { vec, exp });
-  
-  // Clean up old entries
   if (embedCache.size > EMBED_CACHE_MAX) {
     const firstKey = embedCache.keys().next().value;
     embedCache.delete(firstKey);
   }
-  
   return vec;
 }
 
-// Enhanced response caching with similarity matching (conversational optimization)
+// Optimized response caching with faster key generation
 function getCachedResponse(question, matches) {
+  // Use hash of question + top 3 entry IDs for faster key generation
+  const topEntries = matches.slice(0, 3).map(m => m.entry_id).join(',');
+  const key = `resp:${question.length}:${topEntries}`;
   const now = Date.now();
-  
-  // Exact match first
-  const exactKey = `resp:${question}:${matches.map(m => m.entry_id).join(',')}`;
-  const exactHit = responseCache.get(exactKey);
-  if (exactHit && exactHit.exp > now) {
-    console.log(`[response-cache] Exact cache hit for query: ${question.substring(0, 50)}...`);
-    return exactHit;
+  const hit = responseCache.get(key);
+  if (hit && hit.exp > now) {
+    console.log(`[response-cache] Cache hit for query: ${question.substring(0, 50)}...`);
+    return hit;
   }
-  
-  // Similarity-based matching for conversational queries
-  const questionWords = question.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-  const similarityThreshold = 0.8; // 80% word overlap
-  
-  for (const [key, cached] of responseCache.entries()) {
-    if (cached.exp <= now) continue; // Skip expired entries
-    
-    const cachedQuestion = key.split(':')[1];
-    const cachedWords = cachedQuestion.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    
-    // Calculate word overlap similarity
-    const commonWords = questionWords.filter(w => cachedWords.includes(w));
-    const similarity = commonWords.length / Math.max(questionWords.length, cachedWords.length);
-    
-    if (similarity >= similarityThreshold) {
-      console.log(`[response-cache] Similarity cache hit (${Math.round(similarity * 100)}%): ${question.substring(0, 50)}...`);
-      return cached;
-    }
-  }
-  
   return null;
 }
 
 function setCachedResponse(question, matches, answer, sources) {
-  const key = `resp:${question}:${matches.map(m => m.entry_id).join(',')}`;
+  // Use hash of question + top 3 entry IDs for faster key generation
+  const topEntries = matches.slice(0, 3).map(m => m.entry_id).join(',');
+  const key = `resp:${question.length}:${topEntries}`;
   const now = Date.now();
   const exp = now + RESPONSE_CACHE_TTL_MS;
   responseCache.set(key, { answer, sources, exp });
@@ -292,8 +224,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
 
 function buildPrompt(question, matches) {
-  // Conversational optimization: Reduce context length for faster generation
-  const maxSources = Number(process.env.CHAT_MAX_SOURCES || 4); // Reduced from 6 to 4
+  // Limit context length to reduce token usage and improve speed
+  const maxSources = Number(process.env.CHAT_MAX_SOURCES || 6);
   const limitedMatches = matches.slice(0, maxSources);
   
   const context = limitedMatches.map((m, i) => {
@@ -456,10 +388,6 @@ function buildPrompt(question, matches) {
   }
 router.post('/', async (req, res) => {
   const queryStartTime = Date.now();
-  
-  // Initialize pre-computed embeddings on first request (conversational optimization)
-  await initializePrecomputedEmbeddings();
-  
   try {
     const { question } = req.body || {};
     if (!question || !String(question).trim()) return res.status(400).json({ error: 'question is required' });
@@ -564,63 +492,55 @@ router.post('/', async (req, res) => {
     const embLitNorm = `[${embNorm.join(',')}]`;
     const embLitRaw = `[${embRaw.join(',')}]`;
     
-    // ===== METADATA FILTERING (NEW) =====
-    // Build WHERE clause based on SQG outputs for better precision
+    // ===== OPTIMIZED METADATA FILTERING =====
+    // Pre-compute filter conditions to avoid repeated regex operations
     const useMetadataFiltering = String(process.env.CHAT_USE_METADATA_FILTERING || 'true').toLowerCase() === 'true';
     let metadataWhereClause = 'embedding is not null';
     const metadataParams = [];
     
     if (useMetadataFiltering && structuredQuery) {
-      const topicFilters = [];
-      const typeFilters = [];
-      
-      // Filter by legal topics if SQG identified them (only if we have HIGH confidence)
-      // Increased from 2 to 3 to reduce false negatives (e.g., "anti hazing" queries)
-      const minTopics = Number(process.env.CHAT_METADATA_MIN_TOPICS || 3);
-      const highConfidence = structuredQuery.legal_topics?.length >= minTopics;
+      // Pre-compute regex tests to avoid repeated operations
+      const isRuleQuery = /\b(rule|rules of court|roc)\b/i.test(normQ);
+      const isCriminalQuery = /\b(elements|penalty|penalties|defense|defenses|crime|criminal|offense)\b/i.test(normQ);
+      const isRightsQuery = /\b(rights of|rights for|what are.*rights|arrest|counsel|privacy|minors|gbv)\b/i.test(normQ);
+      const isHarassmentQuery = /\b(harassment|antiharassment|anti[\s-]?harassment)\b/i.test(normQ);
       const explicitType = /\b(rule|statute|law|act|constitution|ordinance|republic act|ra)\b/i.test(normQ);
       
-      // Force metadata filtering for explicit rights queries (even if low topic count)
-      const isExplicitRightsQuery = /\b(rights of|right to|rights for|what are.*rights)\b/i.test(normQ);
-      
-      // Disable metadata filtering for harassment queries (they often get over-filtered)
-      const isHarassmentQuery = /\b(harassment|antiharassment|anti[\s-]?harassment)\b/i.test(normQ);
-      
+      // Skip filtering for harassment queries
       if (isHarassmentQuery) {
         console.log('[chat] Skipping metadata filtering for harassment query');
-      }
-      
-      // Only apply topic filtering if we have high confidence OR explicit type mention OR explicit rights query
-      // BUT skip filtering for harassment queries
-      if (!isHarassmentQuery && (highConfidence || (explicitType && structuredQuery.legal_topics?.length >= 2) || isExplicitRightsQuery)) {
-        const topicPatterns = structuredQuery.legal_topics.map(t => `%${t.toLowerCase()}%`);
-        if (topicPatterns.length === 1) {
-          topicFilters.push(`(lower(tags::text) LIKE $${metadataParams.length + 3} OR lower(text) LIKE $${metadataParams.length + 3} OR lower(title) LIKE $${metadataParams.length + 3})`);
-          metadataParams.push(topicPatterns[0]);
-        } else if (topicPatterns.length > 1) {
-          const conditions = topicPatterns.map((_, idx) => 
-            `(lower(tags::text) LIKE $${metadataParams.length + 3 + idx} OR lower(text) LIKE $${metadataParams.length + 3 + idx} OR lower(title) LIKE $${metadataParams.length + 3 + idx})`
-          );
-          topicFilters.push(`(${conditions.join(' OR ')})`);
-          metadataParams.push(...topicPatterns);
+      } else {
+        // Build type filters first (simpler logic)
+        const typeFilters = [];
+        if (isRuleQuery) {
+          typeFilters.push(`type = 'rule_of_court'`);
+        } else if (isCriminalQuery) {
+          typeFilters.push(`(type = 'statute_section' OR type = 'city_ordinance_section')`);
+        } else if (isRightsQuery) {
+          typeFilters.push(`type = 'rights_advisory'`);
         }
-      }
-      
-      // Filter by entry type if query hints at a specific type (less aggressive)
-      if (/\b(rule|rules of court|roc)\b/i.test(normQ)) {
-        typeFilters.push(`type = 'rule_of_court'`);
-      } else if (/\b(elements|penalty|penalties|defense|defenses|crime|criminal|offense)\b/i.test(normQ)) {
-        typeFilters.push(`(type = 'statute_section' OR type = 'city_ordinance_section')`);
-      } else if (/\b(rights of|rights for|what are.*rights|arrest|counsel|privacy|minors|gbv)\b/i.test(normQ)) {
-        // Only filter to rights_advisory if it's explicitly about "rights of X"
-        // Don't filter for single word "harassment" which might be in statutes
-        typeFilters.push(`type = 'rights_advisory'`);
-      }
-      
-      // Combine filters: topic OR type (not AND) - more lenient
-      const allFilters = [...topicFilters, ...typeFilters];
-      if (allFilters.length > 0) {
-        metadataWhereClause = `embedding is not null AND (${allFilters.join(' OR ')})`;
+        
+        // Build topic filters (only if high confidence)
+        const minTopics = Number(process.env.CHAT_METADATA_MIN_TOPICS || 3);
+        const highConfidence = structuredQuery.legal_topics?.length >= minTopics;
+        const topicFilters = [];
+        
+        if (highConfidence || (explicitType && structuredQuery.legal_topics?.length >= 2) || isRightsQuery) {
+          const topicPatterns = structuredQuery.legal_topics.map(t => `%${t.toLowerCase()}%`);
+          if (topicPatterns.length > 0) {
+            const conditions = topicPatterns.map((_, idx) => 
+              `(lower(tags::text) LIKE $${metadataParams.length + 3 + idx} OR lower(text) LIKE $${metadataParams.length + 3 + idx} OR lower(title) LIKE $${metadataParams.length + 3 + idx})`
+            );
+            topicFilters.push(`(${conditions.join(' OR ')})`);
+            metadataParams.push(...topicPatterns);
+          }
+        }
+        
+        // Combine filters
+        const allFilters = [...topicFilters, ...typeFilters];
+        if (allFilters.length > 0) {
+          metadataWhereClause = `embedding is not null AND (${allFilters.join(' OR ')})`;
+        }
       }
     }
     
@@ -649,54 +569,66 @@ router.post('/', async (req, res) => {
     if (semantic.length) bestSim = Math.max(bestSim, Number(semantic[0].similarity) || 0);
     if (semanticRaw.length) bestSim = Math.max(bestSim, Number(semanticRaw[0].similarity) || 0);
 
-    // Trigram lexical (pg_trgm) if semantic is weak, enhanced with SQG keywords
+    // PARALLEL LEXICAL SEARCHES - Major Optimization
     const useLexical = bestSim < simThreshold;
-    let lexical = [];
-    let lexicalKeywords = [];
+    let lexical = [], lexicalKeywords = [], lexicalRaw = [];
+    
     if (useLexical) {
-      // Primary normalized query search
-      const lexRes = await query(
-        `select entry_id, type, title, canonical_citation, summary, text, tags,
-                rule_no, section_no, rights_scope,
-                greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
-           from kb_entries
-          where (title % $1::text or canonical_citation % $1::text or text % $1::text)
-          order by lexsim desc
-          limit 24`,
-        [normQ]
-      );
-      lexical = lexRes.rows || [];
+      // Build all lexical queries in parallel
+      const lexicalPromises = [];
       
-      // Additional keyword-based search from SQG
-      if (structuredQuery?.keywords?.length > 0) {
-        const keywordQuery = structuredQuery.keywords.join(' ');
-        const lexResKw = await query(
+      // Primary normalized query search
+      lexicalPromises.push(
+        query(
           `select entry_id, type, title, canonical_citation, summary, text, tags,
                   rule_no, section_no, rights_scope,
                   greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
              from kb_entries
             where (title % $1::text or canonical_citation % $1::text or text % $1::text)
             order by lexsim desc
-            limit 16`,
-          [keywordQuery]
-        );
-        lexicalKeywords = lexResKw.rows || [];
-      }
-    }
-    // Also lexical for raw question (merge later) if lexical is in use
-    let lexicalRaw = [];
-    if (useLexical) {
-      const lexRes2 = await query(
-        `select entry_id, type, title, canonical_citation, summary, text, tags,
-                rule_no, section_no, rights_scope,
-                greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
-           from kb_entries
-          where (title % $1::text or canonical_citation % $1::text or text % $1::text)
-          order by lexsim desc
-          limit 24`,
-        [question.toLowerCase()]
+            limit 24`,
+          [normQ]
+        )
       );
+      
+      // Raw question search
+      lexicalPromises.push(
+        query(
+          `select entry_id, type, title, canonical_citation, summary, text, tags,
+                  rule_no, section_no, rights_scope,
+                  greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
+             from kb_entries
+            where (title % $1::text or canonical_citation % $1::text or text % $1::text)
+            order by lexsim desc
+            limit 24`,
+          [question.toLowerCase()]
+        )
+      );
+      
+      // Keyword-based search from SQG (if available)
+      if (structuredQuery?.keywords?.length > 0) {
+        const keywordQuery = structuredQuery.keywords.join(' ');
+        lexicalPromises.push(
+          query(
+            `select entry_id, type, title, canonical_citation, summary, text, tags,
+                    rule_no, section_no, rights_scope,
+                    greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
+               from kb_entries
+              where (title % $1::text or canonical_citation % $1::text or text % $1::text)
+              order by lexsim desc
+              limit 16`,
+            [keywordQuery]
+          )
+        );
+      } else {
+        lexicalPromises.push(Promise.resolve({ rows: [] }));
+      }
+      
+      // Execute all lexical searches in parallel
+      const [lexRes, lexRes2, lexResKw] = await Promise.all(lexicalPromises);
+      lexical = lexRes.rows || [];
       lexicalRaw = lexRes2.rows || [];
+      lexicalKeywords = lexResKw.rows || [];
     }
     
     // CRITICAL FIX: Add lexical fallback for article queries
@@ -1249,12 +1181,12 @@ router.post('/', async (req, res) => {
       answer = cachedResponse.answer;
       console.log(`[response-cache] Using cached response for: ${question.substring(0, 50)}...`);
     } else {
-      // Build prompt and call Chat Completion
-      const prompt = buildPrompt(question, matches);
+    // Build prompt and call Chat Completion
+    const prompt = buildPrompt(question, matches);
       
       // LLM Generation Time Monitoring
       llmStartTime = Date.now();
-      const useStreaming = String(process.env.CHAT_USE_STREAMING || 'true').toLowerCase() === 'true'; // Default to true for conversational
+      const useStreaming = String(process.env.CHAT_USE_STREAMING || 'false').toLowerCase() === 'true';
       
       if (useStreaming) {
         // Streaming response for better perceived performance
@@ -1277,12 +1209,12 @@ router.post('/', async (req, res) => {
         answer = fullAnswer;
       } else {
         // Non-streaming response (default)
-        const completion = await openai.chat.completions.create({
-          model: CHAT_MODEL,
-          messages: [
-            { role: 'system', content: 'You are a helpful legal assistant.' },
-            { role: 'user', content: prompt }
-          ],
+    const completion = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [
+        { role: 'system', content: 'You are a helpful legal assistant.' },
+        { role: 'user', content: prompt }
+      ],
           temperature: 0.0,
           max_tokens: Number(process.env.CHAT_MAX_TOKENS || 2000), // Limit response length
         });
@@ -1346,6 +1278,9 @@ router.post('/', async (req, res) => {
     // Record LLM latency if we have it
     const llmLatency = cachedResponse ? 0 : (Date.now() - llmStartTime);
     performanceMonitor.recordQuery(totalLatency, llmLatency);
+    
+    // Log optimization metrics
+    console.log(`[performance] Query completed in ${totalLatency}ms (LLM: ${llmLatency}ms, Cache: ${cachedResponse ? 'HIT' : 'MISS'})`);
     
     try {
       const best = matches[0];
