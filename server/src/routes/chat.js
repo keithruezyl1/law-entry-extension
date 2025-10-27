@@ -270,6 +270,11 @@ function buildPrompt(question, matches) {
       - If the exact article/section isn't in the context, but related ones are:
       - Example: Asked "Article 336" but have "Article 340" → Say "I don't know about Article 336 specifically, but Article 340 (nearby provision) covers..."
       - This helps users understand the general area of law even if the exact provision is missing
+      - **CRITICAL**: If you see entries with similar article numbers (e.g., Article 340 when asked for Article 336), 
+        ALWAYS mention the nearby article and explain what it covers
+      - **NEVER say "I don't know"** if you have a nearby article in the context
+      - Example: User asks "What is Article 336?" + Article 340 context → 
+        "I don't have specific information about Article 336, but Article 340 (a nearby provision in the same area of law) covers [explain Article 340]. This gives you an idea of the types of provisions in that section of the law."
     
     13. **HANDLE MISSING ENTRIES GRACEFULLY**
       - If the context has SOME relevant information but not the exact thing asked:
@@ -1024,8 +1029,27 @@ router.post('/', async (req, res) => {
     const hasArticleQuery = hasArt && lexicalArticle.length > 0;
     const rerankMode = String(process.env.CHAT_RERANK_MODE || 'none').toLowerCase(); // 'cross-encoder', 'llm', 'none'
     
+    // Detect appeal queries - these need special handling
+    const isAppealQuery = /\b(appeal|filing an appeal|how to appeal|appeal process)\b/i.test(normQ);
+    
     if (hasArticleQuery) {
       console.log('[rerank] Skipping reranking for article query with lexical matches');
+    }
+    
+    // For appeal queries, boost Rule 122 entries before reranking
+    if (isAppealQuery) {
+      console.log('[rerank] Detected appeal query, boosting Rule 122 entries');
+      matches = matches.map(m => {
+        const entryId = String(m.entry_id || '').toLowerCase();
+        const citation = String(m.canonical_citation || '').toLowerCase();
+        if (entryId.includes('rule 122') || citation.includes('rule 122') || 
+            entryId.includes('appeal') || citation.includes('appeal')) {
+          m.finalScore = (m.finalScore || 0) + 0.3; // Boost appeal-related entries
+          console.log('[rerank] Boosted appeal entry:', m.entry_id);
+        }
+        return m;
+      });
+      matches.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
     }
     
     if (rerankMode !== 'none' && matches.length > 2 && !hasExactCitationMatch && !hasArticleQuery) {

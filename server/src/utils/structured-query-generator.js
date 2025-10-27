@@ -82,10 +82,14 @@ Common legal domains to recognize:
 Common statute patterns:
 - "Rule [number] Section [number]" → Rules of Court
 - "RA [number]" or "Republic Act [number]" → statute
+- "RA [number] Section [number]" → specific section of Republic Act
 - "RPC Art. [number]" or "Article [number]" → Revised Penal Code
 - "BP [number]" → Batas Pambansa
 - "PD [number]" → Presidential Decree
 - "G.R. No. [number]" → Supreme Court case
+- "EO [number]" → Executive Order
+- "DO [number]" → Department Order
+- "Circular [number]" → Administrative Circular
 
 **EXAMPLES:**
 
@@ -143,6 +147,20 @@ Output:
   "related_terms": ["in flagrante delicto", "hot pursuit", "children in conflict with law"],
   "urgency": "high",
   "query_expansions": ["arrest without warrant juvenile", "minor apprehension", "child arrest procedures"]
+}
+
+User: "What is RA 11053 Section 3?"
+Output:
+{
+  "normalized_question": "What is Republic Act 11053 Section 3?",
+  "keywords": ["RA 11053", "Section 3", "Republic Act 11053"],
+  "legal_topics": ["special laws", "RA 11053"],
+  "statutes_referenced": ["RA 11053 Section 3"],
+  "jurisdiction": "Philippines",
+  "temporal_scope": "",
+  "related_terms": ["Republic Act 11053", "Anti-Hazing Act"],
+  "urgency": "low",
+  "query_expansions": ["Anti-Hazing Act Section 3", "RA 11053 provisions"]
 }
 
 Respond ONLY with valid JSON matching the schema above.`;
