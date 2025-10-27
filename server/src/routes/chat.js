@@ -8,39 +8,111 @@ import { generateStructuredQuery } from '../utils/structured-query-generator.js'
 import performanceMonitor from '../utils/performance-monitor.js';
 
 // Enhanced in-memory cache for embeddings (LRU-ish)
-const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 30 * 60 * 1000); // 30 minutes (was 5)
-const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 1000); // 1000 entries (was 200)
+const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 2 * 60 * 60 * 1000); // 2 hours (increased for conversational)
+const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 5000); // 5000 entries (increased for conversational)
 const embedCache = new Map(); // key -> { vec:number[], exp:number }
+
+// Conversational optimization: Cache common legal terms
+const COMMON_LEGAL_TERMS = [
+  'bail', 'rape', 'theft', 'murder', 'assault', 'fraud', 'estafa', 'robbery',
+  'motion', 'appeal', 'warrant', 'arrest', 'trial', 'conviction', 'sentence',
+  'rights', 'counsel', 'evidence', 'witness', 'jury', 'judge', 'court',
+  'criminal', 'civil', 'penalty', 'fine', 'imprisonment', 'probation'
+];
+
+// Pre-compute embeddings for common terms (conversational optimization)
+const precomputedEmbeddings = new Map();
 
 // Response cache for LLM generation
 const RESPONSE_CACHE_TTL_MS = Number(process.env.CHAT_RESPONSE_TTL_MS || 60 * 60 * 1000); // 1 hour
 const RESPONSE_CACHE_MAX = Number(process.env.CHAT_RESPONSE_CACHE_MAX || 500); // 500 entries
 const responseCache = new Map(); // key -> { answer:string, sources:array, exp:number }
 
+// Initialize pre-computed embeddings for common terms
+async function initializePrecomputedEmbeddings() {
+  if (precomputedEmbeddings.size > 0) return; // Already initialized
+  
+  console.log('[embedding] Pre-computing embeddings for common legal terms...');
+  const startTime = Date.now();
+  
+  try {
+    // Pre-compute embeddings for common legal terms in parallel
+    const embeddingPromises = COMMON_LEGAL_TERMS.map(async (term) => {
+      const vec = await embedText(term);
+      precomputedEmbeddings.set(term, vec);
+      embedCache.set(`emb:${term}`, { vec, exp: Date.now() + EMBED_CACHE_TTL_MS });
+    });
+    
+    await Promise.all(embeddingPromises);
+    const duration = Date.now() - startTime;
+    console.log(`[embedding] Pre-computed ${COMMON_LEGAL_TERMS.length} embeddings in ${duration}ms`);
+  } catch (error) {
+    console.warn('[embedding] Failed to pre-compute embeddings:', error.message);
+  }
+}
+
 async function getCachedEmbedding(text) {
   const key = `emb:${text}`;
   const now = Date.now();
+  
+  // Check cache first
   const hit = embedCache.get(key);
   if (hit && hit.exp > now) return hit.vec;
+  
+  // Check pre-computed embeddings for single terms
+  const normalizedText = text.toLowerCase().trim();
+  if (precomputedEmbeddings.has(normalizedText)) {
+    const vec = precomputedEmbeddings.get(normalizedText);
+    embedCache.set(key, { vec, exp: now + EMBED_CACHE_TTL_MS });
+    return vec;
+  }
+  
+  // Generate new embedding
   const vec = await embedText(text);
   const exp = now + EMBED_CACHE_TTL_MS;
   embedCache.set(key, { vec, exp });
+  
+  // Clean up old entries
   if (embedCache.size > EMBED_CACHE_MAX) {
     const firstKey = embedCache.keys().next().value;
     embedCache.delete(firstKey);
   }
+  
   return vec;
 }
 
-// Response caching function
+// Enhanced response caching with similarity matching (conversational optimization)
 function getCachedResponse(question, matches) {
-  const key = `resp:${question}:${matches.map(m => m.entry_id).join(',')}`;
   const now = Date.now();
-  const hit = responseCache.get(key);
-  if (hit && hit.exp > now) {
-    console.log(`[response-cache] Cache hit for query: ${question.substring(0, 50)}...`);
-    return hit;
+  
+  // Exact match first
+  const exactKey = `resp:${question}:${matches.map(m => m.entry_id).join(',')}`;
+  const exactHit = responseCache.get(exactKey);
+  if (exactHit && exactHit.exp > now) {
+    console.log(`[response-cache] Exact cache hit for query: ${question.substring(0, 50)}...`);
+    return exactHit;
   }
+  
+  // Similarity-based matching for conversational queries
+  const questionWords = question.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const similarityThreshold = 0.8; // 80% word overlap
+  
+  for (const [key, cached] of responseCache.entries()) {
+    if (cached.exp <= now) continue; // Skip expired entries
+    
+    const cachedQuestion = key.split(':')[1];
+    const cachedWords = cachedQuestion.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    
+    // Calculate word overlap similarity
+    const commonWords = questionWords.filter(w => cachedWords.includes(w));
+    const similarity = commonWords.length / Math.max(questionWords.length, cachedWords.length);
+    
+    if (similarity >= similarityThreshold) {
+      console.log(`[response-cache] Similarity cache hit (${Math.round(similarity * 100)}%): ${question.substring(0, 50)}...`);
+      return cached;
+    }
+  }
+  
   return null;
 }
 
@@ -220,8 +292,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
 
 function buildPrompt(question, matches) {
-  // Limit context length to reduce token usage and improve speed
-  const maxSources = Number(process.env.CHAT_MAX_SOURCES || 6);
+  // Conversational optimization: Reduce context length for faster generation
+  const maxSources = Number(process.env.CHAT_MAX_SOURCES || 4); // Reduced from 6 to 4
   const limitedMatches = matches.slice(0, maxSources);
   
   const context = limitedMatches.map((m, i) => {
@@ -384,6 +456,10 @@ function buildPrompt(question, matches) {
   }
 router.post('/', async (req, res) => {
   const queryStartTime = Date.now();
+  
+  // Initialize pre-computed embeddings on first request (conversational optimization)
+  await initializePrecomputedEmbeddings();
+  
   try {
     const { question } = req.body || {};
     if (!question || !String(question).trim()) return res.status(400).json({ error: 'question is required' });
@@ -1178,7 +1254,7 @@ router.post('/', async (req, res) => {
       
       // LLM Generation Time Monitoring
       llmStartTime = Date.now();
-      const useStreaming = String(process.env.CHAT_USE_STREAMING || 'false').toLowerCase() === 'true';
+      const useStreaming = String(process.env.CHAT_USE_STREAMING || 'true').toLowerCase() === 'true'; // Default to true for conversational
       
       if (useStreaming) {
         // Streaming response for better perceived performance
