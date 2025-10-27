@@ -64,10 +64,13 @@ class PerformanceMonitor {
     this.metrics.simpleQuerySkips++;
   }
 
-  recordQuery(totalLatency) {
+  recordQuery(totalLatency, llmLatency = 0) {
     if (!this.enabled) return;
     this.metrics.totalQueries++;
     this.metrics.totalLatency += totalLatency;
+    if (llmLatency > 0) {
+      this.metrics.llmLatency += llmLatency;
+    }
   }
 
   getStats() {

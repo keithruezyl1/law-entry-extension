@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import kbRouter from './routes/kb.js';
 import chatRouter from './routes/chat.js';
+import chatStreamRouter from './routes/chat-stream.js';
 import authRouter from './routes/auth.js';
 import plansRouter from './routes/plans.js';
 import notificationsRouter from './routes/notifications.js';
@@ -45,6 +46,7 @@ app.use('/api/auth', authRouter);
 // Protected routes (authentication required)
 app.use('/api/kb', authenticateToken, kbRouter);
 app.use('/api/chat', authenticateToken, chatRouter);
+app.use('/api/chat-stream', authenticateToken, chatStreamRouter);
 app.use('/api/plans', authenticateToken, plansRouter);
 app.use('/api/notifications', authenticateToken, notificationsRouter);
 

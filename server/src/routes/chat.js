@@ -12,6 +12,11 @@ const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 30 * 60 * 100
 const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 1000); // 1000 entries (was 200)
 const embedCache = new Map(); // key -> { vec:number[], exp:number }
 
+// Response cache for LLM generation
+const RESPONSE_CACHE_TTL_MS = Number(process.env.CHAT_RESPONSE_TTL_MS || 60 * 60 * 1000); // 1 hour
+const RESPONSE_CACHE_MAX = Number(process.env.CHAT_RESPONSE_CACHE_MAX || 500); // 500 entries
+const responseCache = new Map(); // key -> { answer:string, sources:array, exp:number }
+
 async function getCachedEmbedding(text) {
   const key = `emb:${text}`;
   const now = Date.now();
@@ -25,6 +30,31 @@ async function getCachedEmbedding(text) {
     embedCache.delete(firstKey);
   }
   return vec;
+}
+
+// Response caching function
+function getCachedResponse(question, matches) {
+  const key = `resp:${question}:${matches.map(m => m.entry_id).join(',')}`;
+  const now = Date.now();
+  const hit = responseCache.get(key);
+  if (hit && hit.exp > now) {
+    console.log(`[response-cache] Cache hit for query: ${question.substring(0, 50)}...`);
+    return hit;
+  }
+  return null;
+}
+
+function setCachedResponse(question, matches, answer, sources) {
+  const key = `resp:${question}:${matches.map(m => m.entry_id).join(',')}`;
+  const now = Date.now();
+  const exp = now + RESPONSE_CACHE_TTL_MS;
+  responseCache.set(key, { answer, sources, exp });
+  
+  // Clean up old entries
+  if (responseCache.size > RESPONSE_CACHE_MAX) {
+    const firstKey = responseCache.keys().next().value;
+    responseCache.delete(firstKey);
+  }
 }
 
 // Normalize the user question to improve lexical and semantic matching
@@ -176,10 +206,14 @@ function keywordWindowSnippet(text, q, maxLength = 320) {
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o';
+const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
 
 function buildPrompt(question, matches) {
-  const context = matches.map((m, i) => {
+  // Limit context length to reduce token usage and improve speed
+  const maxSources = Number(process.env.CHAT_MAX_SOURCES || 6);
+  const limitedMatches = matches.slice(0, maxSources);
+  
+  const context = limitedMatches.map((m, i) => {
     const header = `Source ${i + 1} [${(m.type || '').toString()}] ${m.title}`;
     const cite = `Citation: ${m.canonical_citation || ''}`;
     const body = sliceContext(m, question);
@@ -1118,18 +1152,73 @@ router.post('/', async (req, res) => {
       console.log('[rerank] Skipping reranking for exact citation match query');
     }
 
-    // Build prompt and call Chat Completion
-    const prompt = buildPrompt(question, matches);
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      messages: [
-        { role: 'system', content: 'You are a helpful legal assistant.' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.0,
-    });
-
-    const answer = completion.choices?.[0]?.message?.content || '';
+    // Check response cache first
+    const cachedResponse = getCachedResponse(question, matches);
+    let answer, llmStartTime = Date.now();
+    
+    if (cachedResponse) {
+      answer = cachedResponse.answer;
+      console.log(`[response-cache] Using cached response for: ${question.substring(0, 50)}...`);
+    } else {
+      // Build prompt and call Chat Completion
+      const prompt = buildPrompt(question, matches);
+      
+      // LLM Generation Time Monitoring
+      llmStartTime = Date.now();
+      const useStreaming = String(process.env.CHAT_USE_STREAMING || 'false').toLowerCase() === 'true';
+      
+      if (useStreaming) {
+        // Streaming response for better perceived performance
+        const stream = await openai.chat.completions.create({
+          model: CHAT_MODEL,
+          messages: [
+            { role: 'system', content: 'You are a helpful legal assistant.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.0,
+          max_tokens: Number(process.env.CHAT_MAX_TOKENS || 2000),
+          stream: true,
+        });
+        
+        let fullAnswer = '';
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          fullAnswer += content;
+        }
+        answer = fullAnswer;
+      } else {
+        // Non-streaming response (default)
+        const completion = await openai.chat.completions.create({
+          model: CHAT_MODEL,
+          messages: [
+            { role: 'system', content: 'You are a helpful legal assistant.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.0,
+          max_tokens: Number(process.env.CHAT_MAX_TOKENS || 2000), // Limit response length
+        });
+        answer = completion.choices?.[0]?.message?.content || '';
+      }
+      
+      const llmLatency = Date.now() - llmStartTime;
+      
+      // Log LLM performance
+      console.log(`[llm] Generation completed in ${llmLatency}ms using ${CHAT_MODEL} (streaming: ${useStreaming})`);
+      
+      // Cache the response for future use
+      const sourcesToCache = matches.map((m) => ({
+        entry_id: m.entry_id,
+        type: m.type,
+        title: m.title,
+        canonical_citation: m.canonical_citation,
+        similarity: m.vectorSim ?? m.similarity,
+        vectorSim: m.vectorSim,
+        lexsim: m.lexsim,
+        finalScore: m.finalScore,
+      }));
+      setCachedResponse(question, matches, answer, sourcesToCache);
+    }
+    
     // Reduce heavy fields from sources before returning
     const sources = matches.map((m) => ({
       entry_id: m.entry_id,
@@ -1165,7 +1254,9 @@ router.post('/', async (req, res) => {
     }));
     // Performance monitoring and observability logs
     const totalLatency = Date.now() - queryStartTime;
-    performanceMonitor.recordQuery(totalLatency);
+    // Record LLM latency if we have it
+    const llmLatency = cachedResponse ? 0 : (Date.now() - llmStartTime);
+    performanceMonitor.recordQuery(totalLatency, llmLatency);
     
     try {
       const best = matches[0];
