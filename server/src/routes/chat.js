@@ -232,7 +232,27 @@ function buildPrompt(question, matches) {
     const header = `Source ${i + 1} [${(m.type || '').toString()}] ${m.title}`;
     const cite = `Citation: ${m.canonical_citation || ''}`;
     const body = sliceContext(m, question);
-    return `${header}\n${cite}\n${body}`;
+    
+    // Add source URLs and external relations to context
+    let sourceInfo = '';
+    if (Array.isArray(m.source_urls) && m.source_urls.length > 0) {
+      sourceInfo += `\nSource URLs: ${m.source_urls.join(', ')}`;
+    }
+    
+    // Add external relations
+    const externalRelations = [
+      ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
+      ...(Array.isArray(m.related_sections) ? m.related_sections : []),
+    ].filter(r => r && r.type === 'external');
+    
+    if (externalRelations.length > 0) {
+      const externalUrls = externalRelations.map(r => r.url).filter(Boolean);
+      if (externalUrls.length > 0) {
+        sourceInfo += `\nExternal Sources: ${externalUrls.join(', ')}`;
+      }
+    }
+    
+    return `${header}\n${cite}${sourceInfo}\n${body}`;
   }).join('\n\n');
   return `
     YOU ARE A LEGAL ASSISTANT SPECIALIZED IN PHILIPPINE LAW. YOU MUST ANSWER STRICTLY USING THE PROVIDED CONTEXT DATA. IF NOTHING IN THE CONTEXT ADDRESSES THE QUESTION, REPLY ONLY WITH: I don't know.
@@ -277,10 +297,13 @@ function buildPrompt(question, matches) {
       - Quote short phrases or clauses from the context before paraphrasing
       - Include a parenthetical citation at the end of each paragraph (e.g., "Rule 114 Sec. 20", "RPC Art. 308")
       - Provide sources at the end under **Sources** section
+      - **CRITICAL**: Use ONLY the source URLs provided in the context (Source URLs: or External Sources: lines)
+      - **NEVER invent or generate URLs** - only use the exact URLs from the context
 
     7. **NEVER INVENT OR SPECULATE**
       - Do not invent facts, laws, or citations beyond what is in the context
       - Do not give general legal advice outside the retrieved text
+      - **NEVER invent URLs** - only use URLs explicitly provided in the context
       - If unsure, reply "I don't know"
 
     8. **HANDLE "RIGHTS OF X" QUESTIONS SPECIALLY**
@@ -341,7 +364,8 @@ function buildPrompt(question, matches) {
     5. SYNTHESIZE into a clear, well-structured legal answer.
     6. CITE the exact section/article/rule/case whenever possible.
     7. IF SOURCES (\`source_urls[]\` or \`relations[]\`) ARE AVAILABLE, list them clearly under **Sources**.
-    8. IF the answer is not covered by the context, reply with exactly: \`"I don't know."\`
+    8. **CRITICAL FOR SOURCES**: Only use URLs from "Source URLs:" or "External Sources:" lines in the context. Never invent URLs.
+    9. IF the answer is not covered by the context, reply with exactly: \`"I don't know."\`
 
 
     ### WHAT NOT TO DO ###
@@ -349,7 +373,8 @@ function buildPrompt(question, matches) {
     - NEVER GIVE GENERAL LEGAL ADVICE outside the retrieved text.
     - NEVER OMIT a citation when context provides one.
     - NEVER OMIT sources when they are available in \`source_urls[]\` or \`relations[]\`.
-    - NEVER USE VAGUE LANGUAGE like “it depends” without pointing to explicit conditions in the text.
+    - **NEVER INVENT OR GENERATE URLs** - only use URLs from "Source URLs:" or "External Sources:" lines.
+    - NEVER USE VAGUE LANGUAGE like "it depends" without pointing to explicit conditions in the text.
     - NEVER ANSWER IN AN UNCERTAIN OR SPECULATIVE MANNER — if unsure, reply \`"I don't know."\`
     - NEVER IGNORE metadata fields (\`penalties[]\`, \`defenses[]\`, etc.) if they are available.
 
@@ -360,7 +385,7 @@ function buildPrompt(question, matches) {
     **Example 1 (definition request):**
     Q: What is estafa?
     A: "Estafa is committed by any person who shall defraud another by abuse of confidence or deceit" (RPC Art. 315). In short, estafa is a crime of fraud that involves misrepresentation or abuse of trust for unlawful gain (RPC Art. 315).
-    **Sources:** RPC Art. 315; https://lawphil.net/judjuris/juri1932/oct1932/gr_l-37449_1932.html
+    **Sources:** RPC Art. 315; [use only URLs from Source URLs: or External Sources: lines in context]
 
 
     **Example 2 (penalties request):**
@@ -372,7 +397,7 @@ function buildPrompt(question, matches) {
     **Example 3 (cross-reference request):**
     Q: What are the rules for bail?
     A: Bail is "the security given for the release of a person in custody" (Rule 114 Sec. 1). The court may deny bail for offenses punishable by reclusion perpetua when "evidence of guilt is strong" (Rule 114 Sec. 7). Related provisions appear in Rule 114 Secs. 20 and 21 (Rule 114 Sec. 1, Sec. 7, Sec. 20).
-    **Sources:** Rule 114 Sec. 1, Sec. 7, Sec. 20; https://sc.judiciary.gov.ph/
+    **Sources:** Rule 114 Sec. 1, Sec. 7, Sec. 20; [use only URLs from Source URLs: or External Sources: lines in context]
 
 
     ---
