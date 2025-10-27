@@ -57,6 +57,12 @@ function setCachedResponse(question, matches, answer, sources) {
   }
 }
 
+// Function to clear response cache (useful for testing)
+function clearResponseCache() {
+  responseCache.clear();
+  console.log('[response-cache] Cache cleared');
+}
+
 // Normalize the user question to improve lexical and semantic matching
 function normalizeQuestion(raw) {
   if (!raw) return '';
@@ -79,7 +85,12 @@ function normalizeQuestion(raw) {
   for (const [re, sub] of compoundWords) q = q.replace(re, sub);
   
   // Lowercase and collapse whitespace/punctuation
-  q = q.toLowerCase().replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  // BUT preserve dashes in article numbers (e.g., 266-A, 315-B)
+  q = q.toLowerCase()
+    .replace(/(\d+)-([a-z])/gi, '$1-$2') // Preserve article number suffixes
+    .replace(/[\p{P}\p{S}]+/gu, ' ')     // Remove other punctuation
+    .replace(/\s+/g, ' ')                 // Collapse whitespace
+    .trim();
   
   // Normalize possessives like "sheriff's" → "sheriff"
   q = q.replace(/\b([a-z0-9]+)['']s\b/g, '$1');
@@ -616,7 +627,8 @@ router.post('/', async (req, res) => {
     // Vector search often misses specific constitutional articles
     let lexicalArticle = [];
     if (hasArt) {
-      const artMatch = normQ.match(/\bart(?:icle)?\s+(\d+|[ivxlcdm]+)(?:\s|$)/i);
+      // Enhanced regex to capture article numbers with suffixes (e.g., 266-A, 315-B)
+      const artMatch = normQ.match(/\bart(?:icle)?\s+(\d+(?:-[a-z])?|[ivxlcdm]+)(?:\s|$)/i);
       if (artMatch) {
         const artNum = artMatch[1];
         console.log('[chat] Adding lexical search for article', artNum);
@@ -837,7 +849,7 @@ router.post('/', async (req, res) => {
     // For Constitution: Article 1, Article I, Article II, etc. (simple numbers/numerals only)
     // For RPC: Article 266-A (with suffix) - handled separately
     // Note: normQ has punctuation removed, so just match word boundary or space after number
-    const artMatch = normQ.match(/\bart(?:icle)?\s+(\d+|[ivxlcdm]+)(?:\s|$)/i);
+    const artMatch = normQ.match(/\bart(?:icle)?\s+(\d+(?:-[a-z])?|[ivxlcdm]+)(?:\s|$)/i);
     
     // Helper function: Convert Roman numeral to Arabic
     function romanToArabic(roman) {
@@ -910,8 +922,9 @@ router.post('/', async (req, res) => {
         
         // Check if article number matches EXACTLY (try both Arabic and Roman formats)
         // Use word boundaries to avoid matching "Article 1" in "Article 13"
-        const artRegexArabic = new RegExp(`\\barticle\\s+${artNumArabic}\\b|\\bart\\.\\s+${artNumArabic}\\b|\\bart\\s+${artNumArabic}\\b`, 'i');
-        const artRegexRoman = new RegExp(`\\barticle\\s+${artNumRoman}\\b|\\bart\\.\\s+${artNumRoman}\\b|\\bart\\s+${artNumRoman}\\b`, 'i');
+        // Handle suffixes like 266-A, 315-B, etc.
+        const artRegexArabic = new RegExp(`\\barticle\\s+${artNumArabic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b|\\bart\\.\\s+${artNumArabic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b|\\bart\\s+${artNumArabic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        const artRegexRoman = new RegExp(`\\barticle\\s+${artNumRoman.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b|\\bart\\.\\s+${artNumRoman.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b|\\bart\\s+${artNumRoman.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
         
         const hasArticleMatch = artRegexArabic.test(cite) || 
                                artRegexArabic.test(title) || 
@@ -997,9 +1010,9 @@ router.post('/', async (req, res) => {
         confThreshold = Math.max(0.14, confThreshold * 0.8);
         console.log('[chat] Lowered confidence threshold for urgent query:', confThreshold);
       }
-    } else if (isProceduralQuery && maxVec > 0.30) {  // Lowered from 0.35 to 0.30
+    } else if (isProceduralQuery && maxVec > 0.20) {  // Lowered from 0.25 to 0.20
       // Even non-urgent procedural queries with decent similarity should pass
-      confThreshold = Math.max(0.08, confThreshold * 0.5);  // Lowered from 0.10 to 0.08
+      confThreshold = Math.max(0.03, confThreshold * 0.2);  // Lowered from 0.05 to 0.03
       console.log('[chat] Lowered confidence threshold for procedural query:', confThreshold);
     }
     
@@ -1282,6 +1295,12 @@ router.post('/', async (req, res) => {
     console.error(e);
     res.status(500).json({ error: String(e?.message || e) });
   }
+});
+
+// Route to clear response cache (for testing/debugging)
+router.post('/clear-cache', (req, res) => {
+  clearResponseCache();
+  res.json({ message: 'Response cache cleared successfully' });
 });
 
 export default router;
