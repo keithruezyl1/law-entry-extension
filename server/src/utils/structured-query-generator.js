@@ -2,9 +2,9 @@ import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// LRU cache for structured queries (same pattern as embedding cache)
-const SQG_CACHE_TTL_MS = Number(process.env.CHAT_SQG_TTL_MS || 10 * 60 * 1000); // 10 min
-const SQG_CACHE_MAX = Number(process.env.CHAT_SQG_CACHE_MAX || 300);
+// Enhanced LRU cache for structured queries (same pattern as embedding cache)
+const SQG_CACHE_TTL_MS = Number(process.env.CHAT_SQG_TTL_MS || 60 * 60 * 1000); // 1 hour (was 10 min)
+const SQG_CACHE_MAX = Number(process.env.CHAT_SQG_CACHE_MAX || 2000); // 2000 entries (was 300)
 const sqgCache = new Map();
 
 function getCachedSQG(question) {

@@ -5,10 +5,11 @@ import { rerankWithCrossEncoder } from '../utils/cross-encoder-reranker.js';
 import { query } from '../db.js';
 import { embedText } from '../embeddings.js';
 import { generateStructuredQuery } from '../utils/structured-query-generator.js';
+import performanceMonitor from '../utils/performance-monitor.js';
 
-// Lightweight in-memory cache for embeddings (LRU-ish)
-const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 5 * 60 * 1000);
-const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 200);
+// Enhanced in-memory cache for embeddings (LRU-ish)
+const EMBED_CACHE_TTL_MS = Number(process.env.CHAT_EMBED_TTL_MS || 30 * 60 * 1000); // 30 minutes (was 5)
+const EMBED_CACHE_MAX = Number(process.env.CHAT_EMBED_CACHE_MAX || 1000); // 1000 entries (was 200)
 const embedCache = new Map(); // key -> { vec:number[], exp:number }
 
 async function getCachedEmbedding(text) {
@@ -337,20 +338,41 @@ function buildPrompt(question, matches) {
     `;
   }
 router.post('/', async (req, res) => {
+  const queryStartTime = Date.now();
   try {
     const { question } = req.body || {};
     if (!question || !String(question).trim()) return res.status(400).json({ error: 'question is required' });
 
     // ===== STRUCTURED QUERY GENERATION (SQG) =====
     const useSQG = String(process.env.CHAT_USE_SQG || 'true').toLowerCase() === 'true';
+    const skipSQGForSimpleQueries = String(process.env.CHAT_SIMPLE_QUERY_SKIP_SQG || 'true').toLowerCase() === 'true';
     let structuredQuery = null;
     
-    if (useSQG) {
+    // CONDITIONAL SQG PROCESSING - Phase 2 Optimization
+    // Skip SQG for simple queries to reduce latency
+    const isSimpleQuery = skipSQGForSimpleQueries && /^(what is|what are|define)\s+\w+$/i.test(question);
+    
+    if (useSQG && !isSimpleQuery) {
       try {
         structuredQuery = await generateStructuredQuery(question);
       } catch (e) {
         console.warn('[chat] SQG failed, continuing without:', String(e?.message || e));
       }
+    } else if (isSimpleQuery) {
+      console.log('[chat] Simple query detected, skipping SQG');
+      performanceMonitor.recordSimpleQuerySkip();
+      // Create a basic structured query for simple queries
+      structuredQuery = {
+        normalized_question: question.toLowerCase(),
+        keywords: question.toLowerCase().split(/\s+/).filter(w => w.length > 2),
+        legal_topics: [],
+        statutes_referenced: [],
+        jurisdiction: 'Philippines',
+        temporal_scope: '',
+        related_terms: [],
+        urgency: 'low',
+        query_expansions: []
+      };
     }
     
     // Normalize question for better matching (keep original normalization as fallback)
@@ -413,6 +435,7 @@ router.post('/', async (req, res) => {
       ? `${normQ} ${structuredQuery.query_expansions.join(' ')}`
       : normQ;
     
+    // PARALLEL EMBEDDING GENERATION - Phase 1 Optimization
     const [embNorm, embRaw] = await Promise.all([
       getCachedEmbedding(normQWithExpansions),
       getCachedEmbedding(question),
@@ -480,6 +503,7 @@ router.post('/', async (req, res) => {
       }
     }
     
+    // PARALLEL DATABASE QUERIES - Phase 1 Optimization
     const [semResNorm, semResRaw] = await Promise.all([
       query(
         `select *, 1 - (embedding <=> $1::vector) as similarity
@@ -1023,6 +1047,16 @@ router.post('/', async (req, res) => {
       return res.json({ answer: "I don't know.", sources });
     }
 
+    // EARLY TERMINATION - Phase 2 Optimization
+    // Skip expensive operations if we have high-confidence results
+    const earlyTerminationThreshold = Number(process.env.CHAT_EARLY_TERMINATION_THRESHOLD || 0.85);
+    const hasHighConfidence = maxVec > earlyTerminationThreshold && matches.length >= 3;
+    
+    if (hasHighConfidence) {
+      console.log('[chat] High confidence result detected, skipping reranking');
+      performanceMonitor.recordEarlyTermination();
+    }
+
     // Optional reranking: Cross-Encoder (fast, local) or LLM-based (slower, API)
     // Skip reranking if we have exact citation matches OR article queries with lexical matches
     // Reranking often demotes the correct article entry
@@ -1052,7 +1086,7 @@ router.post('/', async (req, res) => {
       matches.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
     }
     
-    if (rerankMode !== 'none' && matches.length > 2 && !hasExactCitationMatch && !hasArticleQuery) {
+    if (rerankMode !== 'none' && matches.length > 2 && !hasExactCitationMatch && !hasArticleQuery && !hasHighConfidence) {
       try {
         let reranked = null;
         
@@ -1129,7 +1163,10 @@ router.post('/', async (req, res) => {
       .map((r) => r.entry_id)
       .slice(0, 20),
     }));
-    // Observability logs (non-sensitive)
+    // Performance monitoring and observability logs
+    const totalLatency = Date.now() - queryStartTime;
+    performanceMonitor.recordQuery(totalLatency);
+    
     try {
       const best = matches[0];
       console.log('[chat] retrieval', JSON.stringify({
@@ -1145,6 +1182,8 @@ router.post('/', async (req, res) => {
         sqgTopics: structuredQuery?.legal_topics?.length || 0,
         sqgUrgency: structuredQuery?.urgency || 'n/a',
         top1: best ? { entry_id: best.entry_id, vectorSim: best.vectorSim, lexsim: best.lexsim, finalScore: best.finalScore } : null,
+        totalLatency,
+        performanceStats: performanceMonitor.getStats()
       }));
     } catch {}
     res.json({ answer, sources });

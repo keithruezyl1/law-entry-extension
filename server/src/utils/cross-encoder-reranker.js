@@ -19,9 +19,9 @@ import { pipeline } from '@xenova/transformers';
 let rerankerPipeline = null;
 const MODEL_NAME = 'Xenova/ms-marco-MiniLM-L-6-v2';
 
-// Simple in-memory cache for cross-encoder scores
-const CACHE_TTL_MS = Number(process.env.CHAT_CROSS_ENCODER_TTL_MS || 10 * 60 * 1000); // 10 min
-const CACHE_MAX = Number(process.env.CHAT_CROSS_ENCODER_CACHE_MAX || 500);
+// Enhanced in-memory cache for cross-encoder scores
+const CACHE_TTL_MS = Number(process.env.CHAT_CROSS_ENCODER_TTL_MS || 30 * 60 * 1000); // 30 minutes (was 10 min)
+const CACHE_MAX = Number(process.env.CHAT_CROSS_ENCODER_CACHE_MAX || 2000); // 2000 entries (was 500)
 const cache = new Map();
 
 function setCache(key, value) {
