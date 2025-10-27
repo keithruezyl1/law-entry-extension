@@ -128,6 +128,12 @@ export async function rerankWithCrossEncoder({ query, candidates, confidence }) 
       // Initialize model (lazy-loaded)
       const reranker = await getRerankerPipeline();
       
+      // Safety check: ensure reranker is properly initialized
+      if (!reranker || typeof reranker !== 'function') {
+        console.warn('[cross-encoder] Model not properly initialized, skipping reranking');
+        return candidates.slice(0, topN);
+      }
+      
       // Build query-document pairs
       const pairs = pool.map(c => ({
         entry_id: c.entry_id,
@@ -135,17 +141,29 @@ export async function rerankWithCrossEncoder({ query, candidates, confidence }) 
         origScore: Number(c.finalScore) || 0,
       }));
       
-      // Run cross-encoder inference (optimized batch processing)
-      const texts = pairs.map(pair => pair.text);
-      const outputs = await reranker(texts, { batch_size: 8 }); // Batch processing
+      // Run cross-encoder inference (optimized parallel processing)
+      // Process in smaller batches to avoid memory issues
+      const batchSize = 4; // Smaller batch size for stability
+      const results = [];
       
-      const results = pairs.map((pair, i) => {
-        const output = Array.isArray(outputs) ? outputs[i] : outputs;
-        // Model outputs [{label: 'LABEL_0', score: 0.85}, {label: 'LABEL_1', score: 0.15}]
-        // LABEL_1 = relevant, LABEL_0 = not relevant
-        const relevantScore = output.find(o => o.label === 'LABEL_1')?.score || 0;
-        return { entry_id: pair.entry_id, score: relevantScore };
-      });
+      for (let i = 0; i < pairs.length; i += batchSize) {
+        const batch = pairs.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+          batch.map(async (pair) => {
+            try {
+              const output = await reranker(pair.text);
+              // Model outputs [{label: 'LABEL_0', score: 0.85}, {label: 'LABEL_1', score: 0.15}]
+              // LABEL_1 = relevant, LABEL_0 = not relevant
+              const relevantScore = output.find(o => o.label === 'LABEL_1')?.score || 0;
+              return { entry_id: pair.entry_id, score: relevantScore };
+            } catch (error) {
+              console.warn(`[cross-encoder] Failed to process ${pair.entry_id}:`, error.message);
+              return { entry_id: pair.entry_id, score: 0 };
+            }
+          })
+        );
+        results.push(...batchResults);
+      }
       
       // Normalize scores to 0-1
       const scores = results.map(r => r.score);
@@ -186,7 +204,8 @@ export async function rerankWithCrossEncoder({ query, candidates, confidence }) 
     return blended.slice(0, topN);
   } catch (e) {
     console.warn('[cross-encoder] Failed:', String(e?.message || e));
-    return null; // Fallback to original order
+    // Return original candidates in original order as fallback
+    return candidates.slice(0, topN);
   }
 }
 

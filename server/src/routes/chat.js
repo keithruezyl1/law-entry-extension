@@ -1148,6 +1148,12 @@ router.post('/', async (req, res) => {
         if (rerankMode === 'cross-encoder') {
           // Try cross-encoder first (fast, local, accurate)
           reranked = await rerankWithCrossEncoder({ query: question, candidates: matches, confidence: conf });
+          
+          // If cross-encoder fails, fallback to original order
+          if (!reranked || reranked.length === 0) {
+            console.log('[rerank] Cross-encoder failed, using original order');
+            reranked = matches;
+          }
         } else if (rerankMode === 'llm') {
           // Use LLM-based reranking (slower, but more flexible)
           reranked = await rerankCandidates({ query: question, candidates: matches, confidence: conf });
