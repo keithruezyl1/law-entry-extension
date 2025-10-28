@@ -357,13 +357,13 @@ function buildPrompt(question, matches) {
 
 
     ### CHAIN OF THOUGHTS (INTERNAL REASONING STEPS) ###
-    1. UNDERSTAND the user’s question and identify which legal concept it refers to.
+    1. UNDERSTAND the user's question and identify which legal concept it refers to.
     2. LOCATE relevant entries in the provided context (match section/article/rule numbers, or keywords in \`title\`, \`topics[]\`, \`summary\`).
     3. BREAK DOWN the applicable law: use \`elements[]\`, \`penalties[]\`, or \`defenses[]\` if present.
     4. ANALYZE relationships: check \`related_sections[]\` and \`legal_bases[]\` for supporting provisions.
     5. SYNTHESIZE into a clear, well-structured legal answer.
     6. CITE the exact section/article/rule/case whenever possible.
-    7. IF SOURCES (\`source_urls[]\` or \`relations[]\`) ARE AVAILABLE, list them clearly under **Sources**.
+    7. IF SOURCES (\`source_urls[]\` or \`relations[]\`) ARE AVAILABLE, list them as bullet points after a blank line (no "Sources:" label).
     8. **CRITICAL FOR SOURCES**: Only use URLs from "Source URLs:" or "External Sources:" lines in the context. Never invent URLs.
     9. IF the answer is not covered by the context, reply with exactly: \`"I don't know."\`
 
@@ -385,19 +385,22 @@ function buildPrompt(question, matches) {
     **Example 1 (definition request):**
     Q: What is estafa?
     A: "Estafa is committed by any person who shall defraud another by abuse of confidence or deceit" (RPC Art. 315). In short, estafa is a crime of fraud that involves misrepresentation or abuse of trust for unlawful gain (RPC Art. 315).
-    **Sources:** RPC Art. 315; [use only URLs from Source URLs: or External Sources: lines in context]
+    
+    - RPC Art. 315; [use only URLs from Source URLs: or External Sources: lines in context]
 
 
     **Example 2 (penalties request):**
     Q: What is the penalty for theft?
     A: Theft is punished with "prisión mayor in its minimum and medium periods" when the value of the property exceeds ₱12,000 but does not exceed ₱22,000 (RPC Art. 309). Lower values result in lighter penalties (RPC Art. 309).
-    **Sources:** RPC Art. 309; related_section: Estafa and other forms of swindling
+    
+    - RPC Art. 309; related_section: Estafa and other forms of swindling
 
 
     **Example 3 (cross-reference request):**
     Q: What are the rules for bail?
     A: Bail is "the security given for the release of a person in custody" (Rule 114 Sec. 1). The court may deny bail for offenses punishable by reclusion perpetua when "evidence of guilt is strong" (Rule 114 Sec. 7). Related provisions appear in Rule 114 Secs. 20 and 21 (Rule 114 Sec. 1, Sec. 7, Sec. 20).
-    **Sources:** Rule 114 Sec. 1, Sec. 7, Sec. 20; [use only URLs from Source URLs: or External Sources: lines in context]
+    
+    - Rule 114 Sec. 1, Sec. 7, Sec. 20; [use only URLs from Source URLs: or External Sources: lines in context]
 
 
     ---
