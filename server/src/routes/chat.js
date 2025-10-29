@@ -296,7 +296,7 @@ function buildPrompt(question, matches) {
     6. **ALWAYS QUOTE AND CITE**
       - Quote short phrases or clauses from the context before paraphrasing
       - Include a parenthetical citation at the end of each paragraph (e.g., "Rule 114 Sec. 20", "RPC Art. 308")
-      - Provide sources at the end under **Sources** section
+      - After the answer body, insert one blank line, then list sources as bullet points (no "Sources:" label)
       - **CRITICAL**: Use ONLY the source URLs provided in the context (Source URLs: or External Sources: lines)
       - **NEVER invent or generate URLs** - only use the exact URLs from the context
 
@@ -356,6 +356,15 @@ function buildPrompt(question, matches) {
       - This is better than a flat "I don't know" when you have related information
 
 
+    ### OUTPUT FORMAT SPEC ###
+    - End the answer body with a sentence-ending period.
+    - Add exactly one blank line.
+    - Then output sources as a bullet list (no heading/label) using a leading hyphen and one space ("- ").
+    - Each bullet should include: canonical citation; short title if available; and the URL if present.
+    - Prefer URLs from \`source_urls[]\`; if none, use \`external_relations[].url\`; if neither exist, omit URL.
+    - Deduplicate sources and limit to at most 6 items.
+
+
     ### CHAIN OF THOUGHTS (INTERNAL REASONING STEPS) ###
     1. UNDERSTAND the user's question and identify which legal concept it refers to.
     2. LOCATE relevant entries in the provided context (match section/article/rule numbers, or keywords in \`title\`, \`topics[]\`, \`summary\`).
@@ -374,6 +383,7 @@ function buildPrompt(question, matches) {
     - NEVER OMIT a citation when context provides one.
     - NEVER OMIT sources when they are available in \`source_urls[]\` or \`relations[]\`.
     - **NEVER INVENT OR GENERATE URLs** - only use URLs from "Source URLs:" or "External Sources:" lines.
+    - NEVER prepend a "Sources:" label; list bullets directly after a blank line.
     - NEVER USE VAGUE LANGUAGE like "it depends" without pointing to explicit conditions in the text.
     - NEVER ANSWER IN AN UNCERTAIN OR SPECULATIVE MANNER — if unsure, reply \`"I don't know."\`
     - NEVER IGNORE metadata fields (\`penalties[]\`, \`defenses[]\`, etc.) if they are available.
@@ -1006,6 +1016,155 @@ router.post('/', async (req, res) => {
     
     composite.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
     let matches = composite.slice(0, topK);
+
+    // SPECIAL-CASE: General handler for "list N <entity>" queries
+    const listMatch = /(list|give|show|name)\s+(?:the\s+)?(\d{1,2})?\s*(?:of\s+)?(republic\s+acts?|ra\b|executive\s+orders?|eo\b|administrative\s+orders?|ao\b|rules?\s+of\s+court|rules?\b|articles?\b|sections?\b|cases?|jurisprudence)/i.exec(normQ);
+    if (listMatch) {
+      const desiredCount = Math.max(1, Math.min(20, Number(listMatch[2]) || 5));
+      const entityRaw = listMatch[3] || '';
+      const entity = entityRaw.replace(/\s+/g, ' ').toLowerCase();
+
+      const entityConfig = {
+        'republic act': {
+          lex: 'republic act',
+          key: (r) => {
+            const cite = String(r.canonical_citation || '');
+            const title = String(r.title || '');
+            const id = String(r.entry_id || '');
+            const m = cite.match(/\b(?:republic\s*act\s*(?:no\.?|number)?\s*|ra\s*[- ]?)\s*(\d{2,5})\b/i)
+              || title.match(/\b(?:republic\s*act\s*(?:no\.?|number)?\s*|ra\s*[- ]?)\s*(\d{2,5})\b/i)
+              || id.match(/\bra[- ]?(\d{2,5})\b/i);
+            return m ? `RA-${m[1]}` : id;
+          },
+          heading: (n) => `Here are ${n} Republic Acts in the Philippines.`,
+        },
+        'ra': { alias: 'republic act' },
+        'executive order': {
+          lex: 'executive order',
+          key: (r) => {
+            const all = `${r.canonical_citation || ''} ${r.title || ''} ${r.entry_id || ''}`;
+            const m = all.match(/\b(?:executive\s*order|e\.o\.|eo)\s*(?:no\.?|number)?\s*(\d{1,4})(?:\s*,?\s*(\d{4}))?/i);
+            return m ? `EO-${m[1]}${m[2] ? '-' + m[2] : ''}` : r.entry_id;
+          },
+          heading: (n) => `Here are ${n} Executive Orders.`,
+        },
+        'eo': { alias: 'executive order' },
+        'administrative order': {
+          lex: 'administrative order',
+          key: (r) => {
+            const all = `${r.canonical_citation || ''} ${r.title || ''} ${r.entry_id || ''}`;
+            const m = all.match(/\b(?:administrative\s*order|a\.o\.|ao)\s*(?:no\.?|number)?\s*(\d{1,4})(?:\s*,?\s*(\d{4}))?/i);
+            return m ? `AO-${m[1]}${m[2] ? '-' + m[2] : ''}` : r.entry_id;
+          },
+          heading: (n) => `Here are ${n} Administrative Orders.`,
+        },
+        'ao': { alias: 'administrative order' },
+        'rule of court': {
+          lex: 'rule',
+          key: (r) => {
+            const all = `${r.rule_no || ''} ${r.canonical_citation || ''} ${r.title || ''} ${r.entry_id || ''}`.toLowerCase();
+            const m = all.match(/\brule\s*(\d{1,3})\b/);
+            return m ? `RULE-${m[1]}` : r.entry_id;
+          },
+          heading: (n) => `Here are ${n} Rules of Court provisions.`,
+        },
+        'rule': { alias: 'rule of court' },
+        'article': {
+          lex: 'article',
+          key: (r) => {
+            const all = `${r.canonical_citation || ''} ${r.title || ''} ${r.entry_id || ''}`.toLowerCase();
+            const m = all.match(/\barticle\s*([ivxlcdm]+|\d+(?:-[a-z])?)\b/);
+            return m ? `ART-${m[1]}` : r.entry_id;
+          },
+          heading: (n) => `Here are ${n} Articles.`,
+        },
+        'section': {
+          lex: 'section',
+          key: (r) => {
+            const all = `${r.section_no || ''} ${r.canonical_citation || ''} ${r.title || ''} ${r.entry_id || ''}`.toLowerCase();
+            const m = all.match(/\bsection\s*(\d+[a-z]?)\b/);
+            return m ? `SEC-${m[1]}` : r.entry_id;
+          },
+          heading: (n) => `Here are ${n} Sections.`,
+        },
+        'case': {
+          lex: 'G.R. No.',
+          key: (r) => {
+            const all = `${r.canonical_citation || ''} ${r.title || ''} ${r.entry_id || ''}`;
+            const m = all.match(/g\.?r\.?\s*no\.?\s*([\d-]+)/i);
+            return m ? `GR-${m[1]}` : r.entry_id;
+          },
+          heading: (n) => `Here are ${n} cases.`,
+        },
+        'jurisprudence': { alias: 'case' },
+      };
+
+      // Resolve alias
+      const confKey = Object.keys(entityConfig).find(k => entity.includes(k));
+      const baseKey = confKey && entityConfig[confKey].alias ? entityConfig[confKey].alias : confKey;
+      const conf = baseKey ? entityConfig[baseKey] : null;
+
+      if (conf) {
+        try {
+          const resLex = await query(
+            `select entry_id, type, title, canonical_citation, summary, text, rule_no, section_no,
+                    source_urls, legal_bases, related_sections,
+                    greatest(similarity(title, $1::text), similarity(canonical_citation, $1::text), similarity(text, $1::text)) as lexsim
+               from kb_entries
+              where (title % $1::text or canonical_citation % $1::text or text % $1::text)
+              order by lexsim desc
+              limit $2`,
+            [conf.lex, Math.max(desiredCount * 8, 32)]
+          );
+
+          const rows = resLex.rows || [];
+          const seen = new Set();
+          const picked = [];
+          for (const r of rows) {
+            const key = conf.key(r);
+            if (!seen.has(key)) {
+              seen.add(key);
+              picked.push(r);
+            }
+            if (picked.length >= desiredCount) break;
+          }
+
+          if (picked.length > 0) {
+            const lines = [];
+            lines.push(conf.heading(picked.length));
+            lines.push('');
+            for (const p of picked) {
+              const cite = String(p.canonical_citation || '').trim();
+              const t = String(p.title || '').trim();
+              const text = cite && t && !t.toLowerCase().includes(cite.toLowerCase())
+                ? `${cite} — ${t}`
+                : (cite || t || p.entry_id);
+              lines.push(`- ${text}`);
+            }
+
+            const sources = picked.map((m) => ({
+              entry_id: m.entry_id,
+              type: m.type,
+              title: m.title,
+              canonical_citation: m.canonical_citation,
+              summary: m.summary,
+              source_urls: Array.isArray(m.source_urls) ? m.source_urls.slice(0, 10) : [],
+              external_relations: [
+                ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
+                ...(Array.isArray(m.related_sections) ? m.related_sections : []),
+              ]
+              .filter((r) => r && r.type === 'external')
+              .map((r) => ({ citation: r.citation || '', title: r.title || '', url: r.url || '', note: r.note || '' }))
+              .slice(0, 10),
+            }));
+
+            return res.json({ answer: lines.join('\n'), sources });
+          }
+        } catch (err) {
+          console.warn('[chat] list-entities flow failed:', String(err?.message || err));
+        }
+      }
+    }
 
     // Confidence gating: if too weak, return I don't know without LLM
     const maxLex = matches.reduce((m, x) => Math.max(m, Number(x.lexsim) || 0), 0);
