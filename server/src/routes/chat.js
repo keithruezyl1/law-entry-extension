@@ -224,6 +224,51 @@ function keywordWindowSnippet(text, q, maxLength = 320) {
   return parts.join(' … ');
 }
 
+// Prefer diverse, URL-backed sources; dedupe by citation/title and lightly by type
+function selectDiverseSources(matches, maxSources) {
+  const out = [];
+  const seenCite = new Set();
+  const seenTitle = new Set();
+  const typeCounts = new Map();
+
+  const scored = (matches || []).map(m => {
+    const hasUrl = Array.isArray(m.source_urls) && m.source_urls.length > 0;
+    const hasExternalUrl = ([...(m.legal_bases || []), ...(m.related_sections || [])]
+      .some(r => r && r.type === 'external' && r.url));
+    const urlBonus = hasUrl ? 0.08 : (hasExternalUrl ? 0.04 : 0);
+    const score = (Number(m.finalScore) || Number(m.vectorSim) || Number(m.similarity) || 0) + urlBonus;
+    return { m, score };
+  }).sort((a,b)=>b.score-a.score);
+
+  for (const { m } of scored) {
+    const citeKey = String(m.canonical_citation || '').trim().toLowerCase();
+    const titleKey = String(m.title || '').trim().toLowerCase();
+    const typeKey = String(m.type || '').trim().toLowerCase();
+
+    if (citeKey && seenCite.has(citeKey)) continue;
+    if (titleKey && seenTitle.has(titleKey)) continue;
+
+    const currentTypeCount = typeCounts.get(typeKey) || 0;
+    if (currentTypeCount >= 3) continue;
+
+    out.push(m);
+    if (citeKey) seenCite.add(citeKey);
+    if (titleKey) seenTitle.add(titleKey);
+    typeCounts.set(typeKey, currentTypeCount + 1);
+
+    if (out.length >= maxSources) break;
+  }
+
+  if (out.length < Math.min(maxSources, matches.length)) {
+    for (const { m } of scored) {
+      if (out.includes(m)) continue;
+      out.push(m);
+      if (out.length >= maxSources) break;
+    }
+  }
+  return out;
+}
+
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
