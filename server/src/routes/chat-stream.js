@@ -7,7 +7,7 @@ import { rerankWithCrossEncoder } from '../utils/cross-encoder-reranker.js';
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-3.5-turbo';
+const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
 
 // Streaming chat endpoint for real-time responses
 router.post('/stream', async (req, res) => {

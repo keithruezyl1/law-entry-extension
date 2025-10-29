@@ -102,8 +102,8 @@ export async function rerankCandidates({ query, candidates, confidence }) {
     } else {
       const prompt = buildPrompt(query, items);
       const model = (confidence < (low + 0.1))
-        ? (process.env.CHAT_RERANK_MODEL_STRONG || 'gpt-3.5-turbo')
-        : (process.env.CHAT_RERANK_MODEL || 'gpt-3.5-turbo');
+        ? (process.env.CHAT_RERANK_MODEL_STRONG || 'gpt-4o')
+        : (process.env.CHAT_RERANK_MODEL || 'gpt-4o-mini');
       usedModel = model;
       const resp = await openai.chat.completions.create({
         model,
