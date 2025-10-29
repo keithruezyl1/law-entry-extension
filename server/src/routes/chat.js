@@ -17,6 +17,9 @@ const RESPONSE_CACHE_TTL_MS = Number(process.env.CHAT_RESPONSE_TTL_MS || 60 * 60
 const RESPONSE_CACHE_MAX = Number(process.env.CHAT_RESPONSE_CACHE_MAX || 500); // 500 entries
 const responseCache = new Map(); // key -> { answer:string, sources:array, exp:number }
 
+// Negative-cache TTL for unknown answers (short)
+const NEGATIVE_CACHE_TTL_MS = Number(process.env.CHAT_NEGATIVE_TTL_MS || 5 * 60 * 1000); // 5 minutes
+
 async function getCachedEmbedding(text) {
   const key = `emb:${text}`;
   const now = Date.now();
@@ -51,7 +54,9 @@ function setCachedResponse(question, matches, answer, sources) {
   const topEntries = matches.slice(0, 3).map(m => m.entry_id).join(',');
   const key = `resp:${question.length}:${topEntries}`;
   const now = Date.now();
-  const exp = now + RESPONSE_CACHE_TTL_MS;
+  // Shorter TTL for negative answers
+  const isNegative = typeof answer === 'string' && answer.trim().toLowerCase() === "i don't know.";
+  const exp = now + (isNegative ? NEGATIVE_CACHE_TTL_MS : RESPONSE_CACHE_TTL_MS);
   responseCache.set(key, { answer, sources, exp });
   
   // Clean up old entries
@@ -603,6 +608,13 @@ router.post('/', async (req, res) => {
     ]);
     const semantic = semResNorm.rows || [];
     const semanticRaw = semResRaw.rows || [];
+
+    // Set a conservative statement timeout to curb outliers
+    try {
+      const stmtTimeoutMs = Number(process.env.CHAT_STATEMENT_TIMEOUT_MS || 5000);
+      await query(`SET statement_timeout = ${stmtTimeoutMs}`);
+    } catch {}
+
     let bestSim = 0;
     if (semantic.length) bestSim = Math.max(bestSim, Number(semantic[0].similarity) || 0);
     if (semanticRaw.length) bestSim = Math.max(bestSim, Number(semanticRaw[0].similarity) || 0);
@@ -1333,23 +1345,34 @@ router.post('/', async (req, res) => {
         let reranked = null;
         
         if (rerankMode === 'cross-encoder') {
+          // Limit CE candidates for speed
+          const ceCandidates = matches.slice(0, Math.min(matches.length, Number(process.env.CHAT_CE_MAX_CANDIDATES || 12)));
           // Try cross-encoder first (fast, local, accurate)
-          reranked = await rerankWithCrossEncoder({ query: question, candidates: matches, confidence: conf });
+          reranked = await rerankWithCrossEncoder({ query: question, candidates: ceCandidates, confidence: conf });
           
           // If cross-encoder fails, fallback to original order
           if (!reranked || reranked.length === 0) {
             console.log('[rerank] Cross-encoder failed, using original order');
             reranked = matches;
+          } else {
+            // Merge reranked top back with remainder (keep order for the rest)
+            const topIds = new Set(reranked.map(r => r.entry_id));
+            const remainder = matches.filter(m => !topIds.has(m.entry_id));
+            reranked = [...reranked, ...remainder];
           }
         } else if (rerankMode === 'llm') {
           // Use LLM-based reranking (slower, but more flexible)
           reranked = await rerankCandidates({ query: question, candidates: matches, confidence: conf });
         } else if (rerankMode === 'hybrid') {
-          // Hybrid: Try cross-encoder first, fallback to LLM if it fails
-          reranked = await rerankWithCrossEncoder({ query: question, candidates: matches, confidence: conf });
+          const ceCandidates = matches.slice(0, Math.min(matches.length, Number(process.env.CHAT_CE_MAX_CANDIDATES || 12)));
+          reranked = await rerankWithCrossEncoder({ query: question, candidates: ceCandidates, confidence: conf });
           if (!reranked || reranked.length === 0) {
             console.log('[rerank] Cross-encoder returned empty, falling back to LLM reranker');
             reranked = await rerankCandidates({ query: question, candidates: matches, confidence: conf });
+          } else {
+            const topIds = new Set(reranked.map(r => r.entry_id));
+            const remainder = matches.filter(m => !topIds.has(m.entry_id));
+            reranked = [...reranked, ...remainder];
           }
         }
         
@@ -1375,7 +1398,10 @@ router.post('/', async (req, res) => {
       console.log(`[response-cache] Using cached response for: ${question.substring(0, 50)}...`);
     } else {
     // Build prompt and call Chat Completion
-    const prompt = buildPrompt(question, matches);
+    // Prefer diverse, URL-backed sources for the prompt context
+    const maxSources = Number(process.env.CHAT_MAX_SOURCES || 6);
+    const selected = selectDiverseSources(matches, maxSources);
+    const prompt = buildPrompt(question, selected);
       
       // LLM Generation Time Monitoring
       llmStartTime = Date.now();
@@ -1420,7 +1446,7 @@ router.post('/', async (req, res) => {
       console.log(`[llm] Generation completed in ${llmLatency}ms using ${CHAT_MODEL} (streaming: ${useStreaming})`);
       
       // Cache the response for future use
-      const sourcesToCache = matches.map((m) => ({
+      const sourcesToCache = selected.map((m) => ({
         entry_id: m.entry_id,
         type: m.type,
         title: m.title,
@@ -1430,11 +1456,11 @@ router.post('/', async (req, res) => {
         lexsim: m.lexsim,
         finalScore: m.finalScore,
       }));
-      setCachedResponse(question, matches, answer, sourcesToCache);
+      setCachedResponse(question, selected, answer, sourcesToCache);
     }
     
     // Reduce heavy fields from sources before returning
-    const sources = matches.map((m) => ({
+    const sources = selectDiverseSources(matches, Number(process.env.CHAT_MAX_SOURCES || 6)).map((m) => ({
       entry_id: m.entry_id,
       type: m.type,
       title: m.title,
