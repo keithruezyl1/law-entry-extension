@@ -221,7 +221,7 @@ function keywordWindowSnippet(text, q, maxLength = 320) {
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
+const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-3.5-turbo';
 
 function buildPrompt(question, matches) {
   // Limit context length to reduce token usage and improve speed

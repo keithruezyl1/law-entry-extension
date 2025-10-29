@@ -181,7 +181,7 @@ export async function generateStructuredQuery(question) {
   }
 
   try {
-    const model = process.env.CHAT_SQG_MODEL || 'gpt-4o-mini'; // Use cheaper model for query understanding
+    const model = process.env.CHAT_SQG_MODEL || 'gpt-3.5-turbo'; // Use cheaper model for query understanding
     const response = await openai.chat.completions.create({
       model,
       temperature: 0.1, // Low temp for consistency
