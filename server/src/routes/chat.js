@@ -269,6 +269,94 @@ function selectDiverseSources(matches, maxSources) {
   return out;
 }
 
+// Format source entry for consistent API response structure
+// Ensures URLs are properly formatted for easy parsing by main Civilify app
+function formatSourceEntry(m) {
+  // Collect all source URLs (direct from entry)
+  const directUrls = Array.isArray(m.source_urls) ? m.source_urls.filter(Boolean).slice(0, 10) : [];
+  
+  // Collect external relations with URLs
+  const externalRelations = [
+    ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
+    ...(Array.isArray(m.related_sections) ? m.related_sections : []),
+  ]
+    .filter((r) => r && r.type === 'external')
+    .map((r) => ({ 
+      citation: String(r.citation || '').trim(), 
+      title: String(r.title || '').trim(), 
+      url: String(r.url || '').trim(), 
+      note: String(r.note || '').trim() 
+    }))
+    .filter((r) => r.url) // Only keep relations with URLs
+    .slice(0, 10);
+  
+  // Collect all unique URLs in a normalized format
+  const urlSet = new Set();
+  const normalizedUrls = [];
+  
+  // Add direct URLs first (prioritized)
+  for (const url of directUrls) {
+    const cleanUrl = String(url).trim();
+    if (cleanUrl && !urlSet.has(cleanUrl)) {
+      urlSet.add(cleanUrl);
+      normalizedUrls.push({
+        url: cleanUrl,
+        source: 'entry',
+        citation: m.canonical_citation || '',
+        title: m.title || ''
+      });
+    }
+  }
+  
+  // Add external relation URLs
+  for (const rel of externalRelations) {
+    const cleanUrl = String(rel.url).trim();
+    if (cleanUrl && !urlSet.has(cleanUrl)) {
+      urlSet.add(cleanUrl);
+      normalizedUrls.push({
+        url: cleanUrl,
+        source: 'external_relation',
+        citation: rel.citation || m.canonical_citation || '',
+        title: rel.title || m.title || '',
+        note: rel.note || ''
+      });
+    }
+  }
+  
+  // Get primary URL (first available)
+  const primaryUrl = normalizedUrls.length > 0 ? normalizedUrls[0].url : null;
+  
+  return {
+    entry_id: m.entry_id || '',
+    type: m.type || '',
+    title: m.title || '',
+    canonical_citation: m.canonical_citation || '',
+    summary: m.summary || '',
+    tags: Array.isArray(m.tags) ? m.tags : [],
+    rule_no: m.rule_no || null,
+    section_no: m.section_no || null,
+    rights_scope: m.rights_scope || null,
+    similarity: m.vectorSim ?? m.similarity ?? 0,
+    lexsim: m.lexsim ?? 0,
+    finalScore: m.finalScore ?? 0,
+    // Consolidated URL fields for easy parsing
+    primary_url: primaryUrl,
+    urls: normalizedUrls, // Array of { url, source, citation, title, note? }
+    // Backward compatibility fields
+    source_urls: directUrls, // Direct URLs from entry (array of strings)
+    external_relations: externalRelations, // External relations with metadata (array of objects)
+    // Internal relations (entry_ids only)
+    internal_relations: [
+      ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
+      ...(Array.isArray(m.related_sections) ? m.related_sections : []),
+    ]
+      .filter((r) => r && r.type === 'internal' && r.entry_id)
+      .map((r) => String(r.entry_id).trim())
+      .filter(Boolean)
+      .slice(0, 20),
+  };
+}
+
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
@@ -1199,21 +1287,7 @@ router.post('/', async (req, res) => {
               lines.push(`- ${text}`);
             }
 
-            const sources = picked.map((m) => ({
-              entry_id: m.entry_id,
-              type: m.type,
-              title: m.title,
-              canonical_citation: m.canonical_citation,
-              summary: m.summary,
-              source_urls: Array.isArray(m.source_urls) ? m.source_urls.slice(0, 10) : [],
-              external_relations: [
-                ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
-                ...(Array.isArray(m.related_sections) ? m.related_sections : []),
-              ]
-              .filter((r) => r && r.type === 'external')
-              .map((r) => ({ citation: r.citation || '', title: r.title || '', url: r.url || '', note: r.note || '' }))
-              .slice(0, 10),
-            }));
+            const sources = picked.map(formatSourceEntry);
 
             return res.json({ answer: lines.join('\n'), sources });
           }
@@ -1307,12 +1381,7 @@ router.post('/', async (req, res) => {
     // These queries often have very low similarity because we may not have specific threat entries
     if (/\b(threatening|threat|threaten|hurt|harm|violence|violent|attack|assault)\b/i.test(normQ) && maxVec < 0.35) {
       console.log('[chat] Threat scenario detected with low similarity, providing general safety advice');
-      const sources = matches.slice(0, 3).map((m) => ({
-        entry_id: m.entry_id,
-        type: m.type,
-        title: m.title,
-        canonical_citation: m.canonical_citation,
-      }));
+      const sources = matches.slice(0, 3).map(formatSourceEntry);
       return res.json({
         answer: "If someone is threatening you, you should:\n\n" +
           "1. **Document everything**: Save messages, emails, voicemails, or write down details (date, time, what was said, witnesses)\n" +
@@ -1329,20 +1398,7 @@ router.post('/', async (req, res) => {
     
     if (!matches.length || conf < confThreshold) {
       console.log('[chat] Confidence too low:', { conf, confThreshold, maxVec, maxLex, maxFinal });
-      const sources = matches.map((m) => ({
-        entry_id: m.entry_id,
-        type: m.type,
-        title: m.title,
-        canonical_citation: m.canonical_citation,
-        summary: m.summary,
-        tags: Array.isArray(m.tags) ? m.tags : [],
-        rule_no: m.rule_no,
-        section_no: m.section_no,
-        rights_scope: m.rights_scope,
-        similarity: m.vectorSim ?? m.similarity,
-        lexsim: m.lexsim,
-        finalScore: m.finalScore,
-      }));
+      const sources = matches.map(formatSourceEntry);
       return res.json({ answer: "I don't know.", sources });
     }
 
@@ -1505,38 +1561,8 @@ router.post('/', async (req, res) => {
     }
     
     // Reduce heavy fields from sources before returning
-    const sources = selectDiverseSources(matches, Number(process.env.CHAT_MAX_SOURCES || 6)).map((m) => ({
-      entry_id: m.entry_id,
-      type: m.type,
-      title: m.title,
-      canonical_citation: m.canonical_citation,
-      summary: m.summary,
-      tags: Array.isArray(m.tags) ? m.tags : [],
-      rule_no: m.rule_no,
-      section_no: m.section_no,
-      rights_scope: m.rights_scope,
-      similarity: m.vectorSim ?? m.similarity,
-      lexsim: m.lexsim,
-      finalScore: m.finalScore,
-      // External source URLs directly attached to the entry
-      source_urls: Array.isArray(m.source_urls) ? m.source_urls.slice(0, 10) : [],
-      // External relations (from legal_bases / related_sections)
-      external_relations: [
-        ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
-        ...(Array.isArray(m.related_sections) ? m.related_sections : []),
-      ]
-      .filter((r) => r && r.type === 'external')
-      .map((r) => ({ citation: r.citation || '', title: r.title || '', url: r.url || '', note: r.note || '' }))
-      .slice(0, 10),
-      // Internal relations (entry_ids only)
-      internal_relations: [
-        ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
-        ...(Array.isArray(m.related_sections) ? m.related_sections : []),
-      ]
-      .filter((r) => r && r.type === 'internal' && r.entry_id)
-      .map((r) => r.entry_id)
-      .slice(0, 20),
-    }));
+    // Format sources for easy parsing by main Civilify app
+    const sources = selectDiverseSources(matches, Number(process.env.CHAT_MAX_SOURCES || 6)).map(formatSourceEntry);
     // Performance monitoring and observability logs
     const totalLatency = Date.now() - queryStartTime;
     // Record LLM latency if we have it
