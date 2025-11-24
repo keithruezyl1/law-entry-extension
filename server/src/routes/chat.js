@@ -272,6 +272,15 @@ function selectDiverseSources(matches, maxSources) {
 // Format source entry for consistent API response structure
 // Ensures URLs are properly formatted for easy parsing by main Civilify app
 function formatSourceEntry(m) {
+  const entryId = String(m.entry_id || '').trim();
+  const entryType = String(m.type || '').trim();
+  const title = String(m.title || '').trim();
+  const canonicalCitation = String(m.canonical_citation || '').trim();
+  const summary = String(m.summary || '').trim();
+  const ruleNo = m.rule_no || null;
+  const sectionNo = m.section_no || null;
+  const rightsScope = m.rights_scope || null;
+
   // Collect all source URLs (direct from entry)
   const directUrls = Array.isArray(m.source_urls) ? m.source_urls.filter(Boolean).slice(0, 10) : [];
   
@@ -325,35 +334,48 @@ function formatSourceEntry(m) {
   
   // Get primary URL (first available)
   const primaryUrl = normalizedUrls.length > 0 ? normalizedUrls[0].url : null;
+
+  // Internal relations (entry_ids only)
+  const internalRelations = [
+    ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
+    ...(Array.isArray(m.related_sections) ? m.related_sections : []),
+  ]
+    .filter((r) => r && r.type === 'internal' && r.entry_id)
+    .map((r) => String(r.entry_id).trim())
+    .filter(Boolean)
+    .slice(0, 20);
   
   return {
-    entry_id: m.entry_id || '',
-    type: m.type || '',
-    title: m.title || '',
-    canonical_citation: m.canonical_citation || '',
-    summary: m.summary || '',
+    // Snake_case fields (v2 schema)
+    entry_id: entryId,
+    type: entryType,
+    title,
+    canonical_citation: canonicalCitation,
+    summary,
     tags: Array.isArray(m.tags) ? m.tags : [],
-    rule_no: m.rule_no || null,
-    section_no: m.section_no || null,
-    rights_scope: m.rights_scope || null,
+    rule_no: ruleNo,
+    section_no: sectionNo,
+    rights_scope: rightsScope,
     similarity: m.vectorSim ?? m.similarity ?? 0,
     lexsim: m.lexsim ?? 0,
     finalScore: m.finalScore ?? 0,
     // Consolidated URL fields for easy parsing
     primary_url: primaryUrl,
+    primaryUrl,
     urls: normalizedUrls, // Array of { url, source, citation, title, note? }
-    // Backward compatibility fields
+    // Backward compatibility / camelCase mirrors for Civilify app
+    entryId,
+    entryType,
+    canonicalCitation,
+    ruleNo,
+    sectionNo,
+    rightsScope,
     source_urls: directUrls, // Direct URLs from entry (array of strings)
+    sourceUrls: directUrls,
     external_relations: externalRelations, // External relations with metadata (array of objects)
-    // Internal relations (entry_ids only)
-    internal_relations: [
-      ...(Array.isArray(m.legal_bases) ? m.legal_bases : []),
-      ...(Array.isArray(m.related_sections) ? m.related_sections : []),
-    ]
-      .filter((r) => r && r.type === 'internal' && r.entry_id)
-      .map((r) => String(r.entry_id).trim())
-      .filter(Boolean)
-      .slice(0, 20),
+    externalRelations: externalRelations,
+    internal_relations: internalRelations,
+    internalRelations,
   };
 }
 
